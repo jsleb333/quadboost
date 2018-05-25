@@ -2,8 +2,7 @@ import numpy as np
 import sklearn as sk
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
-from utils import load_mnist
-import json
+from utils import load_mnist, load_encodings
 
 class QuadBoostMH:
     def __init__(self, weak_learner, labels_encoding=None, encoding_score=None, encoding_weights=None):
@@ -48,7 +47,6 @@ class QuadBoostMH:
             weak_predictor = self.weak_learner()
             weak_predictor.fit(X, residue, self.weights_matrix)
             weak_prediction = np.sign(weak_predictor.predict(X))
-            print(weak_prediction[:5])
             alpha = np.sum(weights * weak_prediction * residue, axis=0)/n_examples/np.mean(weights, axis=0)
             residue -= alpha * weak_prediction
 
@@ -122,7 +120,6 @@ class QuadBoostMH:
     
     def _encoding_score(self, encoded_Y, encoding_matrix, weights_matrix):
         """
-        For one-hot vectors encoding, we do not have to compute anything.
         """
         return encoded_Y.dot(encoding_matrix.T)
     
@@ -158,10 +155,11 @@ class WeakLearner:
 
 
 if __name__ == '__main__':
-    (Xtr, Ytr), (Xts, Yts) = load_mnist(10000, 1000)
+    (Xtr, Ytr), (Xts, Yts) = load_mnist(60000, 10000)
+    encodings = load_encodings('js_without_0', convert_to_int=True)
 
-    qb = QuadBoostMH(WeakLearner)
+    qb = QuadBoostMH(WeakLearner, labels_encoding=encodings)
 
     qb.fit(Xtr, Ytr, T=3)
     acc = qb.evaluate(Xts, Yts)
-    print(acc)
+    print('test accuracy', acc)

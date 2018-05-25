@@ -2,6 +2,7 @@ import os, struct
 import numpy as np
 import matplotlib.pyplot as plt
 from datasets import path_to
+import json
 # File paths, names and format
 filename_images_train = 'train-images-idx3-ubyte'
 filename_labels_train = 'train-labels-idx1-ubyte'
@@ -55,3 +56,12 @@ def load_mnist(Ntr=60000, Nts=10000):
     h, Yts = load_labels(mnist_path + filename_labels_test, Nts)
 
     return (Xtr, Ytr), (Xts, Yts)
+
+
+def load_encodings(encoding_name, convert_to_int=False):
+    with open('./encodings.json') as file:
+        encodings = json.load(file)[encoding_name]
+    if convert_to_int:
+        encodings = {int(label):encoding for label, encoding in encodings.items()}
+
+    return encodings
