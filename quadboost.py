@@ -59,8 +59,8 @@ class QuadBoostMH:
     
     def predict(self, X):
         encoded_Y_pred = np.zeros((X.shape[0], self.encoding_dim)) + self.f0
-        for alpha, wp in zip(self.alphas, self.weak_predictors):
-            encoded_Y_pred += alpha * wp.predict(X)
+        for alpha, weak_predictor in zip(self.alphas, self.weak_predictors):
+            encoded_Y_pred += alpha * np.sign(weak_predictor.predict(X))
 
         return self._decode_labels(encoded_Y_pred)
     
@@ -151,6 +151,7 @@ class QuadBoostMH:
             weights[i] = self.encoding_weights[label]
         
         return weights
+
 
 class WeakLearner:
     def __init__(self):
