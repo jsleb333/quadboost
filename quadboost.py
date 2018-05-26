@@ -3,7 +3,7 @@ import sklearn as sk
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 
-from utils import load_mnist, to_one_hot
+from utils import load_mnist, to_one_hot, load_encodings
 
 
 class QuadBoostMH:
@@ -81,21 +81,12 @@ class QuadBoostMH:
     
     def _make_encoding_matrix(self):
         if self.labels_encoding == None:
-            self.labels_encoding = {label:np.eye(1, self.n_classes, k=idx)[0] for label, idx in self.labels_to_idx.items()}
+            self.labels_encoding = {label:2*np.eye(1, self.n_classes, k=idx)[0]-1 for label, idx in self.labels_to_idx.items()}
 
         self.encoding_dim = len(self.labels_encoding[self.labels[0]])
         self.encoding_matrix = np.zeros((self.n_classes, self.encoding_dim))
         for label, idx in self.labels_to_idx.items():
             self.encoding_matrix[idx] = self.labels_encoding[label]
-    
-
-    def _make_weights_matrix(self):
-        if self.encoding_weights == None:
-            self.encoding_weights = {label:np.ones(self.encoding_dim)/self.encoding_dim for label in self.labels}
-        
-        self.weights_matrix = np.ones((self.n_classes, self.encoding_dim))
-        for label, idx in self.labels_to_idx.items():
-            self.weights_matrix[idx] = self.encoding_weights[label]
 
 
     def _encode_labels(self, Y):
@@ -104,7 +95,7 @@ class QuadBoostMH:
 
         Returns an array of shape (n_examples, encoding_dim).
         """
-        encoded_Y = np.zeros((len(Y), self.encoding_dim))
+        encoded_Y = -np.ones((len(Y), self.encoding_dim))
         for i, label in enumerate(Y):
             encoded_Y[i] = self.labels_encoding[label]
         
@@ -140,48 +131,46 @@ class QuadBoostMH:
         """
         score = encoded_Y.dot(encoding_matrix.T)
         return score
+
+
+    def _make_weights_matrix(self):
+        if self.encoding_weights == None:
+            self.encoding_weights = {label: np.ones(self.encoding_dim)/self.encoding_dim for label in self.labels}
+
+        self.weights_matrix = np.ones_like(self.encoding_matrix)
+        for label, idx in self.labels_to_idx.items():
+            self.weights_matrix[idx] = self.encoding_weights[label]
     
-    
+
     def _map_weights(self, Y):
         """
         Returns an array of shape (n_examples, encoding_dim) that explicits the encoding weights for each label.
         """        
-        weights = np.ones((len(Y), self.encoding_dim))
-        for label in Y:
-            idx = self.labels_to_idx[label]
-            weights[idx] = self.encoding_weights[label]
+        weights = np.zeros((len(Y), self.encoding_dim))
+        for i, label in enumerate(Y):
+            weights[i] = self.encoding_weights[label]
         
         return weights
 
 class WeakLearner:
     def __init__(self):
-        self.classifier = Ridge()
+        self.classifier = Ridge(alpha=1)
     
     def fit(self, X, Y, W):
-        X = X.reshape(X.shape[0], -1)
+        X = X.reshape((X.shape[0], -1))
         self.classifier.fit(X, Y)
     
     def predict(self, X):
+        X = X.reshape((X.shape[0], -1))
         return self.classifier.predict(X)
 
 
 if __name__ == '__main__':
-    (Xtr, Ytr), (Xts, Yts) = load_mnist()
-    
-    # ridge = Ridge()
-    # Y_oh = to_one_hot(Ytr)
-    # ridge.fit(Xtr, Y_oh)
-    # ts_pred = np.argmax(ridge.predict(Xts), axis=1)
-    # ts_acc = accuracy_score(y_true=Yts, y_pred=ts_pred)
-    
-    # tr_pred = np.argmax(ridge.predict(Xtr), axis=1)
-    # tr_acc = accuracy_score(y_true=Ytr, y_pred=tr_pred)
-    # print(tr_acc, ts_acc)
+    (Xtr, Ytr), (Xts, Yts) = load_mnist(60000, 10000)
+    encodings = load_encodings('js_without_0', convert_to_int=True)
 
-    quadboost = QuadBoostMH(weak_learner=WeakLearner)
+    qb = QuadBoostMH(WeakLearner, labels_encoding=encodings)
 
-    quadboost.fit(Xtr, Ytr, T=3)
-    tr_acc = quadboost.evaluate(Xtr, Ytr)
-    print(tr_acc)
-    ts_acc = quadboost.evaluate(Xts, Yts)
-    print(ts_acc)
+    qb.fit(Xtr, Ytr, T=3)
+    acc = qb.evaluate(Xts, Yts)
+    print('test accuracy', acc)
