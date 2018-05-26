@@ -20,8 +20,8 @@ class QuadBoostMH:
         if self.encoding_score == None:
             self.encoding_score = self._encoding_score
         self.encoding_weights = encoding_weights
-        
-    
+
+
     def fit(self, X, Y, T, f0=None):
         """
         X (Array of shape (n_examples, ...)): Examples.
@@ -56,14 +56,14 @@ class QuadBoostMH:
             self.weak_predictors.append(weak_predictor)
             print('Boosting round ' + str(t+1) + ' - train accuracy: ' + str(self.evaluate(X, Y)))
 
-    
+
     def predict(self, X):
         encoded_Y_pred = np.zeros((X.shape[0], self.encoding_dim)) + self.f0
         for alpha, weak_predictor in zip(self.alphas, self.weak_predictors):
             encoded_Y_pred += alpha * np.sign(weak_predictor.predict(X))
 
         return self._decode_labels(encoded_Y_pred)
-    
+
 
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
@@ -78,7 +78,7 @@ class QuadBoostMH:
         
         self.n_classes = len(self.labels)
 
-    
+
     def _make_encoding_matrix(self):
         if self.labels_encoding == None:
             self.labels_encoding = {label:2*np.eye(1, self.n_classes, k=idx)[0]-1 for label, idx in self.labels_to_idx.items()}
@@ -101,7 +101,7 @@ class QuadBoostMH:
         
         return encoded_Y
 
-    
+
     def _decode_labels(self, encoded_Y):
         """
         encoded_Y (Array of shape (n_examples, encoding_dim)): Encoded labels to be decoded.
@@ -119,7 +119,7 @@ class QuadBoostMH:
 
         return decoded_Y
 
-    
+
     def _encoding_score(self, encoded_Y, encoding_matrix, weights_matrix):
         """
         encoded_Y (Array of shape (n_examples, encoding_dim))
@@ -140,7 +140,7 @@ class QuadBoostMH:
         self.weights_matrix = np.ones_like(self.encoding_matrix)
         for label, idx in self.labels_to_idx.items():
             self.weights_matrix[idx] = self.encoding_weights[label]
-    
+
 
     def _map_weights(self, Y):
         """
@@ -168,7 +168,8 @@ class WeakLearner:
 
 if __name__ == '__main__':
     (Xtr, Ytr), (Xts, Yts) = load_mnist(60000, 10000)
-    encodings = load_encodings('js_without_0', convert_to_int=True)
+    # encodings = load_encodings('js_without_0', convert_to_int=True)
+    encodings = None
 
     qb = QuadBoostMH(WeakLearner, labels_encoding=encodings)
 
