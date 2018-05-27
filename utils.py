@@ -64,30 +64,6 @@ def load_mnist(Ntr=60000, Nts=10000):
     return (Xtr, Ytr), (Xts, Yts)
 
 
-def load_encodings(encoding_name, convert_to_int=False):
-    with open('./encodings/encodings.json') as file:
-        encodings = json.load(file)[encoding_name]
-    if convert_to_int:
-        encodings = {int(label):encoding for label, encoding in encodings.items()}
-
-    return encodings
-
-
-def load_verbal_encodings(encoding_name):
-    with open('./encodings/verbal_encodings.json') as file:
-        verbal_encodings = json.load(file)[encoding_name]
-    
-    labels = sorted(set(l for f, [ones, zeros] in verbal_encodings.items() for l in ones+zeros))
-    encodings = {l:-np.ones(len(verbal_encodings)) for l in labels}
-    for i, (feature, [ones, zeros]) in enumerate(verbal_encodings.items()):
-        for label in ones:
-            encodings[label][i] = 1
-        for label in zeros:
-            encodings[label][i] = 0
-    
-    return encodings
-
-
 if __name__ == '__main__':
     # (Xtr, Ytr), _ = load_mnist(Ntr=1000, Nts=0)
 
