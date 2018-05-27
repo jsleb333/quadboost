@@ -73,7 +73,24 @@ def load_encodings(encoding_name, convert_to_int=False):
     return encodings
 
 
-if __name__ == '__main__':
-    (Xtr, Ytr), _ = load_mnist(Ntr=1000, Nts=0)
+def load_verbal_encodings(encoding_name):
+    with open('./verbal_encodings.json') as file:
+        verbal_encodings = json.load(file)[encoding_name]
+    
+    labels = sorted(set(l for f, [ones, zeros] in verbal_encodings.items() for l in ones+zeros))
+    encodings = {l:-np.ones(len(verbal_encodings)) for l in labels}
+    for i, (feature, [ones, zeros]) in enumerate(verbal_encodings.items()):
+        for label in ones:
+            encodings[label][i] = 1
+        for label in zeros:
+            encodings[label][i] = 0
+    
+    return encodings
 
-    visualize_mnist(Xtr[-5:], Ytr[-5:])
+
+if __name__ == '__main__':
+    # (Xtr, Ytr), _ = load_mnist(Ntr=1000, Nts=0)
+
+    # visualize_mnist(Xtr[-5:], Ytr[-5:])
+    encodings = load_verbal_encodings('mario')
+    print(encodings)

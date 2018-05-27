@@ -1,0 +1,19 @@
+{
+    "mario":
+    {
+        "circle": [[0],[2,6,8,9]],
+        "upward spiral": [[6],[]],
+        "downward spiral": [[9],[2,3]],
+        "vertical line": [[1,4,7],[0,2,3,5,6,8,9]],
+        "S-shape": [[5,8],[]],
+        "mirror S-shape": [[2,8],[]],
+        "bottom ɔ-shape": [[3,5],[0,2,6,8,9]],
+        "left wide half circle": [[0,6],[]],
+        "right wide half circle": [[0,9],[]],
+        "V-shape": [[8],[]],
+        "<-shape": [[3,8],[2,4]],
+        "upper right corner": [[4,7],[0,2,3,9]],
+        "upper left corner": [[5],[0]],
+        "lower left corner": [[4],[0,1,3,5,6,0]]
+    }
+}
