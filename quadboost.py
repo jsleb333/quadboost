@@ -3,23 +3,21 @@ import sklearn as sk
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 
-from utils import load_mnist, to_one_hot, load_encodings
+from utils import load_mnist, to_one_hot, load_encodings, load_verbal_encodings
 
 
 class QuadBoostMH:
-    def __init__(self, weak_learner, labels_encoding=None, encoding_score=None, encoding_weights=None):
+    def __init__(self, weak_learner, labels_encoding=None, encoding_score=None):
         """
         weak_learner (Custom object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
         labels_encoding (Dictionary, optional, default=None): Dictionary of {label:encoding} used to encode and decode labels. 'encoding' should be an array of shape (encoding_dim,). If None, one-hot vector encoding is used.
         encoding_score (Callable, optional, default=None): Function that computes a score between a predicted encoding and a real encoding. Should support ndarrays operations. Class predictions will be made by taking the class with the highest score. If None, the score is simply the predicted encoding.
-        encoding_weights (Dictionary, optional, default=None): Dictionary of {label:weights} used to ponderate the different encoding dimensions. 'weights' should be an array of shape (encoding_dim,). If None, a uniform distribution is used.
         """
         self.weak_learner = weak_learner
         self.labels_encoding = labels_encoding
         self.encoding_score = encoding_score
         if self.encoding_score == None:
             self.encoding_score = self._encoding_score
-        self.encoding_weights = encoding_weights
 
 
     def fit(self, X, Y, T, f0=None):
@@ -55,6 +53,8 @@ class QuadBoostMH:
             self.alphas.append(alpha)
             self.weak_predictors.append(weak_predictor)
             print('Boosting round ' + str(t+1) + ' - train accuracy: ' + str(self.evaluate(X, Y)))
+            wp_acc = accuracy_score(y_true=Y, y_pred=self._decode_labels(weak_prediction))
+            print('weak predictor accuracy:' + str(wp_acc))
 
 
     def predict(self, X):
@@ -111,7 +111,7 @@ class QuadBoostMH:
         Returns a list of decoded labels.
         """
         n_examples = encoded_Y.shape[0]
-        scored_Y = self.encoding_score(encoded_Y, self.encoding_matrix, self.weights_matrix) # Shape: (n_examples, n_classes)
+        scored_Y = self.encoding_score(encoded_Y) # Shape: (n_examples, n_classes)
         decoded_Y_idx = np.argmax(scored_Y, axis=1) # Shape: (n_examples,)
         decoded_Y = []
         for idx in decoded_Y_idx:
@@ -120,26 +120,28 @@ class QuadBoostMH:
         return decoded_Y
 
 
-    def _encoding_score(self, encoded_Y, encoding_matrix, weights_matrix):
+    def _encoding_score(self, encoded_Y):
         """
         encoded_Y (Array of shape (n_examples, encoding_dim))
-        encoding_matrix (Array of shape (n_classes, encoding_dim))
-        weights_matrix (Array of shape (n_classes, encoding_dim))
 
-        By default, computes the scalar product of the encoded labels with each encoding from the encoding matrix.
+        By default, computes the scalar product of the encoded labels with each encoding from the weighted encoding matrix.
         For one-hot vectors encoding, it is equivalent to do nothing since the encoding matrix is the identity.
         """
-        score = encoded_Y.dot(encoding_matrix.T)
+        weighted_encoding = self.encoding_matrix * self.weights_matrix
+        score = encoded_Y.dot(weighted_encoding.T)
         return score
 
 
     def _make_weights_matrix(self):
-        if self.encoding_weights == None:
-            self.encoding_weights = {label: np.ones(self.encoding_dim)/self.encoding_dim for label in self.labels}
+        # if self.encoding_weights == None:
+        #     self.encoding_weights = {label: np.ones(self.encoding_dim)/self.encoding_dim for label in self.labels}
 
-        self.weights_matrix = np.ones_like(self.encoding_matrix)
-        for label, idx in self.labels_to_idx.items():
-            self.weights_matrix[idx] = self.encoding_weights[label]
+        # self.weights_matrix = np.ones_like(self.encoding_matrix)
+        # for label, idx in self.labels_to_idx.items():
+        #     self.weights_matrix[idx] = self.encoding_weights[label]
+
+        weights = np.abs(self.encoding_matrix)
+        self.weights_matrix = weights/np.sum(weights, axis=1).reshape(-1,1)
 
 
     def _map_weights(self, Y):
@@ -148,7 +150,8 @@ class QuadBoostMH:
         """        
         weights = np.zeros((len(Y), self.encoding_dim))
         for i, label in enumerate(Y):
-            weights[i] = self.encoding_weights[label]
+            label_idx = self.labels_to_idx[label]
+            weights[i] = self.weights_matrix[label_idx]
         
         return weights
 
@@ -157,7 +160,7 @@ class WeakLearner:
     def __init__(self):
         self.classifier = Ridge(alpha=1)
     
-    def fit(self, X, Y, W):
+    def fit(self, X, Y, W=None):
         X = X.reshape((X.shape[0], -1))
         self.classifier.fit(X, Y)
     
@@ -168,11 +171,20 @@ class WeakLearner:
 
 if __name__ == '__main__':
     (Xtr, Ytr), (Xts, Yts) = load_mnist(60000, 10000)
-    # encodings = load_encodings('js_without_0', convert_to_int=True)
-    encodings = None
+    encodings = load_encodings('js_without_0', convert_to_int=True)
+    # encodings = load_verbal_encodings('mario')
+    # encodings = None
 
     qb = QuadBoostMH(WeakLearner, labels_encoding=encodings)
 
     qb.fit(Xtr, Ytr, T=3)
     acc = qb.evaluate(Xts, Yts)
     print('test accuracy', acc)
+    
+    wl = WeakLearner()
+    Ytr_encoded = qb._encode_labels(Ytr)
+    wl.fit(Xtr, Ytr_encoded)
+    tr_pred = qb._decode_labels(wl.predict(Xtr))
+    ts_pred = qb._decode_labels(wl.predict(Xts))
+    print('WL train acc', accuracy_score(tr_pred, Ytr))
+    print('WL test acc', accuracy_score(ts_pred, Yts))
