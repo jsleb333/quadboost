@@ -4,7 +4,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 
 from label_encoder import LabelEncoder, OneHotEncoder
-from utils import load_mnist, to_one_hot, load_encodings, load_verbal_encodings
+from utils import load_mnist
 
 
 class QuadBoostMH:
