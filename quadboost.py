@@ -65,34 +65,40 @@ class QuadBoostMH:
 
 
 class WeakLearner:
-    def __init__(self):
+    def __init__(self, encoder=None):
         self.classifier = Ridge(alpha=1)
+        self.encoder = encoder
     
     def fit(self, X, Y, W=None):
         X = X.reshape((X.shape[0], -1))
+        if self.encoder != None:
+            Y, W = self.encoder.encode_labels(Y)
         self.classifier.fit(X, Y)
     
     def predict(self, X):
         X = X.reshape((X.shape[0], -1))
         return self.classifier.predict(X)
 
+    def evaluate(self, X, Y):
+        Y_pred = self.predict(X)
+        if self.encoder != None:
+            Y_pred = self.encoder.decode_labels(Y_pred)
+        return accuracy_score(y_true=Y, y_pred=Y_pred)
 
 if __name__ == '__main__':
     (Xtr, Ytr), (Xts, Yts) = load_mnist(60000, 10000)
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
-    # encoder = LabelEncoder.load_encodings('mario')
-    encoder = None
+    encoder = LabelEncoder.load_encodings('mario')
+    # encoder = None
 
-    qb = QuadBoostMH(WeakLearner, encoder=encoder)
+    # qb = QuadBoostMH(WeakLearner, encoder=encoder)
 
-    qb.fit(Xtr, Ytr, T=3)
-    acc = qb.evaluate(Xts, Yts)
-    print('test accuracy', acc)
+    # qb.fit(Xtr, Ytr, T=3)
+    # acc = qb.evaluate(Xts, Yts)
+    # print('test accuracy', acc)
     
-    # wl = WeakLearner()
-    # Ytr_encoded = qb._encode_labels(Ytr)
-    # wl.fit(Xtr, Ytr_encoded)
-    # tr_pred = qb._decode_labels(wl.predict(Xtr))
-    # ts_pred = qb._decode_labels(wl.predict(Xts))
-    # print('WL train acc', accuracy_score(tr_pred, Ytr))
-    # print('WL test acc', accuracy_score(ts_pred, Yts))
+    # encoder = OneHotEncoder(Ytr)
+    wl = WeakLearner(encoder=encoder)
+    wl.fit(Xtr, Ytr)
+    print('WL train acc', wl.evaluate(Xtr, Ytr))
+    print('WL test acc', wl.evaluate(Xts, Yts))
