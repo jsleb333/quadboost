@@ -3,7 +3,7 @@ import sklearn as sk
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 
-from label_encoder import LabelEncoder, OneHotEncoder
+from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from utils import load_mnist
 
 
@@ -66,7 +66,7 @@ class QuadBoostMH:
 
 class WeakLearner:
     def __init__(self, encoder=None):
-        self.classifier = Ridge(alpha=1)
+        self.classifier = Ridge(alpha=1000000)
         self.encoder = encoder
     
     def fit(self, X, Y, W=None):
@@ -88,8 +88,9 @@ class WeakLearner:
 if __name__ == '__main__':
     (Xtr, Ytr), (Xts, Yts) = load_mnist(60000, 10000)
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
-    encoder = LabelEncoder.load_encodings('mario')
-    # encoder = None
+    # encoder = LabelEncoder.load_encodings('mario')
+    encoder = OneHotEncoder(Ytr)
+    # encoder = AllPairsEncoder(Ytr)
 
     # qb = QuadBoostMH(WeakLearner, encoder=encoder)
 
@@ -97,7 +98,6 @@ if __name__ == '__main__':
     # acc = qb.evaluate(Xts, Yts)
     # print('test accuracy', acc)
     
-    # encoder = OneHotEncoder(Ytr)
     wl = WeakLearner(encoder=encoder)
     wl.fit(Xtr, Ytr)
     print('WL train acc', wl.evaluate(Xtr, Ytr))
