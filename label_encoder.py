@@ -104,10 +104,10 @@ class AllPairsEncoder(LabelEncoder):
         encoding_dim = int(n_classes*(n_classes-1)/2)
         labels_encoding = {label:np.zeros(encoding_dim) for label in labels}
         idx_to_pairs = [(i,j) for i in range(n_classes) for j in range(i+1, n_classes)]
+        
         for idx, (i, j) in enumerate(idx_to_pairs):
             labels_encoding[labels[i]][idx] = 1
             labels_encoding[labels[j]][idx] = -1
-
 
         super().__init__(labels_encoding)
         

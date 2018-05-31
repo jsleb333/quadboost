@@ -4,8 +4,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
-from utils import load_mnist
-
+from mnist_dataset import MNISTDataset
 
 class QuadBoostMH:
     def __init__(self, weak_learner, encoder=None):
@@ -15,6 +14,7 @@ class QuadBoostMH:
         """
         self.weak_learner = weak_learner
         self.encoder = encoder
+
 
     def fit(self, X, Y, T, f0=None):
         """
@@ -53,6 +53,7 @@ class QuadBoostMH:
 
     def predict(self, X):
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
+
         for alpha, weak_predictor in zip(self.alphas, self.weak_predictors):
             encoded_Y_pred += alpha * np.sign(weak_predictor.predict(X))
 
@@ -66,7 +67,7 @@ class QuadBoostMH:
 
 class WeakLearner:
     def __init__(self, encoder=None):
-        self.classifier = Ridge(alpha=1000000)
+        self.classifier = Ridge(alpha=800, fit_intercept=False)
         self.encoder = encoder
     
     def fit(self, X, Y, W=None):
@@ -85,8 +86,11 @@ class WeakLearner:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
+
 if __name__ == '__main__':
-    (Xtr, Ytr), (Xts, Yts) = load_mnist(60000, 10000)
+    mnist = MNISTDataset.load()
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
+
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
     encoder = OneHotEncoder(Ytr)
@@ -96,9 +100,10 @@ if __name__ == '__main__':
 
     # qb.fit(Xtr, Ytr, T=3)
     # acc = qb.evaluate(Xts, Yts)
-    # print('test accuracy', acc)
+    # print('QB test acc:', acc)
     
     wl = WeakLearner(encoder=encoder)
     wl.fit(Xtr, Ytr)
-    print('WL train acc', wl.evaluate(Xtr, Ytr))
-    print('WL test acc', wl.evaluate(Xts, Yts))
+    print('WL train acc:', wl.evaluate(Xtr, Ytr))
+    print('WL test acc:', wl.evaluate(Xts, Yts))
+    print(wl.classifier.intercept_)
