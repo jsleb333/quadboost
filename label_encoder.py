@@ -3,6 +3,9 @@ import numpy as np
 
 
 class LabelEncoder:
+    """
+    Class that encodes and decodes labels according to a given encoding.
+    """
     def __init__(self, labels_encoding):
         """
         labels_encoding (Dictionary): Dictionary of {label:encoding} where the encodings are arrays of -1, 0 or 1.
@@ -60,6 +63,8 @@ class LabelEncoder:
 
         By default, computes the scalar product of the encoded labels with each encoding from the weighted encoding matrix.
         For one-hot vectors encoding, it is equivalent to do nothing since the encoding matrix is the identity.
+
+        TODO implement quadratic score
         """
         weighted_encoding = self.encoding_matrix * self.weights_matrix
         score = encoded_Y.dot(weighted_encoding.T)
@@ -68,6 +73,15 @@ class LabelEncoder:
 
     @staticmethod
     def load_encodings(encoding_name, filepath='./encodings/encodings.json', convert_to_int=False):
+        """
+        Returns a LabelEncoder objects from the encodings in the loaded file.
+
+        Encodings can be written in twos ways: Verbally or not.
+        If verbal, the encodings should be a JSON dictionary of
+            {"Description of the encoded feature": [[labels that have this feature], [labels that do not care about this feature]]}
+        if not, the encodings should be a JSON dictionary of
+            {label:[list of 1, 0 or -1 that encodes the label]}
+        """
         with open(filepath) as file:
             encodings_settings = json.load(file)[encoding_name]
             verbal = encodings_settings['verbal']

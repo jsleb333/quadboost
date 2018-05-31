@@ -23,11 +23,13 @@ class QuadBoostMH:
         T (int): Number of boosting rounds.
         f0 (Array of shape (encoding_dim,), optional, default=None): Initial prediction function. If None, f0 is set to 0.
         """
+        # Encodes the labels
         if self.encoder == None:
             self.encoder = OneHotEncoder(Y)
         encoded_Y, weights = self.encoder.encode_labels(Y)
         n_examples = len(Y)
 
+        # Initialization
         if f0 == None:
             self.f0 = np.zeros(self.encoder.encoding_dim)
         else:
@@ -36,11 +38,12 @@ class QuadBoostMH:
         residue = encoded_Y - self.f0
         self.alphas = []
         self.weak_predictors = []
-        alpha = np.zeros(self.encoder.encoding_dim)
+
+        # Boosting algorithm
         for t in range(T):
-            weak_predictor = self.weak_learner()
-            weak_predictor.fit(X, residue, weights)
+            weak_predictor = self.weak_learner().fit(X, residue, weights)
             weak_prediction = np.sign(weak_predictor.predict(X))
+
             alpha = np.sum(weights * residue * weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
             residue -= alpha * weak_prediction
 
@@ -93,17 +96,17 @@ if __name__ == '__main__':
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
-    encoder = OneHotEncoder(Ytr)
-    # encoder = AllPairsEncoder(Ytr)
+    # encoder = OneHotEncoder(Ytr)
+    encoder = AllPairsEncoder(Ytr)
 
-    # qb = QuadBoostMH(WeakLearner, encoder=encoder)
+    qb = QuadBoostMH(WeakLearner, encoder=encoder)
 
-    # qb.fit(Xtr, Ytr, T=3)
-    # acc = qb.evaluate(Xts, Yts)
-    # print('QB test acc:', acc)
+    qb.fit(Xtr, Ytr, T=3)
+    acc = qb.evaluate(Xts, Yts)
+    print('QB test acc:', acc)
     
-    wl = WeakLearner(encoder=encoder)
-    wl.fit(Xtr, Ytr)
-    print('WL train acc:', wl.evaluate(Xtr, Ytr))
-    print('WL test acc:', wl.evaluate(Xts, Yts))
-    print(wl.classifier.intercept_)
+    # wl = WeakLearner(encoder=encoder)
+    # wl.fit(Xtr, Ytr)
+    # print('WL train acc:', wl.evaluate(Xtr, Ytr))
+    # print('WL test acc:', wl.evaluate(Xts, Yts))
+    # print(wl.classifier.intercept_)
