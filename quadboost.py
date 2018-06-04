@@ -92,18 +92,18 @@ class WeakLearner:
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
 
-if __name__ == '__main__':
+def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
 
-    encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
+    # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
-    # encoder = OneHotEncoder(Ytr)
+    encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
 
     qb = QuadBoostMH(WeakLearner, encoder=encoder)
-
+    print('test')
     qb.fit(Xtr, Ytr, T=3)
     acc = qb.evaluate(Xts, Yts)
     print('QB test acc:', acc)
@@ -113,3 +113,13 @@ if __name__ == '__main__':
     # print('WL train acc:', wl.evaluate(Xtr, Ytr))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
     # print(wl.classifier.intercept_)
+
+if __name__ == '__main__':
+    from time import time
+    t = time()
+    try:
+        main()
+    except:
+        print('\nExecution terminated after {:.2f} seconds.\n'.format(time()-t))
+        raise
+    print('\nExecution completed in {:.2f} seconds.\n'.format(time()-t))
