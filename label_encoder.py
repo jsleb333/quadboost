@@ -6,9 +6,10 @@ class LabelEncoder:
     """
     Class that encodes and decodes labels according to a given encoding.
     """
-    def __init__(self, labels_encoding):
+    def __init__(self, labels_encoding, encoding_score_type='quadratic'):
         """
         labels_encoding (Dictionary): Dictionary of {label:encoding} where the encodings are arrays of -1, 0 or 1.
+        encoding_score_type (String, optional, default='quadratic'): Description of the type of encoding score used to decode the labels. Choices are 'quadratic' and 'scalar'.
         """
         self.labels_encoding = labels_encoding
         self.labels = sorted([label for label in self.labels_encoding])
@@ -20,6 +21,8 @@ class LabelEncoder:
 
         self.encoding_matrix = np.array([self.labels_encoding[label] for label in self.labels])
         self.weights_matrix = np.abs(self.encoding_matrix)/np.sum(np.abs(self.encoding_matrix), axis=1).reshape(-1,1)
+
+        self.encoding_score_type = encoding_score_type
 
 
     def encode_labels(self, Y):
@@ -61,13 +64,35 @@ class LabelEncoder:
         """
         encoded_Y (Array of shape (n_examples, encoding_dim)): Array of encoded labels. It can contain real numbers, for instance in the case where encoded_Y are predictions.
 
-        By default, computes the scalar product of the encoded labels with each encoding from the weighted encoding matrix.
-        For one-hot vectors encoding, it is equivalent to do nothing since the encoding matrix is the identity.
+        Two decoding score are offered: 'quadratic' and 'scalar'. This method can be overloaded to use an other type of encoding score.
 
-        TODO implement quadratic score
+        Returns an array of shape (n_examples, n_classes) of the scores where the max of each row represents the most likely class.
+
+        'quadratic' type solves the following: -(f - Y)² * W . U
+            where   
+                f is the prediction of a label 'encoded_Y'. Shape: (n_examples, encoding_dim, 1)
+                Y is the matrix of label encodings. Shape: (1, encoding_dim, n_classes)
+                W is the matrix of weights of the encodings. Shape: (1, encoding_dim, n_classes)
+                U is the vector of 1 everywhere used to perform a sum on the correct dimension. Shape: (1, encoding_dim, 1)
+                * is the element-wise multiplication.
+                ² is the element-wise multiplication by itself.
+                . is the dot product
+            For operation f - Y, 'f' and 'Y' need to be broadcasted (by copy) to so that it is well defined.
+            Some simplifications allow to find an alternate expression which keeps the shape the matrix small:
+                - (f².W - 2*f.(Y*W) + 1)
+            Since we take the argmax, we can drop the + 1.
+
+        'scalar' type solves the following: f.(Y*W)
+            No broadcasting needed.
+            For one-hot vectors encoding, it is equivalent to do nothing since the encoding matrix is the identity.
         """
         weighted_encoding = self.encoding_matrix * self.weights_matrix
-        score = encoded_Y.dot(weighted_encoding.T)
+        scalar_prod = encoded_Y.dot(weighted_encoding.T)
+
+        if self.encoding_score_type == 'quadratic':
+            score = 2* scalar_prod - (encoded_Y**2).dot(self.weights_matrix.T)
+        elif self.encoding_score_type == 'scalar':
+            score = scalar_prod
         return score
 
 
@@ -103,7 +128,7 @@ class LabelEncoder:
 
 
 class OneHotEncoder(LabelEncoder):
-    def __init__(self, Y):
+    def __init__(self, Y, encoding_score_type='quadratic'):
         labels = sorted(set(Y))
         one_hot_encoding = lambda idx: 2*np.eye(1, len(labels), k=idx)[0]-1
         labels_encoding = {label:one_hot_encoding(idx) for idx, label in enumerate(labels)}
@@ -112,7 +137,7 @@ class OneHotEncoder(LabelEncoder):
 
 
 class AllPairsEncoder(LabelEncoder):
-    def __init__(self, Y):
+    def __init__(self, Y, encoding_score_type='quadratic'):
         labels = sorted(set(Y))
         n_classes = len(labels)
         encoding_dim = int(n_classes*(n_classes-1)/2)

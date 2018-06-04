@@ -78,6 +78,8 @@ class WeakLearner:
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
         self.classifier.fit(X, Y)
+
+        return self
     
     def predict(self, X):
         X = X.reshape((X.shape[0], -1))
@@ -94,10 +96,11 @@ if __name__ == '__main__':
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
 
-    # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
+    encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
     # encoder = OneHotEncoder(Ytr)
-    encoder = AllPairsEncoder(Ytr)
+    # encoder = AllPairsEncoder(Ytr)
+
 
     qb = QuadBoostMH(WeakLearner, encoder=encoder)
 
