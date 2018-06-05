@@ -2,6 +2,7 @@ import numpy as np
 import sklearn as sk
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
+import matplotlib.pyplot as plt
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
@@ -66,6 +67,11 @@ class QuadBoostMH:
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
+    
+
+    def visualize(self):
+        pass
+
 
 
 class WeakLearner:
