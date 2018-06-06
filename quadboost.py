@@ -86,22 +86,20 @@ class QuadBoostMH:
         plt.show()
 
 
-class WeakLearner:
-    def __init__(self, encoder=None):
-        self.classifier = Ridge(alpha=800, fit_intercept=False)
+class WeakLearner(Ridge):
+    def __init__(self, *args, alpha=1, encoder=None, fit_intercept=False, **kwargs):
+        super().__init__(*args, alpha=alpha, fit_intercept=fit_intercept, **kwargs)
         self.encoder = encoder
     
-    def fit(self, X, Y, W=None):
+    def fit(self, X, Y, W=None, **kwargs):
         X = X.reshape((X.shape[0], -1))
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
-        self.classifier.fit(X, Y)
-
-        return self
+        return super().fit(X, Y, **kwargs)
     
-    def predict(self, X):
+    def predict(self, X, **kwargs):
         X = X.reshape((X.shape[0], -1))
-        return self.classifier.predict(X)
+        return super().predict(X, **kwargs)
 
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
