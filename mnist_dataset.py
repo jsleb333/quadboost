@@ -1,7 +1,12 @@
 import os, struct
 import numpy as np
 import matplotlib.pyplot as plt
-from datasets import path_to
+try:
+    from datasets import path_to
+except:
+    def path_to(dataset='mnist'):
+        return "/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/" + dataset
+
 import pickle as pkl
 from sklearn.preprocessing import StandardScaler
 import warnings
@@ -42,7 +47,7 @@ def load_raw_labels(filename, N):
 
 
 def load_raw_mnist(Ntr=60000, Nts=10000):
-    mnist_path = path_to('mnist') + '\\raw\\'
+    mnist_path = path_to('mnist') + '/raw/'
     h, Xtr = load_raw_data(mnist_path + filename_images_train, Ntr)
     h, Xts = load_raw_data(mnist_path + filename_images_test, Nts)
     h, Ytr = load_raw_labels(mnist_path + filename_labels_train, Ntr)
@@ -130,10 +135,10 @@ if __name__ == '__main__':
     from collections import Counter
 
     t0 = time()
-    # (Xtr, Ytr), (Xts, Yts) = load_raw_mnist()
-    # dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
-    # dataset.save()
-    dataset = MNISTDataset.load()
+    (Xtr, Ytr), (Xts, Yts) = load_raw_mnist()
+    dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
+    dataset.save()
+    # dataset = MNISTDataset.load()
 
 
     dataset.test()

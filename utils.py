@@ -12,7 +12,7 @@ def to_one_hot(Y):
     return Y_one_hot
 
 
-def subplots_shape(N, aspect_ratio=3/4):
+def subplots_shape(N, aspect_ratio=9/16):
     """
     Returns the shape (n, m) of the subplots that will fit N images with respect to the given aspect_ratio.
     """

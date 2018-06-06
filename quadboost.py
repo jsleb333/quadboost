@@ -3,9 +3,11 @@ import sklearn as sk
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 import matplotlib.pyplot as plt
+import itertools as it
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
+from utils import *
 
 class QuadBoostMH:
     def __init__(self, weak_learner, encoder=None):
@@ -70,8 +72,18 @@ class QuadBoostMH:
     
 
     def visualize(self):
-        pass
-
+        n, m = subplots_shape(self.encoder.encoding_dim)
+        fig, axes = plt.subplots(n, m)
+        if n == 1 and m == 1:
+            axes = [[axes]]
+        elif n == 1 or m == 1:
+            axes = [axes]
+        axes = [ax for line_axes in axes for ax in line_axes]
+        
+        for k, ax in enumerate(axes):
+            ax.imshow(self.weak_predictors[0].coef_.reshape((28,28)),
+                      cmap='gray_r')
+        plt.show()
 
 
 class WeakLearner:
@@ -112,6 +124,7 @@ def main():
     qb.fit(Xtr, Ytr, T=3)
     acc = qb.evaluate(Xts, Yts)
     print('QB test acc:', acc)
+    qb.visualize()
     
     # wl = WeakLearner(encoder=encoder)
     # wl.fit(Xtr, Ytr)
