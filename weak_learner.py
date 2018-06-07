@@ -8,7 +8,8 @@ from mnist_dataset import MNISTDataset
 
 class WLRidgeMH(Ridge):
     """
-    Linear Ridge regression. Inherits from Ridge of the scikit-learn package.
+    Ridge classification based on the sign of a Ridge regression.
+    Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
     def __init__(self, *args, alpha=1, encoder=None, fit_intercept=False, **kwargs):
