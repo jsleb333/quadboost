@@ -17,6 +17,7 @@ class QuadBoost:
         self.weak_learner = weak_learner
         self.encoder = encoder
         self.weak_predictors = []
+        self.weak_predictors_weights = []
 
 
     def fit(self, X, Y, T, f0=None):
@@ -97,7 +98,6 @@ class QuadBoost:
         return coefs
 
 
-
 class QuadBoostMH(QuadBoost):
     def __init__(self, weak_learner, encoder=None):
         """
@@ -105,7 +105,6 @@ class QuadBoostMH(QuadBoost):
         encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
         """
         super().__init__(weak_learner, encoder)
-        self.weak_predictors_weights = []
 
 
     def _boost(self, X, residue, weights):
@@ -130,6 +129,37 @@ class QuadBoostMH(QuadBoost):
         self.weak_predictors.append(weak_predictor)
 
         return residue, weak_prediction
+
+
+class QuadBoostMHCR(QuadBoost):
+    def __init__(self, confidence_rated_weak_learner, encoder=None):
+        """
+        confidence_rated_weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates confidence rated weak predictors to be boosted on.
+        encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
+        """
+        super().__init__(confidence_rated_weak_learner, encoder)
+
+
+    def _boost(self, X, residue, weights):
+        """
+        Implements one round of boosting. 
+        Appends the lists of weak_predictors with the fitted weak learner.
+
+        X (Array of shape (n_examples, ...)): Examples.
+        residue (Array of shape (n_examples, encoding_dim)): Residues to fit for the examples X.
+        weights (Array of shape (n_examples, encoding_dim)): Weights of the examples X for each encoding.
+
+        Returns the calculated residue and the confidence_rated_weak_prediction.
+        """
+        confidence_rated_weak_predictor = self.weak_learner().fit(X, residue, weights)
+        confidence_rated_weak_prediction = confidence_rated_weak_predictor.predict(X)
+
+        n_examples = X.shape[0]
+        residue -= confidence_rated_weak_prediction
+
+        self.weak_predictors.append(confidence_rated_weak_predictor)
+
+        return residue, confidence_rated_weak_prediction
 
 
 def main():
