@@ -49,7 +49,7 @@ class QuadBoost:
         
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
-            self.weak_predictors_weights = [1]*T
+            self.weak_predictors_weights = [np.array([1])]*T
     
 
     def _boost(self, X, residue, weights):
