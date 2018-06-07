@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
-from weak_learner import WLRidgeMH
+from weak_learner import WLRidgeMH, WLRidgeMHCR
 import matplotlib.pyplot as plt
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
@@ -154,10 +154,10 @@ class QuadBoostMHCR(QuadBoost):
         confidence_rated_weak_predictor = self.weak_learner().fit(X, residue, weights)
         confidence_rated_weak_prediction = confidence_rated_weak_predictor.predict(X)
 
-        n_examples = X.shape[0]
         residue -= confidence_rated_weak_prediction
 
         self.weak_predictors.append(confidence_rated_weak_predictor)
+        self.weak_predictors_weights.append(np.array([1]))
 
         return residue, confidence_rated_weak_prediction
 
@@ -167,21 +167,18 @@ def main():
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
-    # encoder = LabelEncoder.load_encodings('mario')
+    encoder = LabelEncoder.load_encodings('mario')
     # encoder = OneHotEncoder(Ytr)
-    encoder = AllPairsEncoder(Ytr)
+    # encoder = AllPairsEncoder(Ytr)
 
 
-    qb = QuadBoostMH(WLRidgeMH, encoder=encoder)
+    # qb = QuadBoostMH(WLRidgeMH, encoder=encoder)
+    qb = QuadBoostMHCR(WLRidgeMHCR, encoder=encoder)
     qb.fit(Xtr, Ytr, T=2)
     acc = qb.evaluate(Xts, Yts)
     print('QB test acc:', acc)
-    qb.visualize_coef()
+    # qb.visualize_coef()
     
-    # wl = WLRidgeMH(encoder=encoder)
-    # wl.fit(Xtr, Ytr)
-    # print('WL train acc:', wl.evaluate(Xtr, Ytr))
-    # print('WL test acc:', wl.evaluate(Xts, Yts))
 
 if __name__ == '__main__':
     from time import time
