@@ -71,19 +71,26 @@ class QuadBoostMH:
         return accuracy_score(y_true=Y, y_pred=Y_pred)
     
 
-    def visualize(self):
-        n, m = subplots_shape(self.encoder.encoding_dim)
-        fig, axes = plt.subplots(n, m)
-        if n == 1 and m == 1:
-            axes = [[axes]]
-        elif n == 1 or m == 1:
-            axes = [axes]
-        axes = [ax for line_axes in axes for ax in line_axes]
+    def visualize_coef(self):
+        fig, axes = make_fig_axes(self.encoder.encoding_dim)
+        coefs = self.coef_
         
-        for k, ax in enumerate(axes):
-            ax.imshow(self.weak_predictors[0].coef_.reshape((28,28)),
-                      cmap='gray_r')
+        for i, ax in enumerate(axes):
+            ax.imshow(coefs[i,:,:], cmap='gray_r')
+
+        plt.get_current_fig_manager().window.showMaximized()
         plt.show()
+    
+
+    @property
+    def coef_(self):
+        return self._compute_coef()
+    
+
+    def _compute_coef(self):
+        coefs = [a.reshape(-1,1)*wp.coef_ for a, wp in zip(self.alphas, self.weak_predictors)]
+        coefs = np.sum(coefs, axis=0).reshape((self.encoder.encoding_dim,28,28))
+        return coefs
 
 
 class WeakLearner(Ridge):
@@ -113,22 +120,21 @@ def main():
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
-    encoder = LabelEncoder.load_encodings('mario')
-    # encoder = OneHotEncoder(Ytr)
+    # encoder = LabelEncoder.load_encodings('mario')
+    encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
 
     qb = QuadBoostMH(WeakLearner, encoder=encoder)
-    qb.fit(Xtr, Ytr, T=3)
+    qb.fit(Xtr, Ytr, T=1)
     acc = qb.evaluate(Xts, Yts)
     print('QB test acc:', acc)
-    qb.visualize()
+    qb.visualize_coef()
     
     # wl = WeakLearner(encoder=encoder)
     # wl.fit(Xtr, Ytr)
     # print('WL train acc:', wl.evaluate(Xtr, Ytr))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
-    # print(wl.classifier.intercept_)
 
 if __name__ == '__main__':
     from time import time
