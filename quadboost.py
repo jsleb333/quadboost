@@ -111,11 +111,18 @@ class QuadBoostMH:
 
 
 class WeakLearner(Ridge):
+    """
+    Linear Ridge regression. Inherits from Ridge of the scikit-learn package.
+    In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
+    """
     def __init__(self, *args, alpha=1, encoder=None, fit_intercept=False, **kwargs):
         super().__init__(*args, alpha=alpha, fit_intercept=fit_intercept, **kwargs)
         self.encoder = encoder
     
     def fit(self, X, Y, W=None, **kwargs):
+        """
+        Note: this method does not support encoding weights of the QuadBoost algorithm.
+        """
         X = X.reshape((X.shape[0], -1))
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
