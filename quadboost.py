@@ -7,6 +7,7 @@ from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 from utils import *
 
+
 class QuadBoost:
     def __init__(self, weak_learner, encoder=None):
         """
