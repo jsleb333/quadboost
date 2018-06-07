@@ -1,9 +1,7 @@
 import numpy as np
-import sklearn as sk
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 import matplotlib.pyplot as plt
-import itertools as it
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
