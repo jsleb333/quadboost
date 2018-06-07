@@ -128,6 +128,14 @@ class LabelEncoder:
 
 
 class OneHotEncoder(LabelEncoder):
+    """
+    Class the provides a one-hot encoding. For example, if we have 3 classes, the labels_encodings dictionary sould look like this:
+        {
+            1:np.array([ 1,-1,-1]),
+            2:np.array([-1, 1,-1]),
+            3:np.array([-1,-1, 1])
+        }
+    """
     def __init__(self, Y, encoding_score_type='quadratic'):
         labels = sorted(set(Y))
         one_hot_encoding = lambda idx: 2*np.eye(1, len(labels), k=idx)[0]-1
@@ -137,6 +145,16 @@ class OneHotEncoder(LabelEncoder):
 
 
 class AllPairsEncoder(LabelEncoder):
+    """
+    Class the provides a all-pairs encoding. For example, if we have 4 classes, we have 6 pairs: (1,2), (1,3), (1,4), (2,3), (2,4), (3,4).
+    The labels_encodings dictionary sould look like this:
+        {
+            1:np.array([ 1, 1, 1, 0, 0, 0]),
+            2:np.array([-1, 0, 0, 1, 1, 0]),
+            3:np.array([ 0,-1, 0,-1, 0, 1])
+            4:np.array([ 0, 0,-1, 0,-1,-1])
+        }
+    """
     def __init__(self, Y, encoding_score_type='quadratic'):
         labels = sorted(set(Y))
         n_classes = len(labels)
