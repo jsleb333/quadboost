@@ -30,7 +30,6 @@ class QuadBoostMH:
         if self.encoder == None:
             self.encoder = OneHotEncoder(Y)
         encoded_Y, weights = self.encoder.encode_labels(Y)
-        n_examples = len(Y)
 
         # Initialization
         if f0 == None:
@@ -44,17 +43,35 @@ class QuadBoostMH:
 
         # Boosting algorithm
         for t in range(T):
-            weak_predictor = self.weak_learner().fit(X, residue, weights)
-            weak_prediction = np.sign(weak_predictor.predict(X))
+            residue, weak_prediction = self._boost(X, residue, weights)
 
-            alpha = np.sum(weights * residue * weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
-            residue -= alpha * weak_prediction
-
-            self.alphas.append(alpha)
-            self.weak_predictors.append(weak_predictor)
-            print('Boosting round ' + str(t+1) + ' - train accuracy: ' + str(self.evaluate(X, Y)))
             wp_acc = accuracy_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
             print('weak predictor accuracy:' + str(wp_acc))
+            print('Boosting round ' + str(t+1) + ' - train accuracy: ' + str(self.evaluate(X, Y)))
+    
+
+    def _boost(self, X, residue, weights):
+        """
+        Implements one round of boosting. 
+        Appends the lists of alphas and of weak_predictors with the fitted weak learner.
+
+        X (Array of shape (n_examples, ...)): Examples.
+        residue (Array of shape (n_examples, encoding_dim)): Residues to fit for the examples X.
+        weights (Array of shape (n_examples, encoding_dim)): Weights of the examples X for each encoding.
+
+        Returns the calculated residue and the weak_prediction.
+        """
+        weak_predictor = self.weak_learner().fit(X, residue, weights)
+        weak_prediction = np.sign(weak_predictor.predict(X))
+
+        n_examples = X.shape[0]
+        alpha = np.sum(weights * residue * weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
+        residue -= alpha * weak_prediction
+
+        self.alphas.append(alpha)
+        self.weak_predictors.append(weak_predictor)
+
+        return residue, weak_prediction
 
 
     def predict(self, X):
@@ -126,7 +143,7 @@ def main():
 
 
     qb = QuadBoostMH(WeakLearner, encoder=encoder)
-    qb.fit(Xtr, Ytr, T=1)
+    qb.fit(Xtr, Ytr, T=2)
     acc = qb.evaluate(Xts, Yts)
     print('QB test acc:', acc)
     qb.visualize_coef()
