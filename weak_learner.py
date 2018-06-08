@@ -6,39 +6,9 @@ from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 
 
-class WLRidgeMH(Ridge):
+class WLRidge(Ridge):
     """
-    Ridge classification based on the sign of a Ridge regression.
-    Inherits from Ridge of the scikit-learn package.
-    In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
-    """
-    def __init__(self, *args, alpha=1, encoder=None, fit_intercept=False, **kwargs):
-        super().__init__(*args, alpha=alpha, fit_intercept=fit_intercept, **kwargs)
-        self.encoder = encoder
-    
-    def fit(self, X, Y, W=None, **kwargs):
-        """
-        Note: this method does not support encoding weights of the QuadBoost algorithm.
-        """
-        X = X.reshape((X.shape[0], -1))
-        if self.encoder != None:
-            Y, W = self.encoder.encode_labels(Y)
-        return super().fit(X, Y, **kwargs)
-    
-    def predict(self, X, **kwargs):
-        X = X.reshape((X.shape[0], -1))
-        return np.sign(super().predict(X, **kwargs))
-
-    def evaluate(self, X, Y):
-        Y_pred = self.predict(X)
-        if self.encoder != None:
-            Y_pred = self.encoder.decode_labels(Y_pred)
-        return accuracy_score(y_true=Y, y_pred=Y_pred)
-
-
-class WLRidgeMHCR(Ridge):
-    """
-    Confidence rated Ridge classification based on the sign of a Ridge regression.
+    Confidence rated Ridge classification based on a Ridge regression.
     Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
@@ -68,11 +38,11 @@ class WLRidgeMHCR(Ridge):
 
 class WLThresholdedRidge(Ridge):
     """
-    Ridge classification based on a ternary vote (1, 0, -1) of a Ridge regression based on a threshold.
+    Ridge classification based on a ternary vote (1, 0, -1) of a Ridge regression based on a threshold. For a threshold of 0, it is equivalent to take the sign of the prediction.
     Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
-    def __init__(self, *args, alpha=1, encoder=None, threshold=0, fit_intercept=False, **kwargs):
+    def __init__(self, *args, alpha=1, encoder=None, threshold=0.5, fit_intercept=False, **kwargs):
         super().__init__(*args, alpha=alpha, fit_intercept=fit_intercept, **kwargs)
         self.encoder = encoder
         self.threshold = threshold
@@ -89,12 +59,10 @@ class WLThresholdedRidge(Ridge):
     def predict(self, X, **kwargs):
         X = X.reshape((X.shape[0], -1))
         Y = super().predict(X, **kwargs)
-        Y_pred = np.where(Y > self.threshold, Y, 1.0)
-        # Y = np.where(np.logical_and(Y < self.threshold, Y > -self.threshold), Y, 0)
-        print((Y_pred < -self.threshold).all())
-        Y_pred = np.where(Y_pred < -self.threshold, Y_pred, -1.0)
-        print((Y_pred == -1).all())
-        return Y_pred
+        Y = np.where(Y >= self.threshold, 1.0, Y)
+        Y = np.where(np.logical_and(Y < self.threshold, Y > -self.threshold), 0, Y)
+        Y = np.where(Y < -self.threshold, -1, Y)
+        return Y
 
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
@@ -114,7 +82,7 @@ def main():
     
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
-    wl = WLThresholdedRidge(encoder=encoder)
+    wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
     wl.fit(Xtr, Ytr)
     print('WL train acc:', wl.evaluate(Xtr, Ytr))
     print('WL test acc:', wl.evaluate(Xts, Yts))

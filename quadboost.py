@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
-from weak_learner import WLRidgeMH, WLRidgeMHCR
+from weak_learner import WLRidge, WLThresholdedRidge
 import matplotlib.pyplot as plt
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
@@ -166,15 +166,16 @@ def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
 
-    # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
-    encoder = LabelEncoder.load_encodings('mario')
+    encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
+    # encoder = LabelEncoder.load_encodings('mario')
     # encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
 
     # qb = QuadBoostMH(WLRidgeMH, encoder=encoder)
-    qb = QuadBoostMHCR(WLRidgeMHCR, encoder=encoder)
-    qb.fit(Xtr, Ytr, T=2)
+    # qb = QuadBoostMHCR(WLRidgeMHCR, encoder=encoder)
+    qb = QuadBoostMH(WLThresholdedRidge, encoder=encoder)
+    qb.fit(Xtr, Ytr, T=4)
     acc = qb.evaluate(Xts, Yts)
     print('QB test acc:', acc)
     # qb.visualize_coef()
