@@ -171,11 +171,11 @@ def main():
     # encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
+    weak_learner = WLThresholdedRidge(threshold=.5)
+    # weak_learner = WLRidge
 
-    # qb = QuadBoostMH(WLRidgeMH, encoder=encoder)
-    # qb = QuadBoostMHCR(WLRidgeMHCR, encoder=encoder)
-    qb = QuadBoostMH(WLThresholdedRidge, encoder=encoder)
-    qb.fit(Xtr, Ytr, T=4)
+    qb = QuadBoostMH(weak_learner, encoder=encoder)
+    qb.fit(Xtr, Ytr, T=3)
     acc = qb.evaluate(Xts, Yts)
     print('QB test acc:', acc)
     # qb.visualize_coef()
