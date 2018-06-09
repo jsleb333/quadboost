@@ -7,6 +7,24 @@ from mnist_dataset import MNISTDataset
 from utils import *
 
 
+class Cloner:
+    """
+    This Class decorator makes any weak learners clonable by saving the initialization arguments and setting the __call__ function as a constructor using these parameters.
+    """
+    def __init__(self, decorated_cls):
+        self.decorated_cls = decorated_cls
+        decorated_cls.__call__ = self.clone
+    
+    def __call__(self, *args, **kwargs):
+        self.init_args = args
+        self.init_kwargs = kwargs
+        return self.decorated_cls(*args, **kwargs)
+
+    def clone(self):
+        return self.decorated_cls(*self.init_args, **self.init_kwargs)
+
+
+@Cloner
 class WLRidge(Ridge):
     """
     Confidence rated Ridge classification based on a Ridge regression.
@@ -37,6 +55,7 @@ class WLRidge(Ridge):
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
 
+@Cloner
 class WLThresholdedRidge(Ridge):
     """
     Ridge classification based on a ternary vote (1, 0, -1) of a Ridge regression based on a threshold. For a threshold of 0, it is equivalent to take the sign of the prediction.
@@ -70,6 +89,7 @@ class WLThresholdedRidge(Ridge):
         if self.encoder != None:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
+
 
 @timed
 def main():
