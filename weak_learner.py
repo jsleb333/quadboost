@@ -4,6 +4,7 @@ from sklearn.linear_model import Ridge
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
+from utils import *
 
 
 class WLRidge(Ridge):
@@ -12,8 +13,8 @@ class WLRidge(Ridge):
     Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
-    def __init__(self, *args, alpha=1, encoder=None, fit_intercept=False, **kwargs):
-        super().__init__(*args, alpha=alpha, fit_intercept=fit_intercept, **kwargs)
+    def __init__(self, alpha=1, encoder=None, fit_intercept=False, **kwargs):
+        super().__init__(alpha=alpha, fit_intercept=fit_intercept, **kwargs)
         self.encoder = encoder
     
     def fit(self, X, Y, W=None, **kwargs):
@@ -42,8 +43,8 @@ class WLThresholdedRidge(Ridge):
     Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
-    def __init__(self, *args, alpha=1, encoder=None, threshold=0.5, fit_intercept=False, **kwargs):
-        super().__init__(*args, alpha=alpha, fit_intercept=fit_intercept, **kwargs)
+    def __init__(self, alpha=1, encoder=None, threshold=0.5, fit_intercept=False, **kwargs):
+        super().__init__(alpha=alpha, fit_intercept=fit_intercept, **kwargs)
         self.encoder = encoder
         self.threshold = threshold
 
@@ -70,7 +71,7 @@ class WLThresholdedRidge(Ridge):
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
-
+@timed
 def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
@@ -88,11 +89,4 @@ def main():
     print('WL test acc:', wl.evaluate(Xts, Yts))
 
 if __name__ == '__main__':
-    from time import time
-    t = time()
-    try:
-        main()
-    except:
-        print('\nExecution terminated after {:.2f} seconds.\n'.format(time()-t))
-        raise
-    print('\nExecution completed in {:.2f} seconds.\n'.format(time()-t))
+    main()

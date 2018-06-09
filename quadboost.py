@@ -161,7 +161,7 @@ class QuadBoostMHCR(QuadBoost):
 
         return residue, confidence_rated_weak_prediction
 
-
+@timed
 def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
@@ -182,11 +182,4 @@ def main():
     
 
 if __name__ == '__main__':
-    from time import time
-    t = time()
-    try:
-        main()
-    except:
-        print('\nExecution terminated after {:.2f} seconds.\n'.format(time()-t))
-        raise
-    print('\nExecution completed in {:.2f} seconds.\n'.format(time()-t))
+    main()

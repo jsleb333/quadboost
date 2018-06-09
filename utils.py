@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from functools import wraps
 
 
 def to_one_hot(Y):
@@ -46,6 +47,21 @@ def make_fig_axes(N, aspect_ratio=9/16):
         ax.axis('off')
 
     return fig, axes[:N]
+
+
+def timed(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        from time import time
+        t = time()
+        try:
+            func_return = func(*args, **kwargs)
+        except:
+            print('\nExecution terminated after {:.2f} seconds.\n'.format(time()-t))
+            raise
+        print('\nExecution completed in {:.2f} seconds.\n'.format(time()-t))
+        return func_return
+    return wrapper
 
 
 if __name__ == '__main__':
