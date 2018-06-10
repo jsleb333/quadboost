@@ -4,10 +4,17 @@ Comparison of 3 ways to implement a cloner inside a class. A cloner is an emulat
 The idea is to intercept the arguments given at initialisation and to assign to the __call__ function a constructor.
 """
 
-# Using function decorators
-from functools import wraps
-from functools import update_wrapper
+"""
+Method 1: Using function decorators wrapped on the init
 
+Advantages:
+    - Simple
+    - No need for additional structure to save the init args
+    - Doc properly displayed
+Disadvantages:
+    - Decorates the __init__ method, but modifies other methods of the class
+"""
+from functools import wraps, update_wrapper
 
 def call_to_clone(init_func):
     @wraps(init_func)
@@ -20,21 +27,17 @@ def call_to_clone(init_func):
         return init_func(self, *args, **kwargs)
     return wrapper
 
-class DummyFuncDecorator:
-    """
-    class doc string
-    """
-    @call_to_clone
-    def __init__(self, a, *args, b=None, **kwargs):
-        """
-        init doc str
-        """
-        self.a = a
-        self.b = b
-        print(a, b)
+"""
+Method 2: Using a metaclass acting as a decorator
 
-
-# Using a metaclass acting as a decorator
+Advantages:
+    - Easy to read and understand
+    - Seems to func in the purpose of metaclasses
+    - Doc properly displayed
+Disadvantages:
+    - Possible conflict with other metaclasses when inherited
+    - Stores the init args inside the class
+"""
 class MetaCloner(type):
     def __init__(cls, name, bases, attrs):
         cls.__init__ = cls.saved_init(cls.__init__)
@@ -51,21 +54,23 @@ class MetaCloner(type):
     def clone(cls):
         return cls(*cls.init_args, **cls.init_kwargs)
 
-class DummyMetaclass(metaclass=MetaCloner):
-    def __init__(self, a, *args, b=None, **kwargs):
-        self.a = a
-        self.b = b
-        print(a, b)
-    
+"""
+Method 3: Using a class decorator
 
-# Using a class decorator
-class Cloner:
+Advantages:
+    - Class makes things cleaner by separating the work into methods
+Disadvantages:
+    - Must stores the decorated class and init args
+    - Decorator class construction is somewhat unconventional (define the __call__ method)
+    - Doc not always properly displayed
+"""
+class cloner3:
     """
-    cloner class doc str
+    cloner3 doc
     """
     def __init__(self, decorated_cls):
         """
-        cloner init doc str
+        cloner3 init doc
         """
         self.decorated_cls = decorated_cls
         self.decorated_cls.__call__ = self.clone
@@ -79,14 +84,65 @@ class Cloner:
     def clone(self):
         return self.decorated_cls(*self.init_args, **self.init_kwargs)
 
-@Cloner
-class DummyDecoratedClass:
+"""
+Method 4: Using function decorators to inherit the class
+
+Advantages:
+    - Power of a class with syntax of a class
+Disadvantages:
+    - Object returned is a new class that inherits the original
+    - Doc not always properly displayed
+"""
+def cloner4(cls):
     """
-    class doc string
+    cloner4 doc
     """
+    class _Cloner(cls):
+        """
+        cloner4 init doc
+        """
+        @wraps(cls.__init__)
+        def __init__(self, *args, **kwargs):
+            self.args = args
+            self.kwargs = kwargs
+            super().__init__(*args, **kwargs)
+            update_wrapper(self, cls)
+        
+        def __call__(self):
+            return cls(*self.args, **self.kwargs)
+    return _Cloner
+
+"""
+Method 5: Using function decorators to modify the class
+
+Advantages:
+    - Simple
+    - No need for additional structure to save the init args
+    - Does not overload the __init__ methods comparatively to other methods.
+Disadvantages:
+    - Doc not always properly displayed
+"""
+def cloner5(cls):
+    @wraps(cls)
+    def wrapper(*args, **kwargs):
+        def clone(self):
+            return cls(*args, **kwargs)
+        cls.__call__ = clone
+        return cls(*args, **kwargs)
+    return wrapper
+
+@cloner3
+# @cloner4
+# @cloner5
+class Dummy:
+# class Dummy(metaclass=MetaCloner):
+    """
+    class doc
+    """
+    # @call_to_clone
     def __init__(self, a, *args, b=None, **kwargs):
         """
-        init doc string
+        init doc
         """
         self.a = a
         self.b = b
@@ -94,18 +150,17 @@ class DummyDecoratedClass:
     
     def func(self):
         """
-        fit doc str
+        func doc
         """
         print('a')
 
 
 def main():
-    c = DummyDecoratedClass(2, 3, b='test', x='autre')
+    c = Dummy(2, 3, b='test', x='autre')
     c.a = 'adad'
     d = c()
-    d.fit()
-
+    d.func()
+    
+    
 if __name__ == '__main__':
     main()
-
-
