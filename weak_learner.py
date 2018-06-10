@@ -1,12 +1,27 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
+import functools
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 from utils import *
 
 
+def cloner(cls):
+    """
+    This function decorator makes any weak learners clonable by setting the __call__ function as a constructor using the initialization parameters.
+    """
+    @functools.wraps(cls)
+    def wrapper(*args, **kwargs):
+        def clone(self):
+            return cls(*args, **kwargs)
+        cls.__call__ = clone
+        return cls(*args, **kwargs)
+    return wrapper
+
+
+@cloner
 class WLRidge(Ridge):
     """
     Confidence rated Ridge classification based on a Ridge regression.
@@ -37,6 +52,7 @@ class WLRidge(Ridge):
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
 
+@cloner
 class WLThresholdedRidge(Ridge):
     """
     Ridge classification based on a ternary vote (1, 0, -1) of a Ridge regression based on a threshold. For a threshold of 0, it is equivalent to take the sign of the prediction.
@@ -71,22 +87,26 @@ class WLThresholdedRidge(Ridge):
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
+
 @timed
 def main():
-    mnist = MNISTDataset.load()
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
+    # mnist = MNISTDataset.load()
+    # (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
-    encoder = OneHotEncoder(Ytr)
+    # encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
-    
+
+    c = WLThresholdedRidge(threshold=.1)
+    d = c()
+
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
-    wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
-    wl.fit(Xtr, Ytr)
-    print('WL train acc:', wl.evaluate(Xtr, Ytr))
-    print('WL test acc:', wl.evaluate(Xts, Yts))
+    # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
+    # wl.fit(Xtr, Ytr)
+    # print('WL train acc:', wl.evaluate(Xtr, Ytr))
+    # print('WL test acc:', wl.evaluate(Xts, Yts))
 
 if __name__ == '__main__':
     main()
