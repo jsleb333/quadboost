@@ -31,7 +31,7 @@ This projects rely on the following `Python` libraries:
 
 ## Global explanation of the program
 
-The file `quadboost.py` provides an implementation of the QuadBoost.MH algorithm.
+The file `quadboost.py` provides an implementation of a general QuadBoost algorithm, with other specific implementations (QuadBoost.MH and QuadBoost.MHCR).
 A `main()` function with minimal working example is also provided.
 
 The file `weak_learner.py` provides some weak learners to be used with QuadBoost.
