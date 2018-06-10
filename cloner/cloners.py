@@ -6,6 +6,8 @@ The idea is to intercept the arguments given at initialisation and to assign to 
 
 # Using function decorators
 from functools import wraps
+from functools import update_wrapper
+
 
 def call_to_clone(init_func):
     @wraps(init_func)
@@ -19,8 +21,14 @@ def call_to_clone(init_func):
     return wrapper
 
 class DummyFuncDecorator:
+    """
+    class doc string
+    """
     @call_to_clone
     def __init__(self, a, *args, b=None, **kwargs):
+        """
+        init doc str
+        """
         self.a = a
         self.b = b
         print(a, b)
@@ -52,30 +60,50 @@ class DummyMetaclass(metaclass=MetaCloner):
 
 # Using a class decorator
 class Cloner:
+    """
+    cloner class doc str
+    """
     def __init__(self, decorated_cls):
+        """
+        cloner init doc str
+        """
         self.decorated_cls = decorated_cls
-        decorated_cls.__call__ = self.clone
-
-    def clone(self):
-        return self.decorated_cls(*self.init_args, **self.init_kwargs)
+        self.decorated_cls.__call__ = self.clone
+        update_wrapper(self, decorated_cls)
     
     def __call__(self, *args, **kwargs):
         self.init_args = args
         self.init_kwargs = kwargs
         return self.decorated_cls(*args, **kwargs)
 
+    def clone(self):
+        return self.decorated_cls(*self.init_args, **self.init_kwargs)
+
 @Cloner
-class DummyClassDecorator:
+class DummyDecoratedClass:
+    """
+    class doc string
+    """
     def __init__(self, a, *args, b=None, **kwargs):
+        """
+        init doc string
+        """
         self.a = a
         self.b = b
         print(a, b)
+    
+    def func(self):
+        """
+        fit doc str
+        """
+        print('a')
 
 
 def main():
-    c = DummyMetaclass(2, 3, b='test', x='autre')
+    c = DummyDecoratedClass(2, 3, b='test', x='autre')
     c.a = 'adad'
     d = c()
+    d.fit()
 
 if __name__ == '__main__':
     main()
