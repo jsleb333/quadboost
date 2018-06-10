@@ -8,26 +8,26 @@ from mnist_dataset import MNISTDataset
 from utils import *
 
 
-def cloner(init_func):
+def cloner(cls):
     """
-    This function decorator makes any weak learners clonable by saving the initialization arguments and setting the __call__ function as a constructor using these parameters.
+    This function decorator makes any weak learners clonable by setting the __call__ function as a constructor using the initialization parameters.
     """
-    @functools.wraps(init_func)
-    def wrapper(self, *args, **kwargs):
+    @functools.wraps(cls)
+    def wrapper(*args, **kwargs):
         def clone(self):
-            return type(self)(*args, **kwargs)
-        type(self).__call__ = clone
-        return init_func(self, *args, **kwargs)
+            return cls(*args, **kwargs)
+        cls.__call__ = clone
+        return cls(*args, **kwargs)
     return wrapper
 
 
+@cloner
 class WLRidge(Ridge):
     """
     Confidence rated Ridge classification based on a Ridge regression.
     Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
-    @cloner
     def __init__(self, alpha=1, encoder=None, fit_intercept=False, **kwargs):
         super().__init__(alpha=alpha, fit_intercept=fit_intercept, **kwargs)
         self.encoder = encoder
@@ -52,13 +52,13 @@ class WLRidge(Ridge):
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
 
+@cloner
 class WLThresholdedRidge(Ridge):
     """
     Ridge classification based on a ternary vote (1, 0, -1) of a Ridge regression based on a threshold. For a threshold of 0, it is equivalent to take the sign of the prediction.
     Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
-    @cloner
     def __init__(self, alpha=1, encoder=None, threshold=0.5, fit_intercept=False, **kwargs):
         super().__init__(alpha=alpha, fit_intercept=fit_intercept, **kwargs)
         self.encoder = encoder
