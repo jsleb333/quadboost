@@ -59,6 +59,7 @@ Method 3: Using a class decorator
 
 Advantages:
     - Class makes things cleaner by separating the work into methods
+    - Does not overload the __init__ method
 Disadvantages:
     - Must stores the decorated class and init args
     - Decorator class construction is somewhat unconventional (define the __call__ method)
