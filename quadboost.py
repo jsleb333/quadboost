@@ -166,13 +166,13 @@ def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
 
-    encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
-    # encoder = LabelEncoder.load_encodings('mario')
+    # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
+    encoder = LabelEncoder.load_encodings('mario')
     # encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    weak_learner = WLThresholdedRidge(threshold=.5)
-    # weak_learner = WLRidge
+    # weak_learner = WLThresholdedRidge(threshold=.5)
+    weak_learner = WLRidge
 
     qb = QuadBoostMH(weak_learner, encoder=encoder)
     qb.fit(Xtr, Ytr, T=3)

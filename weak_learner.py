@@ -34,11 +34,13 @@ class WLRidge(Ridge):
     
     def fit(self, X, Y, W=None, **kwargs):
         """
-        Note: this method does not support encoding weights of the QuadBoost algorithm.
+        NB: this method supports encoding weights of the QuadBoost algorithm by multiplying Y by the square root of the weights W. This should be taken into account for continous predictions.
         """
         X = X.reshape((X.shape[0], -1))
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
+        if W is not None:
+            Y *= np.sqrt(W)
         return super().fit(X, Y, **kwargs)
     
     def predict(self, X, **kwargs):
