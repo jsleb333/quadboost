@@ -1,5 +1,5 @@
 """
-Comparison of 3 ways to implement a cloner inside a class. A cloner is an emulation of a constructor at call time, with the same initialization parameters. Hence it is NOT the same as a simple copy.
+Comparison of 5 ways to implement a cloner inside a class. A cloner is an emulation of a constructor at call time, with the same initialization parameters. Hence it is not the same as a simple copy.
 
 The idea is to intercept the arguments given at initialisation and to assign to the __call__ function a constructor.
 """
@@ -46,8 +46,8 @@ class MetaCloner(type):
     def saved_init(cls, init_func):
         @wraps(init_func)
         def new_init(self, *args, **kwargs):
-            cls.init_args = args
-            cls.init_kwargs = kwargs
+            self.init_args = args
+            self.init_kwargs = kwargs
             return init_func(self, *args, **kwargs)
         return new_init
     
@@ -132,11 +132,11 @@ def cloner5(cls):
         return cls(*args, **kwargs)
     return wrapper
 
-@cloner3
 # @cloner4
+# @cloner3
 # @cloner5
-class Dummy:
-# class Dummy(metaclass=MetaCloner):
+# class Dummy:
+class Dummy(metaclass=MetaCloner):
     """
     class doc
     """
@@ -164,4 +164,5 @@ def main():
     
     
 if __name__ == '__main__':
+    # Dummy()
     main()
