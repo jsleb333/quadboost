@@ -3,6 +3,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 from sklearn.svm import LinearSVR
 import functools
+from collections import defaultdict
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
@@ -126,10 +127,37 @@ class MultidimSVR:
         return accuracy_score(y_true=Y, y_pred=Y_pred)    
 
 
+@cloner
+class MulticlassDecisionStump:
+    def __init__(self, encoder=None):
+        self.encoder = encoder
+    
+    def fit(self, X, Y, W=None):
+        X = X.reshape((X.shape[0], -1))
+        if self.encoder != None:
+            Y, W = self.encoder.encode_labels(Y)
+
+        sparse_X_Y = self.make_sparse_X_Y(X, Y)
+
+    def make_sparse_X_Y(self, X, Y):
+        n_classes = Y.shape[1]
+
+        default_factory = lambda : np.zeros((2, n_classes))
+        sparse_X_Y = []
+        for feature in X.T:
+            sparse_feature = defaultdict(default_factory)
+            for i, f in enumerate(feature):
+                sparse_feature[f][0] += Y[i] == 1 # Positive examples
+                sparse_feature[f][1] += Y[i] == -1 # Negative examples
+            sparse_X_Y.append(sparse_feature)
+
+        return sparse_X_Y
+
+
 @timed
 def main():
     mnist = MNISTDataset.load()
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
@@ -139,10 +167,10 @@ def main():
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
     # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
-    wl = MultidimSVR(encoder=encoder)
-    wl.fit(Xtr[:5000], Ytr[:5000])
-    print('WL train acc:', wl.evaluate(Xtr[:5000], Ytr[:5000]))
-    print('WL test acc:', wl.evaluate(Xts, Yts))
+    wl = MulticlassDecisionStump(encoder=encoder)
+    wl.fit(Xtr[:10], Ytr[:10])
+    # print('WL train acc:', wl.evaluate(Xtr[:5000], Ytr[:5000]))
+    # print('WL test acc:', wl.evaluate(Xts, Yts))
 
 if __name__ == '__main__':
     main()
