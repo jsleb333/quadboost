@@ -133,26 +133,85 @@ class MulticlassDecisionStump:
         self.encoder = encoder
     
     def fit(self, X, Y, W=None):
-        X = X.reshape((X.shape[0], -1))
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
+        n_examples, n_classes = Y.shape
+        X = X.reshape((n_examples, -1))
+        _, n_features = X.shape
 
-        sparse_X_Y = self.make_sparse_X_Y(X, Y)
+        sorted_examples_idx = X.argsort(axis=0)
 
-    def make_sparse_X_Y(self, X, Y):
-        n_classes = Y.shape[1]
+        n_partitions = 2 # Decision stumps partition space into 2 (partition 0 on the left and partition 1 on the right)
+        n_stumps = n_examples
+        confidence = np.zeros((n_stumps, n_partitions, n_features, n_classes))
+        partition_mass = np.zeros_like(confidence)
+        variance = np.zeros_like(confidence)
 
-        default_factory = lambda : np.zeros((2, n_classes))
-        sparse_X_Y = []
-        for feature in X.T:
-            sparse_feature = defaultdict(default_factory)
-            for i, f in enumerate(feature):
-                sparse_feature[f][0] += Y[i] == 1 # Positive examples
-                sparse_feature[f][1] += Y[i] == -1 # Negative examples
-            sparse_X_Y.append(sparse_feature)
+        Y_broad = Y[:,np.newaxis,:]
+        W_broad = W[:,np.newaxis,:]
+        # At first, all examples are at the right side of the stump (partition 1)
+        partition_mass[0,1] = np.sum(W, axis=0)
+        confidence[0,1] = np.sum(W*Y, axis=0)
+        c = np.divide(confidence[0,1], partition_mass[0,1], where=partition_mass[0,1]!=0)
+        variance[0,1] = np.sum(W_broad*(Y_broad-c[np.newaxis])**2, axis=0)
+        # print((variance < 0).any())
 
-        return sparse_X_Y
+        for stump in range(1, n_stumps):
+            ex_idx = sorted_examples_idx[stump-1]
 
+            partition_mass[stump,0] = partition_mass[stump-1,0] + W[ex_idx] # Example is added to partition 0
+            partition_mass[stump,1] = partition_mass[stump-1,1] - W[ex_idx] # Example is removed from partition 1
+
+            confidence[stump,0] = confidence[stump-1,0] + W[ex_idx]*Y[ex_idx]
+            confidence[stump,1] = confidence[stump-1,1] - W[ex_idx]*Y[ex_idx]
+
+            c0 = np.divide(confidence[stump,0], partition_mass[stump,0], where=partition_mass[stump,0]!=0) # Shape (n_stumps, n_features)
+            c1 = np.divide(confidence[stump-1,1], partition_mass[stump-1,1], where=partition_mass[stump-1,1]!=0) # Shape (n_stumps, n_features)
+
+            variance[stump,0] = variance[stump-1,0] + W[ex_idx]*(Y[ex_idx] - c0)**2
+            variance[stump,1] = variance[stump-1,1] - W[ex_idx]*(Y[ex_idx] - c1)**2
+        
+        risk = np.sum(np.sum(variance, axis=3), axis=1)
+
+        risk_idx = [np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None)]
+        stump_idx, feature_idx = risk_idx[0]
+        stump_value = X[sorted_examples_idx[stump_idx, feature_idx], feature_idx]
+        if stump_idx != 0:
+            for stump_idx, feature_idx in risk_idx:
+                # Check if feature_value of stump_idx-1 is the same. If yes, break, else change stump
+                pass
+
+        # TODO: Update stump computation for better classification
+        self.feature = feature_idx
+        self.stump = X[sorted_examples_idx[stump_idx, self.feature], self.feature] - .5
+        # print(self.stump, self.feature)
+        # print(risk[stump_idx, self.feature])
+        # print()
+        self.confidence_rates = np.divide(confidence[stump_idx,:,self.feature], partition_mass[stump_idx,:,self.feature], where=partition_mass[stump_idx,:,self.feature]!=0)
+        # print(self.stump, self.feature)
+    
+        return self
+    
+    def predict(self, X):
+        n_partitions, n_classes = self.confidence_rates.shape
+        n_examples = X.shape[0]
+        X = X.reshape((n_examples, -1))
+        Y_pred = np.zeros((n_examples, n_classes))
+        for i, x in enumerate(X):
+            if x[self.feature] < self.stump:
+                Y_pred[i] = self.confidence_rates[0]
+            else:
+                Y_pred[i] = self.confidence_rates[1]
+        print(self.confidence_rates)
+        return Y_pred
+    
+    def evaluate(self, X, Y):
+        Y_pred = self.predict(X)
+        if self.encoder != None:
+            Y_pred = self.encoder.decode_labels(Y_pred)
+        return accuracy_score(y_true=Y, y_pred=Y_pred)    
+
+        
 
 @timed
 def main():
@@ -167,10 +226,17 @@ def main():
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
     # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
+    m = 2
+    X = Xtr[:m]
+    Y = Ytr[:m]
+    print(Y)
     wl = MulticlassDecisionStump(encoder=encoder)
-    wl.fit(Xtr[:10], Ytr[:10])
-    # print('WL train acc:', wl.evaluate(Xtr[:5000], Ytr[:5000]))
-    # print('WL test acc:', wl.evaluate(Xts, Yts))
+    wl.fit(X, Y)
+    print('WL train acc:', wl.evaluate(X, Y))
+    print('WL test acc:', wl.evaluate(Xts, Yts))
+
+
+
 
 if __name__ == '__main__':
     main()
