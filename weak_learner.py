@@ -174,20 +174,23 @@ class MulticlassDecisionStump:
         risk = np.sum(np.sum(variance, axis=3), axis=1)
 
         risk_idx = [np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None)]
-        stump_idx, feature_idx = risk_idx[0]
-        stump_value = X[sorted_examples_idx[stump_idx, feature_idx], feature_idx]
-        if stump_idx != 0:
-            for stump_idx, feature_idx in risk_idx:
-                # Check if feature_value of stump_idx-1 is the same. If yes, break, else change stump
-                pass
+        for stump_idx, feature_idx in risk_idx:
+            # Check if feature_value of stump_idx-1 is the same. If yes, break, else change stump
+            feature_value = X[sorted_examples_idx[stump_idx, feature_idx], feature_idx]
+            if stump_idx == 0:
+                self.stump = feature_value - 1
+                break
+            else:
+                neighbour_value = X[sorted_examples_idx[stump_idx-1, feature_idx], feature_idx]
+                if neighbour_value != feature_value:
+                    self.stump = (feature_value + neighbour_value)/2
+                    break
 
-        # TODO: Update stump computation for better classification
         self.feature = feature_idx
-        self.stump = X[sorted_examples_idx[stump_idx, self.feature], self.feature] - .5
         # print(self.stump, self.feature)
         # print(risk[stump_idx, self.feature])
         # print()
-        self.confidence_rates = np.divide(confidence[stump_idx,:,self.feature], partition_mass[stump_idx,:,self.feature], where=partition_mass[stump_idx,:,self.feature]!=0)
+        self.confidence_rates = np.divide(confidence[stump_idx,:,feature_idx], partition_mass[stump_idx,:,feature_idx], where=partition_mass[stump_idx,:,feature_idx]!=0)
         # print(self.stump, self.feature)
     
         return self
@@ -202,7 +205,6 @@ class MulticlassDecisionStump:
                 Y_pred[i] = self.confidence_rates[0]
             else:
                 Y_pred[i] = self.confidence_rates[1]
-        print(self.confidence_rates)
         return Y_pred
     
     def evaluate(self, X, Y):
@@ -210,7 +212,6 @@ class MulticlassDecisionStump:
         if self.encoder != None:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)    
-
         
 
 @timed
@@ -226,10 +227,9 @@ def main():
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
     # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
-    m = 2
+    m = 1000
     X = Xtr[:m]
     Y = Ytr[:m]
-    print(Y)
     wl = MulticlassDecisionStump(encoder=encoder)
     wl.fit(X, Y)
     print('WL train acc:', wl.evaluate(X, Y))
