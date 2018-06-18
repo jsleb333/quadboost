@@ -135,65 +135,69 @@ class MulticlassDecisionStump:
     def fit(self, X, Y, W=None):
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
+        X = X.reshape((X.shape[0], -1))
+        sorted_X_idx = X.argsort(axis=0)
+        
+        confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
+
+        risk = np.sum(np.sum(variance, axis=3), axis=1)
+        stump_idx, feature_idx = self._find_best_stump(risk, X, sorted_X_idx)
+
+        self.confidence_rates = np.divide(confidence[stump_idx,:,feature_idx], mass[stump_idx,:,feature_idx], where=mass[stump_idx,:,feature_idx]!=0)
+    
+        return self
+    
+    def _find_best_stump(self, risk, X, sorted_X_idx):
+        risk_idx = (np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None))
+
+        for stump_idx, feature_idx in risk_idx:
+            feature_value = X[sorted_X_idx[stump_idx, feature_idx], feature_idx]
+            if stump_idx == 0:
+                self.stump = feature_value -1
+                self.feature = feature_idx
+                return stump_idx, feature_idx
+            neighbour_value = X[sorted_X_idx[stump_idx-1, feature_idx], feature_idx]
+
+            if feature_value != neighbour_value: # We cannot have a stump between 2 examples with the same feature value.
+                self.stump = (feature_value + neighbour_value)/2
+                self.feature = feature_idx
+                return stump_idx, feature_idx
+        
+        raise ValueError('All examples are identical.')
+
+    def _compute_confidence_variance_mass(self, sorted_X_idx, Y, W):
         n_examples, n_classes = Y.shape
-        X = X.reshape((n_examples, -1))
-        _, n_features = X.shape
-
-        sorted_examples_idx = X.argsort(axis=0)
-
+        _, n_features = sorted_X_idx.shape
         n_partitions = 2 # Decision stumps partition space into 2 (partition 0 on the left and partition 1 on the right)
         n_stumps = n_examples
+
         confidence = np.zeros((n_stumps, n_partitions, n_features, n_classes))
-        partition_mass = np.zeros_like(confidence)
+        mass = np.zeros_like(confidence)
         variance = np.zeros_like(confidence)
 
         Y_broad = Y[:,np.newaxis,:]
         W_broad = W[:,np.newaxis,:]
+
         # At first, all examples are at the right side of the stump (partition 1)
-        partition_mass[0,1] = np.sum(W, axis=0)
+        mass[0,1] = np.sum(W, axis=0)
         confidence[0,1] = np.sum(W*Y, axis=0)
-        c = np.divide(confidence[0,1], partition_mass[0,1], where=partition_mass[0,1]!=0)
+        c = np.divide(confidence[0,1], mass[0,1], where=mass[0,1]!=0)
         variance[0,1] = np.sum(W_broad*(Y_broad-c[np.newaxis])**2, axis=0)
-        # print((variance < 0).any())
 
-        for stump in range(1, n_stumps):
-            ex_idx = sorted_examples_idx[stump-1]
+        for x_idx, stump in zip(sorted_X_idx, range(1, n_stumps)):
+            mass[stump,0] = mass[stump-1,0] + W[x_idx] # Example is added to partition 0
+            mass[stump,1] = mass[stump-1,1] - W[x_idx] # Example is removed from partition 1
 
-            partition_mass[stump,0] = partition_mass[stump-1,0] + W[ex_idx] # Example is added to partition 0
-            partition_mass[stump,1] = partition_mass[stump-1,1] - W[ex_idx] # Example is removed from partition 1
+            confidence[stump,0] = confidence[stump-1,0] + W[x_idx]*Y[x_idx]
+            confidence[stump,1] = confidence[stump-1,1] - W[x_idx]*Y[x_idx]
 
-            confidence[stump,0] = confidence[stump-1,0] + W[ex_idx]*Y[ex_idx]
-            confidence[stump,1] = confidence[stump-1,1] - W[ex_idx]*Y[ex_idx]
+            c0 = np.divide(confidence[stump,0], mass[stump,0], where=mass[stump,0]!=0)
+            c1 = np.divide(confidence[stump-1,1], mass[stump-1,1], where=mass[stump-1,1]!=0)
 
-            c0 = np.divide(confidence[stump,0], partition_mass[stump,0], where=partition_mass[stump,0]!=0) # Shape (n_stumps, n_features)
-            c1 = np.divide(confidence[stump-1,1], partition_mass[stump-1,1], where=partition_mass[stump-1,1]!=0) # Shape (n_stumps, n_features)
-
-            variance[stump,0] = variance[stump-1,0] + W[ex_idx]*(Y[ex_idx] - c0)**2
-            variance[stump,1] = variance[stump-1,1] - W[ex_idx]*(Y[ex_idx] - c1)**2
+            variance[stump,0] = variance[stump-1,0] + W[x_idx]*(Y[x_idx] - c0)**2
+            variance[stump,1] = variance[stump-1,1] - W[x_idx]*(Y[x_idx] - c1)**2
         
-        risk = np.sum(np.sum(variance, axis=3), axis=1)
-
-        risk_idx = [np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None)]
-        for stump_idx, feature_idx in risk_idx:
-            # Check if feature_value of stump_idx-1 is the same. If yes, break, else change stump
-            feature_value = X[sorted_examples_idx[stump_idx, feature_idx], feature_idx]
-            if stump_idx == 0:
-                self.stump = feature_value - 1
-                break
-            else:
-                neighbour_value = X[sorted_examples_idx[stump_idx-1, feature_idx], feature_idx]
-                if neighbour_value != feature_value:
-                    self.stump = (feature_value + neighbour_value)/2
-                    break
-
-        self.feature = feature_idx
-        # print(self.stump, self.feature)
-        # print(risk[stump_idx, self.feature])
-        # print()
-        self.confidence_rates = np.divide(confidence[stump_idx,:,feature_idx], partition_mass[stump_idx,:,feature_idx], where=partition_mass[stump_idx,:,feature_idx]!=0)
-        # print(self.stump, self.feature)
-    
-        return self
+        return confidence, variance, mass
     
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
