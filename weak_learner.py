@@ -129,23 +129,41 @@ class MultidimSVR:
 
 @cloner
 class MulticlassDecisionStump:
-    def __init__(self, encoder=None):
+    def __init__(self, encoder=None, bins=-1):
         self.encoder = encoder
+        self.bins = bins
     
     def fit(self, X, Y, W=None):
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
         X = X.reshape((X.shape[0], -1))
-        sorted_X_idx = X.argsort(axis=0)
+
+        self.binarize(X)
+
+
+        # sorted_X_idx = X.argsort(axis=0)
         
-        confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
+        # confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
 
-        risk = np.sum(np.sum(variance, axis=3), axis=1)
-        stump_idx, feature_idx = self._find_best_stump(risk, X, sorted_X_idx)
+        # risk = np.sum(np.sum(variance, axis=3), axis=1)
+        # stump_idx, feature_idx = self._find_best_stump(risk, X, sorted_X_idx)
 
-        self.confidence_rates = np.divide(confidence[stump_idx,:,feature_idx], mass[stump_idx,:,feature_idx], where=mass[stump_idx,:,feature_idx]!=0)
+        # self.confidence_rates = np.divide(confidence[stump_idx,:,feature_idx], mass[stump_idx,:,feature_idx], where=mass[stump_idx,:,feature_idx]!=0)
     
         return self
+    
+    def binarize(self, X):
+        unique_features, indices = np.unique(X, return_inverse=True)
+        indices = indices.reshape(X.shape)
+        n_examples, n_features = X.shape
+
+        feature_sorted_X = np.empty((len(unique_features), n_features), dtype=object)
+        feature_sorted_X.fill([])
+        for i, x_idx in enumerate(indices):
+            # for feat_idx, value_idx in enumerate(x_idx):
+            for feature in feature_sorted_X[x_idx, range(len(x_idx))]:
+                feature.append(i)
+
     
     def _find_best_stump(self, risk, X, sorted_X_idx):
         risk_idx = (np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None))
@@ -236,8 +254,8 @@ def main():
     Y = Ytr[:m]
     wl = MulticlassDecisionStump(encoder=encoder)
     wl.fit(X, Y)
-    print('WL train acc:', wl.evaluate(X, Y))
-    print('WL test acc:', wl.evaluate(Xts, Yts))
+    # print('WL train acc:', wl.evaluate(X, Y))
+    # print('WL test acc:', wl.evaluate(Xts, Yts))
 
 
 
