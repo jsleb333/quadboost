@@ -138,12 +138,9 @@ class MulticlassDecisionStump:
             Y, W = self.encoder.encode_labels(Y)
         X = X.reshape((X.shape[0], -1))
 
-        self.binarize(X)
+        feature_decomposed_X, idx_to_feature = self.feature_decomposition(X)
 
-
-        # sorted_X_idx = X.argsort(axis=0)
-        
-        # confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
+        confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
 
         # risk = np.sum(np.sum(variance, axis=3), axis=1)
         # stump_idx, feature_idx = self._find_best_stump(risk, X, sorted_X_idx)
@@ -152,18 +149,19 @@ class MulticlassDecisionStump:
     
         return self
     
-    def binarize(self, X):
-        unique_features, indices = np.unique(X, return_inverse=True)
+    def feature_decomposition(self, X):
+        idx_to_feature, indices = np.unique(X, return_inverse=True)
         indices = indices.reshape(X.shape)
         n_examples, n_features = X.shape
+        feature_sorted_X = np.argsort(X, axis=0)
 
-        feature_sorted_X = np.empty((len(unique_features), n_features), dtype=object)
-        feature_sorted_X.fill([])
+        feature_decomposed_X = np.empty((len(idx_to_feature), n_features))
+        feature_decomposed_X.fill([])
         for i, x_idx in enumerate(indices):
-            # for feat_idx, value_idx in enumerate(x_idx):
-            for feature in feature_sorted_X[x_idx, range(len(x_idx))]:
+            for feature in feature_decomposed_X[x_idx, range(len(x_idx))]:
                 feature.append(i)
-
+        
+        return feature_decomposed_X, idx_to_feature
     
     def _find_best_stump(self, risk, X, sorted_X_idx):
         risk_idx = (np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None))
@@ -183,11 +181,10 @@ class MulticlassDecisionStump:
         
         raise ValueError('All examples are identical.')
 
-    def _compute_confidence_variance_mass(self, sorted_X_idx, Y, W):
+    def _compute_confidence_variance_mass(self, feature_decomposed_X, Y, W):
         n_examples, n_classes = Y.shape
-        _, n_features = sorted_X_idx.shape
+        n_stumps, n_features = feature_decomposed_X.shape
         n_partitions = 2 # Decision stumps partition space into 2 (partition 0 on the left and partition 1 on the right)
-        n_stumps = n_examples
 
         confidence = np.zeros((n_stumps, n_partitions, n_features, n_classes))
         mass = np.zeros_like(confidence)
@@ -201,6 +198,30 @@ class MulticlassDecisionStump:
         confidence[0,1] = np.sum(W*Y, axis=0)
         c = np.divide(confidence[0,1], mass[0,1], where=mass[0,1]!=0)
         variance[0,1] = np.sum(W_broad*(Y_broad-c[np.newaxis])**2, axis=0)
+
+        mass_update = np.zeros_like(mass[0,0])
+        confidence_update = np.zeros_like(mass_update)
+        variance_update = np.zeros_like(mass_update)
+
+        for stump_idx, x_indices in enumerate(feature_decomposed_X):
+            for feature, indices in enumerate(x_indices):
+                mass_update[feature] = np.sum(W[indices], axis=0)
+                confidence_update[feature] = np.sum(W[indices]*Y[indices], axis=0)
+
+            mass[stump_idx,0] = mass[stump_idx-1,0] + mass_update # Example is added to partition 0
+            mass[stump_idx,1] = mass[stump_idx-1,1] - mass_update # Example is removed from partition 1
+
+            confidence[stump_idx,0] = confidence[stump_idx-1,0] + confidence_update
+            confidence[stump_idx,1] = confidence[stump_idx-1,1] - confidence_update
+
+            c0 = np.divide(confidence[stump,0], mass[stump,0], where=mass[stump,0]!=0)
+            c1 = np.divide(confidence[stump-1,1], mass[stump-1,1], where=mass[stump-1,1]!=0)
+
+            variance[stump,0] = variance[stump-1,0] + W[x_idx]*(Y[x_idx] - c0)**2
+            variance[stump,1] = variance[stump-1,1] - W[x_idx]*(Y[x_idx] - c1)**2
+
+
+
 
         for x_idx, stump in zip(sorted_X_idx, range(1, n_stumps)):
             mass[stump,0] = mass[stump-1,0] + W[x_idx] # Example is added to partition 0
