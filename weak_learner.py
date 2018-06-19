@@ -140,7 +140,7 @@ class MulticlassDecisionStump:
 
         feature_decomposed_X, idx_to_feature = self.feature_decomposition(X)
 
-        confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
+        # confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
 
         # risk = np.sum(np.sum(variance, axis=3), axis=1)
         # stump_idx, feature_idx = self._find_best_stump(risk, X, sorted_X_idx)
@@ -150,18 +150,28 @@ class MulticlassDecisionStump:
         return self
     
     def feature_decomposition(self, X):
+        # feature_sorted_X_idx = X.argsort(axis=0)
         idx_to_feature, indices = np.unique(X, return_inverse=True)
-        indices = indices.reshape(X.shape)
-        n_examples, n_features = X.shape
-        feature_sorted_X = np.argsort(X, axis=0)
-
-        feature_decomposed_X = np.empty((len(idx_to_feature), n_features))
-        feature_decomposed_X.fill([])
-        for i, x_idx in enumerate(indices):
-            for feature in feature_decomposed_X[x_idx, range(len(x_idx))]:
-                feature.append(i)
+        sorted_indices = np.sort(indices.reshape(X.shape), axis=0)
         
-        return feature_decomposed_X, idx_to_feature
+        for feature_idx in range(len(idx_to_feature)):
+            pass
+
+        # feature_sorted_X = np.zeros_like(X)
+        # for feature, idx in enumerate(feature_sorted_X_idx.T):
+        #     feature_sorted_X[:,feature] = X[idx,feature]
+
+        print(sorted_indices.shape)
+
+        # n_examples, n_features = X.shape
+
+        # feature_decomposed_X = np.empty((len(idx_to_feature), n_features))
+        # feature_decomposed_X.fill([])
+        # for i, x_idx in enumerate(indices):
+        #     for feature in feature_decomposed_X[x_idx, range(len(x_idx))]:
+        #         feature.append(i)
+        
+        # return feature_decomposed_X, idx_to_feature
     
     def _find_best_stump(self, risk, X, sorted_X_idx):
         risk_idx = (np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None))
@@ -270,7 +280,7 @@ def main():
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
     # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
-    m = 1000
+    m = 2
     X = Xtr[:m]
     Y = Ytr[:m]
     wl = MulticlassDecisionStump(encoder=encoder)
