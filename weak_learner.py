@@ -138,7 +138,7 @@ class MulticlassDecisionStump:
             Y, W = self.encoder.encode_labels(Y)
         X = X.reshape((X.shape[0], -1))
 
-        feature_decomposed_X, idx_to_feature = self.feature_decomposition(X)
+        feature_sorted_X_idx, stump_idx_ptr = self.stump_sort(X)
 
         # confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
 
@@ -146,32 +146,32 @@ class MulticlassDecisionStump:
         # stump_idx, feature_idx = self._find_best_stump(risk, X, sorted_X_idx)
 
         # self.confidence_rates = np.divide(confidence[stump_idx,:,feature_idx], mass[stump_idx,:,feature_idx], where=mass[stump_idx,:,feature_idx]!=0)
-    
+        
         return self
     
-    def feature_decomposition(self, X):
-        # feature_sorted_X_idx = X.argsort(axis=0)
-        idx_to_feature, indices = np.unique(X, return_inverse=True)
+    def stump_sort(self, X):
+        """
+        Returns indices to sorted examples by features, and a stump pointer index on these indices. The stump pointer index contains the indices where the features change in the sorted examples. Zeros in the stump pointer index are filling and should be ignored.
+        """
+        feature_sorted_X_idx = X.argsort(axis=0)
+
+        idx_to_features, indices = np.unique(X, return_inverse=True)
         sorted_indices = np.sort(indices.reshape(X.shape), axis=0)
-        
-        for feature_idx in range(len(idx_to_feature)):
-            pass
 
-        # feature_sorted_X = np.zeros_like(X)
-        # for feature, idx in enumerate(feature_sorted_X_idx.T):
-        #     feature_sorted_X[:,feature] = X[idx,feature]
+        n_values = len(idx_to_features)
+        n_examples, n_features = X.shape
+         
+        stump_idx_ptr = np.zeros((n_values, n_features))
+        for row_idx, row in enumerate(sorted_indices):
+            stump_idx_ptr[row,range(len(row))] = row_idx + 1
 
-        print(sorted_indices.shape)
+        # print(sorted_indices)
+        # print(stump_idx_ptr)
+        # print(X.argsort(axis=0))
+        # print(np.sort(X, axis=0))
+        # print(idx_to_features)
 
-        # n_examples, n_features = X.shape
-
-        # feature_decomposed_X = np.empty((len(idx_to_feature), n_features))
-        # feature_decomposed_X.fill([])
-        # for i, x_idx in enumerate(indices):
-        #     for feature in feature_decomposed_X[x_idx, range(len(x_idx))]:
-        #         feature.append(i)
-        
-        # return feature_decomposed_X, idx_to_feature
+        return feature_sorted_X_idx, stump_idx_ptr
     
     def _find_best_stump(self, risk, X, sorted_X_idx):
         risk_idx = (np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None))
@@ -191,8 +191,18 @@ class MulticlassDecisionStump:
         
         raise ValueError('All examples are identical.')
 
-    def _compute_confidence_variance_mass(self, feature_decomposed_X, Y, W):
+    def _find_stump(self, feature_sorted_X_idx, stump_idx_ptr, Y, W):
         n_examples, n_classes = Y.shape
+        n_partitions = 2
+
+        0th_moment = np.zeros((n_partitions))
+        1st_moment
+        2nd_moment
+
+
+
+
+
         n_stumps, n_features = feature_decomposed_X.shape
         n_partitions = 2 # Decision stumps partition space into 2 (partition 0 on the left and partition 1 on the right)
 
@@ -280,9 +290,10 @@ def main():
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
     # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
-    m = 2
-    X = Xtr[:m]
+    m = 5
+    X = Xtr.reshape((m,-1))[:m,520:523]
     Y = Ytr[:m]
+    # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
     wl.fit(X, Y)
     # print('WL train acc:', wl.evaluate(X, Y))
