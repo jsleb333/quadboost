@@ -20,12 +20,14 @@ class QuadBoost:
         self.weak_predictors_weights = []
 
 
-    def fit(self, X, Y, T, f0=None):
+    def fit(self, X, Y, T, f0=None, X_val=None, Y_val=None):
         """
         X (Array of shape (n_examples, ...)): Examples.
-        Y (Iterable of length 'n_examples'): Labels for the examples X. Y is encoded with the encode_labels method if one is provided, else it is transformed as one-hot vectors.
+        Y (Iterable of 'n_examples' elements): Labels for the examples X. Y is encoded with the encode_labels method if one is provided, else it is transformed as one-hot vectors.
         T (int): Number of boosting rounds.
         f0 (Array of shape (encoding_dim,), optional, default=None): Initial prediction function. If None, f0 is set to 0.
+        X_val (Array of shape (n_val, ...), optional, default=None): Validation examples. If not None, the validation accuracy will be evaluated at each boosting round.
+        Y_val (Iterable of 'n_val' elements, optional, default=None): Validation labels for the examples X_val. If not None, the validation accuracy will be evaluated at each boosting round.
         """
         # Encodes the labels
         if self.encoder == None:
@@ -44,9 +46,14 @@ class QuadBoost:
         for t in range(T):
             residue, weak_prediction = self._boost(X, residue, weights)
 
-            wp_acc = accuracy_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
-            print('weak predictor accuracy:' + str(wp_acc))
-            print('Boosting round ' + str(t+1) + ' - train accuracy: ' + str(self.evaluate(X, Y)))
+            # wp_acc = accuracy_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
+            # print('weak predictor accuracy:' + str(wp_acc))
+            tr_acc = self.evaluate(X, Y)
+            val_acc = ''
+            if X_val is not None and Y_val is not None:
+                val_acc = self.evaluate(X_val, Y_val)
+                val_acc = ' | val accuracy: {:.3f}'.format(val_acc)
+            print('Boosting round {t} | train accuracy: {tr_acc:.3f}{val_acc}'.format(t=t+1,tr_acc=tr_acc, val_acc=val_acc))
         
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
