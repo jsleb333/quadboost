@@ -129,9 +129,8 @@ class MultidimSVR:
 
 @cloner
 class MulticlassDecisionStump:
-    def __init__(self, encoder=None, bins=-1):
+    def __init__(self, encoder=None):
         self.encoder = encoder
-        self.bins = bins
     
     def fit(self, X, Y, W=None):
         if self.encoder != None:
