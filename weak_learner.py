@@ -139,19 +139,16 @@ class MulticlassDecisionStump:
         X = X.reshape((X.shape[0], -1))
 
         feature_sorted_X_idx, stump_idx_ptr = self.stump_sort(X)
+        stump_idx, self.feature, self.confidence_rates = self._find_stump(feature_sorted_X_idx, stump_idx_ptr, Y, W)
 
-        # confidence, variance, mass = self._compute_confidence_variance_mass(sorted_X_idx, Y, W)
-
-        # risk = np.sum(np.sum(variance, axis=3), axis=1)
-        # stump_idx, feature_idx = self._find_best_stump(risk, X, sorted_X_idx)
-
-        # self.confidence_rates = np.divide(confidence[stump_idx,:,feature_idx], mass[stump_idx,:,feature_idx], where=mass[stump_idx,:,feature_idx]!=0)
+        feature_value = lambda stump_idx: X[feature_sorted_X_idx[stump_idx,self.feature],self.feature]
+        self.stump = (feature_value(stump_idx) + feature_value(stump_idx-1))/2 if stump_idx != 0 else feature_value(stump_idx) - 1
         
         return self
-    
+
     def stump_sort(self, X):
         """
-        Returns indices to sorted examples by features, and a stump pointer index on these indices. The stump pointer index contains the indices where the features change in the sorted examples. Zeros in the stump pointer index are filling and should be ignored.
+        Returns indices of examples sorted by features, and a stump pointer index on these indices. The stump pointer index contains the indices where the features change in the sorted examples. Zeros in the stump pointer index are filling/padding and should be ignored.
         """
         feature_sorted_X_idx = X.argsort(axis=0)
 
@@ -161,102 +158,69 @@ class MulticlassDecisionStump:
         n_values = len(idx_to_features)
         n_examples, n_features = X.shape
          
-        stump_idx_ptr = np.zeros((n_values, n_features))
+        stump_idx_ptr = np.zeros((n_values, n_features), dtype=int)
         for row_idx, row in enumerate(sorted_indices):
             stump_idx_ptr[row,range(len(row))] = row_idx + 1
 
-        # print(sorted_indices)
-        # print(stump_idx_ptr)
-        # print(X.argsort(axis=0))
-        # print(np.sort(X, axis=0))
-        # print(idx_to_features)
-
         return feature_sorted_X_idx, stump_idx_ptr
-    
-    def _find_best_stump(self, risk, X, sorted_X_idx):
-        risk_idx = (np.unravel_index(idx, risk.shape) for idx in np.argsort(risk, axis=None))
-
-        for stump_idx, feature_idx in risk_idx:
-            feature_value = X[sorted_X_idx[stump_idx, feature_idx], feature_idx]
-            if stump_idx == 0:
-                self.stump = feature_value -1
-                self.feature = feature_idx
-                return stump_idx, feature_idx
-            neighbour_value = X[sorted_X_idx[stump_idx-1, feature_idx], feature_idx]
-
-            if feature_value != neighbour_value: # We cannot have a stump between 2 examples with the same feature value.
-                self.stump = (feature_value + neighbour_value)/2
-                self.feature = feature_idx
-                return stump_idx, feature_idx
-        
-        raise ValueError('All examples are identical.')
 
     def _find_stump(self, feature_sorted_X_idx, stump_idx_ptr, Y, W):
         n_examples, n_classes = Y.shape
+        n_values, n_features = stump_idx_ptr.shape
         n_partitions = 2
+        n_moments = 3
 
-        0th_moment = np.zeros((n_partitions))
-        1st_moment
-        2nd_moment
+        moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
 
+        # At fisrt, all examples are in partition 1
+        # All moments are not normalized so they can be computed cumulatively
+        moments[0,1] = np.sum(W, axis=0)
+        moments[1,1] = np.sum(W*Y, axis=0)
+        moments[2,1] = np.sum(W*Y**2, axis=0)
+        moments_update = np.zeros((n_moments, n_features, n_classes))
 
+        risk = np.sum(np.sum(moments[2] - np.divide(moments[1]**2, moments[0], where=moments[0]!=0), axis=0), axis=1)
 
+        best_feature = risk.argmin()
+        best_risk = risk[best_feature]
+        best_moment_0 = moments[0,:,best_feature,:].copy()
+        best_moment_1 = moments[1,:,best_feature,:].copy()
+        best_stump_idx = 0
 
+        stump_idx = np.zeros(n_features, dtype=int)
+        for i, stump_update in enumerate(stump_idx_ptr):
+            prev_stump_idx = stump_idx.copy()
+            stump_idx = np.where(stump_update!=0, stump_update, stump_idx)
 
-        n_stumps, n_features = feature_decomposed_X.shape
-        n_partitions = 2 # Decision stumps partition space into 2 (partition 0 on the left and partition 1 on the right)
+            for feature, (ps, s) in enumerate(zip(prev_stump_idx, stump_idx)):
+                x_idx = feature_sorted_X_idx[ps:s,feature]
+                moments_update[0,feature] = np.sum(W[x_idx], axis=0)
+                moments_update[1,feature] = np.sum(W[x_idx]*Y[x_idx], axis=0)
+                moments_update[2,feature] = np.sum(W[x_idx]*Y[x_idx]**2, axis=0)
+            
+            moments[:,0] = moments[:,0] + moments_update
+            moments[:,1] = moments[:,1] - moments_update
+            moments[np.isclose(moments,0)] = 0
 
-        confidence = np.zeros((n_stumps, n_partitions, n_features, n_classes))
-        mass = np.zeros_like(confidence)
-        variance = np.zeros_like(confidence)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                # We could use
+                # np.divide(moments[1]**2, moments[0], where=~np.isclose(moments[0]))
+                # However, the buffer size is not big enough for several examples and the resulting division is not done correctly
+                normalized_m1 = np.nan_to_num(moments[1]**2/moments[0])
+            
+            risk = np.sum(np.sum(moments[2] - normalized_m1, axis=2), axis=0)
 
-        Y_broad = Y[:,np.newaxis,:]
-        W_broad = W[:,np.newaxis,:]
-
-        # At first, all examples are at the right side of the stump (partition 1)
-        mass[0,1] = np.sum(W, axis=0)
-        confidence[0,1] = np.sum(W*Y, axis=0)
-        c = np.divide(confidence[0,1], mass[0,1], where=mass[0,1]!=0)
-        variance[0,1] = np.sum(W_broad*(Y_broad-c[np.newaxis])**2, axis=0)
-
-        mass_update = np.zeros_like(mass[0,0])
-        confidence_update = np.zeros_like(mass_update)
-        variance_update = np.zeros_like(mass_update)
-
-        for stump_idx, x_indices in enumerate(feature_decomposed_X):
-            for feature, indices in enumerate(x_indices):
-                mass_update[feature] = np.sum(W[indices], axis=0)
-                confidence_update[feature] = np.sum(W[indices]*Y[indices], axis=0)
-
-            mass[stump_idx,0] = mass[stump_idx-1,0] + mass_update # Example is added to partition 0
-            mass[stump_idx,1] = mass[stump_idx-1,1] - mass_update # Example is removed from partition 1
-
-            confidence[stump_idx,0] = confidence[stump_idx-1,0] + confidence_update
-            confidence[stump_idx,1] = confidence[stump_idx-1,1] - confidence_update
-
-            c0 = np.divide(confidence[stump,0], mass[stump,0], where=mass[stump,0]!=0)
-            c1 = np.divide(confidence[stump-1,1], mass[stump-1,1], where=mass[stump-1,1]!=0)
-
-            variance[stump,0] = variance[stump-1,0] + W[x_idx]*(Y[x_idx] - c0)**2
-            variance[stump,1] = variance[stump-1,1] - W[x_idx]*(Y[x_idx] - c1)**2
-
-
-
-
-        for x_idx, stump in zip(sorted_X_idx, range(1, n_stumps)):
-            mass[stump,0] = mass[stump-1,0] + W[x_idx] # Example is added to partition 0
-            mass[stump,1] = mass[stump-1,1] - W[x_idx] # Example is removed from partition 1
-
-            confidence[stump,0] = confidence[stump-1,0] + W[x_idx]*Y[x_idx]
-            confidence[stump,1] = confidence[stump-1,1] - W[x_idx]*Y[x_idx]
-
-            c0 = np.divide(confidence[stump,0], mass[stump,0], where=mass[stump,0]!=0)
-            c1 = np.divide(confidence[stump-1,1], mass[stump-1,1], where=mass[stump-1,1]!=0)
-
-            variance[stump,0] = variance[stump-1,0] + W[x_idx]*(Y[x_idx] - c0)**2
-            variance[stump,1] = variance[stump-1,1] - W[x_idx]*(Y[x_idx] - c1)**2
+            feature = risk.argmin()
+            if risk[feature] < best_risk:
+                best_feature = feature
+                best_risk = risk[best_feature]
+                best_moment_0 = moments[0,:,best_feature,:].copy()
+                best_moment_1 = moments[1,:,best_feature,:].copy()
+                best_stump_idx = stump_idx[best_feature]
         
-        return confidence, variance, mass
+        confidence_rates = np.divide(best_moment_1, best_moment_0, where=best_moment_0!=0)
+
+        return best_stump_idx, best_feature, confidence_rates
     
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
@@ -290,13 +254,14 @@ def main():
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
     # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
-    m = 5
-    X = Xtr.reshape((m,-1))[:m,520:523]
+    m = 1000
+    # X = Xtr.reshape((m,-1))[:m,520:523]
+    X = Xtr[:m]
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
     wl.fit(X, Y)
-    # print('WL train acc:', wl.evaluate(X, Y))
+    print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
 
