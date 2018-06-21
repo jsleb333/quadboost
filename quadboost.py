@@ -42,19 +42,26 @@ class QuadBoost:
 
         residue = encoded_Y - self.f0
 
+        train_acc = train_acc_prev = 0
+
         # Boosting algorithm
         for t in range(T):
             residue, weak_prediction = self._boost(X, residue, weights)
 
-            # wp_acc = accuracy_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
-            # print('weak predictor accuracy:' + str(wp_acc))
-            tr_acc = self.evaluate(X, Y)
-            val_acc = ''
+            # wp_acc = acc_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
+            # print('weak predictor acc:' + str(wp_acc))
+            train_acc_prev = train_acc
+            train_acc = self.evaluate(X, Y)
+            valid_acc = ''
             if X_val is not None and Y_val is not None:
-                val_acc = self.evaluate(X_val, Y_val)
-                val_acc = ' | val accuracy: {:.3f}'.format(val_acc)
-            print('Boosting round {t} | train accuracy: {tr_acc:.3f}{val_acc}'.format(t=t+1,tr_acc=tr_acc, val_acc=val_acc))
-        
+                valid_acc = self.evaluate(X_val, Y_val)
+                valid_acc = ' | val accuracy: {:.3f}'.format(valid_acc)
+            print('Boosting round {t} | train accuracy: {train_acc:.3f}{valid_acc}'.format(t=t+1,train_acc=train_acc, valid_acc=valid_acc))
+
+            if train_acc_prev >= train_acc or train_acc == 1.0:
+                # No more improvements
+                break
+
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
             self.weak_predictors_weights = [np.array([1])]*T
@@ -183,7 +190,7 @@ def main():
     weak_learner = MulticlassDecisionStump
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    m = 5000
+    m = 5
     qb.fit(Xtr[:m], Ytr[:m], T=1000, X_val=Xts, Y_val=Yts)
     # qb.visualize_coef()
     
