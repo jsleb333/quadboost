@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
-from weak_learner import WLRidge, WLThresholdedRidge
+from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump
 import matplotlib.pyplot as plt
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
@@ -171,20 +171,20 @@ class QuadBoostMHCR(QuadBoost):
 @timed
 def main():
     mnist = MNISTDataset.load()
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
-    encoder = LabelEncoder.load_encodings('mario')
-    # encoder = OneHotEncoder(Ytr)
+    # encoder = LabelEncoder.load_encodings('mario')
+    encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
     # weak_learner = WLThresholdedRidge(threshold=.5)
-    weak_learner = WLRidge
+    # weak_learner = WLRidge
+    weak_learner = MulticlassDecisionStump
 
-    qb = QuadBoostMH(weak_learner, encoder=encoder)
-    qb.fit(Xtr, Ytr, T=3)
-    acc = qb.evaluate(Xts, Yts)
-    print('QB test acc:', acc)
+    qb = QuadBoostMHCR(weak_learner, encoder=encoder)
+    m = 5000
+    qb.fit(Xtr[:m], Ytr[:m], T=1000, X_val=Xts, Y_val=Yts)
     # qb.visualize_coef()
     
 
