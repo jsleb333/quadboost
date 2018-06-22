@@ -55,7 +55,7 @@ class QuadBoost:
             # print('weak predictor acc:' + str(wp_acc))
             boosting_round.train_acc = self.evaluate(X, Y)
             if X_val is not None and Y_val is not None:
-                boosting_round = valid_acc = self.evaluate(X_val, Y_val)
+                boosting_round.valid_acc = self.evaluate(X_val, Y_val)
             
             print(boosting_round)
                 
@@ -188,7 +188,7 @@ def main():
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
     m = 100
-    qb.fit(Xtr[:m], Ytr[:m], T=1000, X_val=Xts, Y_val=Yts, patience=2)
+    qb.fit(Xtr[:m], Ytr[:m], T=-1, X_val=Xts, Y_val=Yts, patience=2)
     # qb.visualize_coef()
     
 
