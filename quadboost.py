@@ -20,7 +20,7 @@ class QuadBoost:
         self.weak_predictors_weights = []
 
 
-    def fit(self, X, Y, T, f0=None, X_val=None, Y_val=None):
+    def fit(self, X, Y, T, f0=None, X_val=None, Y_val=None, patience=10):
         """
         X (Array of shape (n_examples, ...)): Examples.
         Y (Iterable of 'n_examples' elements): Labels for the examples X. Y is encoded with the encode_labels method if one is provided, else it is transformed as one-hot vectors.
@@ -28,6 +28,7 @@ class QuadBoost:
         f0 (Array of shape (encoding_dim,), optional, default=None): Initial prediction function. If None, f0 is set to 0.
         X_val (Array of shape (n_val, ...), optional, default=None): Validation examples. If not None, the validation accuracy will be evaluated at each boosting round.
         Y_val (Iterable of 'n_val' elements, optional, default=None): Validation labels for the examples X_val. If not None, the validation accuracy will be evaluated at each boosting round.
+        patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If None, the boosting rounds will continue until T iterations.
         """
         # Encodes the labels
         if self.encoder == None:
@@ -42,7 +43,8 @@ class QuadBoost:
 
         residue = encoded_Y - self.f0
 
-        train_acc = train_acc_prev = 0
+        train_acc = best_train_acc = 0
+        rounds_since_no_improvements = 0
 
         # Boosting algorithm
         for t in range(T):
@@ -50,7 +52,6 @@ class QuadBoost:
 
             # wp_acc = acc_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
             # print('weak predictor acc:' + str(wp_acc))
-            train_acc_prev = train_acc
             train_acc = self.evaluate(X, Y)
             valid_acc = ''
             if X_val is not None and Y_val is not None:
@@ -58,10 +59,15 @@ class QuadBoost:
                 valid_acc = ' | val accuracy: {:.3f}'.format(valid_acc)
             print('Boosting round {t} | train accuracy: {train_acc:.3f}{valid_acc}'.format(t=t+1,train_acc=train_acc, valid_acc=valid_acc))
 
-            if train_acc_prev >= train_acc or train_acc == 1.0:
-                # No more improvements
+            if train_acc >= best_train_acc:
+                best_train_acc = train_acc
+                rounds_since_no_improvements = 0
+            else:
+                rounds_since_no_improvements += 1
+            
+            if rounds_since_no_improvements >= patience or train_acc == 1.0:
                 break
-
+                
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
             self.weak_predictors_weights = [np.array([1])]*T
@@ -182,15 +188,15 @@ def main():
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
-    encoder = OneHotEncoder(Ytr)
-    # encoder = AllPairsEncoder(Ytr)
+    # encoder = OneHotEncoder(Ytr)
+    encoder = AllPairsEncoder(Ytr)
 
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
     weak_learner = MulticlassDecisionStump
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    m = 5
+    m = 5000
     qb.fit(Xtr[:m], Ytr[:m], T=1000, X_val=Xts, Y_val=Yts)
     # qb.visualize_coef()
     
