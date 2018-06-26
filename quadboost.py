@@ -44,9 +44,6 @@ class QuadBoost:
 
         residue = encoded_Y - self.f0
 
-        train_acc = best_train_acc = 0
-        rounds_since_no_improvements = 0
-
         # Boosting algorithm
         for boosting_round in BoostIterator(T, patience):
             residue, weak_prediction = self._boost(X, residue, weights)
