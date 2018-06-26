@@ -9,14 +9,14 @@ class BoostingRound:
     def __init__(self):
         self._t = 0
         self._train_acc = 0
-        self.train_acc_was_setted_this_round = True
+        self.train_acc_was_set_this_round = True
         self.valid_acc = None
 
     def __str__(self):
 
         boosting_round = 'Boosting round {t:03d}'.format(t=self.t)
 
-        if self.train_acc_was_setted_this_round:
+        if self.train_acc_was_set_this_round:
             t_acc = 'train accuracy: {train_acc:.3f}'.format(train_acc=self.train_acc)
         else:
             self.warn_train_acc_was_not_updated()
@@ -30,7 +30,7 @@ class BoostingRound:
         return ' | '.join(output)
 
     def warn_train_acc_was_not_updated(self):
-        if not self.train_acc_was_setted_this_round:
+        if not self.train_acc_was_set_this_round:
             warn("The train_acc attribute should be set for the iterator to work properly. Otherwise, the 'patience' mechanism will not work, and the iteration will not stop if the training accuracy reaches 1.0.")
     
     @property
@@ -39,7 +39,7 @@ class BoostingRound:
     
     @train_acc.setter
     def train_acc(self, train_acc):
-        self.train_acc_was_setted_this_round = True
+        self.train_acc_was_set_this_round = True
         self._train_acc = train_acc
     
     @property
@@ -48,7 +48,7 @@ class BoostingRound:
     
     @t.setter
     def t(self, t):
-        self.train_acc_was_setted_this_round = False # On a new round, train_acc is not yet updated.
+        self.train_acc_was_set_this_round = False # On a new round, train_acc is not yet updated.
         self._t = t
 
 
@@ -85,7 +85,7 @@ class BoostIterator:
         if self.T != -1 and self.t >= self.T:
             raise StopIteration
         
-        if self.boosting_round.train_acc_was_setted_this_round:
+        if self.boosting_round.train_acc_was_set_this_round:
             self.update_best_train_acc()
 
             if np.isclose(self.best_train_acc, 1.0):
