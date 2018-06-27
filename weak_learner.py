@@ -176,7 +176,7 @@ class MulticlassDecisionStump:
         moments[0,1] = np.sum(W, axis=0)
         moments[1,1] = np.sum(W*Y, axis=0)
         moments[2,1] = np.sum(W*Y**2, axis=0)
-        moments_update = np.zeros((n_moments, n_features, n_classes))
+        self.moments_update = np.zeros((n_moments, n_features, n_classes))
 
         risk = np.sum(np.sum(moments[2] - np.divide(moments[1]**2, moments[0], where=moments[0]!=0), axis=0), axis=1)
 
@@ -191,23 +191,8 @@ class MulticlassDecisionStump:
             prev_stump_idx = stump_idx.copy()
             stump_idx = np.where(stump_update!=0, stump_update, stump_idx)
 
-            for feature, (ps, s) in enumerate(zip(prev_stump_idx, stump_idx)):
-                x_idx = feature_sorted_X_idx[ps:s,feature]
-                moments_update[0,feature] = np.sum(W[x_idx], axis=0)
-                moments_update[1,feature] = np.sum(W[x_idx]*Y[x_idx], axis=0)
-                moments_update[2,feature] = np.sum(W[x_idx]*Y[x_idx]**2, axis=0)
-            
-            moments[:,0] = moments[:,0] + moments_update
-            moments[:,1] = moments[:,1] - moments_update
-            moments[np.isclose(moments,0)] = 0
-
-            with np.errstate(divide='ignore', invalid='ignore'):
-                # We could use
-                # np.divide(moments[1]**2, moments[0], where=~np.isclose(moments[0]))
-                # However, the buffer size is not big enough for several examples and the resulting division is not done correctly
-                normalized_m1 = np.nan_to_num(moments[1]**2/moments[0])
-            
-            risk = np.sum(np.sum(moments[2] - normalized_m1, axis=2), axis=0)
+            self._update_moments(prev_stump_idx, stump_idx, feature_sorted_X_idx, Y, W, moments)
+            self._compute_risk(moments)
 
             feature = risk.argmin()
             if risk[feature] < best_risk:
@@ -218,9 +203,29 @@ class MulticlassDecisionStump:
                 best_stump_idx = stump_idx[best_feature]
         
         confidence_rates = np.divide(best_moment_1, best_moment_0, where=best_moment_0!=0)
+        delattr(self, 'moments_update')
 
         return best_stump_idx, best_feature, confidence_rates
     
+    def _update_moments(self, prev_stump_idx, stump_idx, feature_sorted_X_idx, Y, W, moments):
+        for feature, (ps, s) in enumerate(zip(prev_stump_idx, stump_idx)):
+            x_idx = feature_sorted_X_idx[ps:s,feature]
+            self.moments_update[0,feature] = np.sum(W[x_idx], axis=0)
+            self.moments_update[1,feature] = np.sum(W[x_idx]*Y[x_idx], axis=0)
+            self.moments_update[2,feature] = np.sum(W[x_idx]*Y[x_idx]**2, axis=0)        
+        moments[:,0] = moments[:,0] + self.moments_update
+        moments[:,1] = moments[:,1] - self.moments_update
+
+    def _compute_risk(self, moments):
+        moments[np.isclose(moments,0)] = 0
+        with np.errstate(divide='ignore', invalid='ignore'):
+            # We could use
+            # np.divide(moments[1]**2, moments[0], where=~np.isclose(moments[0]))
+            # However, the buffer size is not big enough for several examples and the resulting division is not done correctly
+            normalized_m1 = np.nan_to_num(moments[1]**2/moments[0])
+        risk = np.sum(np.sum(moments[2] - normalized_m1, axis=2), axis=0)
+        return risk
+        
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
         n_examples = X.shape[0]
@@ -253,7 +258,7 @@ def main():
     # wl = WLRidgeMH(encoder=encoder)
     # wl = WLRidgeMHCR(encoder=encoder)
     # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
-    m = 1000
+    m = 60
     # X = Xtr.reshape((m,-1))[:m,520:523]
     X = Xtr[:m]
     Y = Ytr[:m]
