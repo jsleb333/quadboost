@@ -49,6 +49,36 @@ def make_fig_axes(N, aspect_ratio=9/16):
     return fig, axes[:N]
 
 
+def haar_projection(images):
+    """
+    Recursively computes the Haar projection of an array of 2D images.
+    Currently only supports images size that are powers of 2.
+    """
+    projected_images = images.astype(dtype=float)
+    m, N, _ = images.shape
+    while N > 1:
+        projector = haar_projector(N)
+        np.matmul(np.matmul(projector, projected_images[:,:N,:N]), projector.T, out=projected_images[:,:N,:N])
+        N = N//2
+    return projected_images
+
+
+def haar_projector(N):
+    """
+    Generates the Haar projector of size N (N must be a power of 2). 
+    """
+    projection = np.zeros((N,N))
+    for i in range(N//2):
+        projection[i,2*i] = 1
+        projection[i,2*i+1] = 1
+
+        projection[i+N//2,2*i] = 1
+        projection[i+N//2,2*i+1] = -1
+    projection /= 2
+    
+    return projection
+
+
 def timed(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
