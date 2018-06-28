@@ -53,16 +53,14 @@ def timed(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         from time import time
-        t0 = time()
+        t = time()
         try:
             func_return = func(*args, **kwargs)
-            name = "of '" + func.__name__ + "' " if func.__name__ != 'main' else ''
-            t1 = time() - t0
         except:
-            t1 = time() - t0
-            print(f'\nExecution terminated after {t1:.2f} seconds.\n')
+            print(f'\nExecution terminated after {time()-t:.2f} seconds.\n')
             raise
-        print(f'\nExecution {name}completed in {t1:.2f} seconds.\n')
+        func_name = "of '" + func.__name__ + "' " if func.__name__ != 'main' else ''
+        print(f'\nExecution {func_name}completed in {time()-t:.2f} seconds.\n')
         return func_return
     return wrapper
 
