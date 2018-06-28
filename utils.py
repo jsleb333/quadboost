@@ -87,9 +87,10 @@ def timed(func):
         try:
             func_return = func(*args, **kwargs)
         except:
-            print('\nExecution terminated after {:.2f} seconds.\n'.format(time()-t))
+            print(f'\nExecution terminated after {time()-t:.2f} seconds.\n')
             raise
-        print('\nExecution completed in {:.2f} seconds.\n'.format(time()-t))
+        func_name = "of '" + func.__name__ + "' " if func.__name__ != 'main' else ''
+        print(f'\nExecution {func_name}completed in {time()-t:.2f} seconds.\n')
         return func_return
     return wrapper
 
