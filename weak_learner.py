@@ -138,7 +138,7 @@ class MulticlassDecisionStump:
         X = X.reshape((X.shape[0], -1))
 
         feature_sorted_X_idx, stump_idx_ptr = self.stump_sort(X)
-        stump_idx, self.feature, self.confidence_rates = self._find_stump(feature_sorted_X_idx, stump_idx_ptr, Y, W)
+        stump_idx, self.feature, self.confidence_rates = self._find_stump(feature_sorted_X_idx[:,:784], stump_idx_ptr[:,:784], Y, W)
 
         feature_value = lambda stump_idx: X[feature_sorted_X_idx[stump_idx,self.feature],self.feature]
         self.stump = (feature_value(stump_idx) + feature_value(stump_idx-1))/2 if stump_idx != 0 else feature_value(stump_idx) - 1
@@ -163,6 +163,7 @@ class MulticlassDecisionStump:
 
         return feature_sorted_X_idx, stump_idx_ptr
 
+    @timed
     def _find_stump(self, feature_sorted_X_idx, stump_idx_ptr, Y, W):
         n_examples, n_classes = Y.shape
         n_values, n_features = stump_idx_ptr.shape
@@ -171,7 +172,7 @@ class MulticlassDecisionStump:
 
         moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
 
-        # At fisrt, all examples are in partition 1
+        # At first, all examples are in partition 1
         # All moments are not normalized so they can be computed cumulatively
         moments[0,1] = np.sum(W, axis=0)
         moments[1,1] = np.sum(W*Y, axis=0)
@@ -187,7 +188,7 @@ class MulticlassDecisionStump:
         best_stump_idx = 0
 
         stump_idx = np.zeros(n_features, dtype=int)
-        for i, stump_update in enumerate(stump_idx_ptr):
+        for stump_update in stump_idx_ptr:
             prev_stump_idx = stump_idx.copy()
             stump_idx = np.where(stump_update!=0, stump_update, stump_idx)
 
