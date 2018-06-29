@@ -27,8 +27,7 @@ The `mnist_dataset.py` file provides the necessary resources to unpack the raw d
 This project relies on the following `Python` libraries:
 - scikit-learn
 - numpy
-- matplotlib (optional, used for visualization)
-- pytorch (optional, used for accelerating decision stumps)
+- matplotlib
 
 ## Implementation description
 
