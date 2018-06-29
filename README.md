@@ -20,7 +20,7 @@ Then add the path to this file to your `PYTHONPATH`.
 
 ## MNIST Dataset
 
-The `mnist_dataset.py` file provides the necessary resources to unpack the raw dataset. It also provides a class `MNISTDataset` which handle the dataset and can center/reduce it if desired. This class can pickle the dataset, which make it faster to load in subsequent uses. This step is required to make the minimal working examples to work.
+The `mnist_dataset.py` file provides the necessary resources to unpack the raw dataset. It also provides a class `MNISTDataset` which handle the dataset and can center/reduce it if desired. This class can pickle the dataset, which make it faster to load in subsequent uses. This step is required to run the minimal working examples.
 
 ## Prerequisites
 
