@@ -24,17 +24,18 @@ The `mnist_dataset.py` file provides the necessary resources to unpack the raw d
 
 ## Prerequisites
 
-This projects rely on the following `Python` libraries:
+This project relies on the following `Python` libraries:
 - scikit-learn
 - numpy
-- matplotlib
+- matplotlib (optional, used for visualization)
+- pytorch (optional, used for accelerating decision stumps)
 
-## Global explanation of the program
+## Implementation description
 
 The file `quadboost.py` provides an implementation of a general QuadBoost algorithm, with other specific implementations (QuadBoost.MH and QuadBoost.MHCR).
 A `main()` function with minimal working example is also provided.
 
-The file `weak_learner.py` provides some weak learners to be used with QuadBoost.
+The module `weak_learner` provides some weak learners to be used with QuadBoost. All weak learners can be used as standalone. A `cloner` wrapper is provided to facilitate the implementations of other weak learners that can easily be passed to the QuadBoost algorithm.
 
 The file `label_encoder.py` provides an implementation of LabelEncoder and inherited classes. These LabelEncoder can transform a set of labels into vectors encoding the classes, such as _one-hot_ encoding or _all-pairs_ encodings. The class provides a method to encode and decode labels, and support custom encodings. Examples of such custom encodings are presented in the `encodings.json` file.
 
