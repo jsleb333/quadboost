@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
-import torch
 
 from weak_learner import cloner
 from utils import *
@@ -19,7 +18,9 @@ class MulticlassDecisionStump:
         feature_sorted_X_idx, stump_idx_ptr = self.stump_sort(X)
 
         batch_size = X.shape[1]
-        stump_idx, self.feature, self.confidence_rates = self._find_stump(feature_sorted_X_idx[:,:batch_size], stump_idx_ptr[:,:batch_size], Y, W)
+        stump_idx, self.feature = self._find_stump(feature_sorted_X_idx[:,:batch_size],
+                                                   stump_idx_ptr[:,:batch_size],
+                                                   Y, W)
 
         feature_value = lambda stump_idx: X[feature_sorted_X_idx[stump_idx,self.feature],self.feature]
         self.stump = (feature_value(stump_idx) + feature_value(stump_idx-1))/2 if stump_idx != 0 else feature_value(stump_idx) - 1
@@ -85,10 +86,10 @@ class MulticlassDecisionStump:
                 best_moment_1 = moments[1,:,best_feature,:].copy()
                 best_stump_idx = stump_idx[best_feature]
         
-        confidence_rates = np.divide(best_moment_1, best_moment_0, where=best_moment_0!=0)
+        self.confidence_rates = np.divide(best_moment_1, best_moment_0, where=best_moment_0!=0)
         delattr(self, 'moments_update')
 
-        return best_stump_idx, best_feature, confidence_rates
+        return best_stump_idx, best_feature
     
     def _update_moments(self, prev_stump_idx, stump_idx, feature_sorted_X_idx, Y, W, moments):
         for feature, (ps, s) in enumerate(zip(prev_stump_idx, stump_idx)):
@@ -138,10 +139,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    # wl = WLRidgeMH(encoder=encoder)
-    # wl = WLRidgeMHCR(encoder=encoder)
-    # wl = WLThresholdedRidge(encoder=encoder, threshold=.5)
-    m = 2
+    m = 600
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
