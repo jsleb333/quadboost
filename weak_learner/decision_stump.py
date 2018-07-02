@@ -14,53 +14,40 @@ class MulticlassDecisionStump:
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
         X = X.reshape((X.shape[0], -1))
+        # torch.no_grad()
+        # X, Y, W = map(torch.from_numpy, [X,Y,W]) # Convert to torch tensors with shared memory
+        # X_gpu, Y_gpu, W_gpu = map(lambda Z: Z.cuda(), [X,Y,W]) # Copied to GPU
 
-        feature_sorted_X_idx, stump_idx_ptr = self.stump_sort(X)
+        # sorted_X, sorted_X_idx = torch.sort(X_gpu, dim=0)
+
+        sorted_X_idx = X.argsort(axis=0)
+        sorted_X = X[sorted_X_idx, range(X.shape[1])]
 
         batch_size = X.shape[1]
-        stump_idx, self.feature = self._find_stump(feature_sorted_X_idx[:,:batch_size],
-                                                   stump_idx_ptr[:,:batch_size],
-                                                   Y, W)
+        stump_idx, self.feature = self.find_stump(sorted_X[:,:batch_size],
+                                                  sorted_X_idx[:,:batch_size],
+                                                  Y, W)
 
-        feature_value = lambda stump_idx: X[feature_sorted_X_idx[stump_idx,self.feature],self.feature]
+        feature_value = lambda stump_idx: X[sorted_X_idx[stump_idx,self.feature],self.feature]
         self.stump = (feature_value(stump_idx) + feature_value(stump_idx-1))/2 if stump_idx != 0 else feature_value(stump_idx) - 1
         
         return self
-
+    
     @timed
-    def stump_sort(self, X):
-        """
-        Returns indices of examples sorted by features, and a stump pointer index on these indices. The stump pointer index contains the indices where the features change in the sorted examples. Zeros in the stump pointer index are filling/padding and should be ignored.
-        """
-        feature_sorted_X_idx = X.argsort(axis=0)
-
-        idx_to_features, indices = np.unique(X, return_inverse=True)
-        sorted_indices = np.sort(indices.reshape(X.shape), axis=0)
-
-        n_values = len(idx_to_features)
-        n_examples, n_features = X.shape
-         
-        stump_idx_ptr = np.zeros((n_values, n_features), dtype=int)
-        for row_idx, row in enumerate(sorted_indices):
-            stump_idx_ptr[row,range(len(row))] = row_idx + 1
-
-        return feature_sorted_X_idx, stump_idx_ptr
-
-    @timed
-    def _find_stump(self, feature_sorted_X_idx, stump_idx_ptr, Y, W):
+    def find_stump(self, sorted_X, sorted_X_idx, Y, W):
         n_examples, n_classes = Y.shape
-        n_values, n_features = stump_idx_ptr.shape
+        _, n_features = sorted_X.shape
         n_partitions = 2
         n_moments = 3
 
         moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
+        moments_update = np.zeros((n_moments, n_features, n_classes))
 
         # At first, all examples are in partition 1
         # All moments are not normalized so they can be computed cumulatively
         moments[0,1] = np.sum(W, axis=0)
         moments[1,1] = np.sum(W*Y, axis=0)
         moments[2,1] = np.sum(W*Y**2, axis=0)
-        self.moments_update = np.zeros((n_moments, n_features, n_classes))
 
         risk = np.sum(np.sum(moments[2] - np.divide(moments[1]**2, moments[0], where=moments[0]!=0), axis=0), axis=1)
 
@@ -70,24 +57,32 @@ class MulticlassDecisionStump:
         best_moment_1 = moments[1,:,best_feature,:].copy()
         best_stump_idx = 0
 
-        stump_idx = np.zeros(n_features, dtype=int)
-        for stump_update in stump_idx_ptr:
-            prev_stump_idx = stump_idx.copy()
-            stump_idx = np.where(stump_update!=0, stump_update, stump_idx)
+        for i, row in enumerate(sorted_X_idx[:-1]):
 
-            self._update_moments(prev_stump_idx, stump_idx, feature_sorted_X_idx, Y, W, moments)
-            risk = self._compute_risk(moments)
+            # Update moments
+            weights_update = W[row]
+            labels_update = Y[row]
+            moments_update[0] = weights_update
+            moments_update[1] = weights_update*labels_update
+            moments_update[2] = weights_update*labels_update**2
 
-            feature = risk.argmin()
-            if risk[feature] < best_risk:
-                best_feature = feature
-                best_risk = risk[best_feature]
-                best_moment_0 = moments[0,:,best_feature,:].copy()
-                best_moment_1 = moments[1,:,best_feature,:].copy()
-                best_stump_idx = stump_idx[best_feature]
+            moments[:,0] = moments[:,0] + moments_update
+            moments[:,1] = moments[:,1] - moments_update
+
+            possible_stumps = ~np.isclose(sorted_X[i+1] - sorted_X[i], 0)
+
+            if possible_stumps.any():
+
+                risk = self._compute_risk(moments[:,:,possible_stumps,:])
+                feature = risk.argmin()
+                if risk[feature] < best_risk:
+                    best_feature = possible_stumps.nonzero()[0][feature]
+                    best_risk = risk[feature]
+                    best_moment_0 = moments[0,:,best_feature,:].copy()
+                    best_moment_1 = moments[1,:,best_feature,:].copy()
+                    best_stump_idx = i + 1
         
         self.confidence_rates = np.divide(best_moment_1, best_moment_0, where=best_moment_0!=0)
-        delattr(self, 'moments_update')
 
         return best_stump_idx, best_feature
     
@@ -139,7 +134,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 600
+    m = 60000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
