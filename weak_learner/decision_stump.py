@@ -20,7 +20,7 @@ class MulticlassDecisionStump:
 
         batch_size = X.shape[1]
         stump = self.find_stump(sorted_X[:,:batch_size], sorted_X_idx[:,:batch_size], Y, W)
-        
+
         self.feature = stump.feature
         self.confidence_rates = stump.compute_confidence_rates()
         idx = stump.stump_idx
@@ -53,12 +53,10 @@ class MulticlassDecisionStump:
         best_stump = Stump(risk, moments)
 
         for i, row in enumerate(sorted_X_idx[:-1]):
-
             self._update_moments(moments, moments_update, W[row], Y[row])
-
             possible_stumps = ~np.isclose(sorted_X[i+1] - sorted_X[i], 0)
-            if possible_stumps.any():
 
+            if possible_stumps.any():
                 risk = self._compute_risk(moments[:,:,possible_stumps,:])
                 best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
         
@@ -102,6 +100,9 @@ class MulticlassDecisionStump:
 
 
 class Stump:
+    """
+    Stump is a simple class that stores the variables used by the MulticlassDecisionStump algorithm. It provides a method 'update' that changes the values only if the new stump is better than the previous one. It also provides a method 'compute_confidence_rates' for the stored stump.
+    """
     def __init__(self, risk, moments):
         self.feature = risk.argmin()
         self.risk = risk[self.feature]
@@ -110,10 +111,15 @@ class Stump:
         self.moment_1 = moments[1,:,self.feature,:].copy()
     
     def update(self, risk, moments, possible_stumps, stump_idx):
-        feature = risk.argmin()
-        if risk[feature] < self.risk:
-            self.feature = possible_stumps.nonzero()[0][feature]
-            self.risk = risk[feature]
+        """
+        Updates the current stump with the new stumps only if the new risk is lower than the previous one.
+
+        To optimize the algorithm, the risks are computed only for the acceptable stumps, which happen to be represented as the non zero entries of the variable 'possible_stumps'.
+        """
+        sparse_feature_idx = risk.argmin()
+        if risk[sparse_feature_idx] < self.risk:
+            self.feature = possible_stumps.nonzero()[0][sparse_feature_idx] # Retrieves the actual index of the feature
+            self.risk = risk[sparse_feature_idx]
             self.moment_0 = moments[0,:,self.feature,:].copy()
             self.moment_1 = moments[1,:,self.feature,:].copy()
             self.stump_idx = stump_idx
