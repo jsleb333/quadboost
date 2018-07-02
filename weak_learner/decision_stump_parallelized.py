@@ -13,6 +13,9 @@ class MulticlassDecisionStump:
         self.encoder = encoder
     
     def fit(self, X, Y, W=None, n_jobs=3):
+        """
+        TODO: Parallelize argsort
+        """
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
         X = X.reshape((X.shape[0], -1))
