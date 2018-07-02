@@ -14,11 +14,6 @@ class MulticlassDecisionStump:
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
         X = X.reshape((X.shape[0], -1))
-        # torch.no_grad()
-        # X, Y, W = map(torch.from_numpy, [X,Y,W]) # Convert to torch tensors with shared memory
-        # X_gpu, Y_gpu, W_gpu = map(lambda Z: Z.cuda(), [X,Y,W]) # Copied to GPU
-
-        # sorted_X, sorted_X_idx = torch.sort(X_gpu, dim=0)
 
         sorted_X_idx = X.argsort(axis=0)
         sorted_X = X[sorted_X_idx, range(X.shape[1])]
@@ -44,12 +39,12 @@ class MulticlassDecisionStump:
         moments_update = np.zeros((n_moments, n_features, n_classes))
 
         # At first, all examples are in partition 1
-        # All moments are not normalized so they can be computed cumulatively
+        # Moments are not normalized so they can be computed cumulatively
         moments[0,1] = np.sum(W, axis=0)
         moments[1,1] = np.sum(W*Y, axis=0)
         moments[2,1] = np.sum(W*Y**2, axis=0)
 
-        risk = np.sum(np.sum(moments[2] - np.divide(moments[1]**2, moments[0], where=moments[0]!=0), axis=0), axis=1)
+        risk = self._compute_risk(moments)
 
         best_feature = risk.argmin()
         best_risk = risk[best_feature]
@@ -59,18 +54,9 @@ class MulticlassDecisionStump:
 
         for i, row in enumerate(sorted_X_idx[:-1]):
 
-            # Update moments
-            weights_update = W[row]
-            labels_update = Y[row]
-            moments_update[0] = weights_update
-            moments_update[1] = weights_update*labels_update
-            moments_update[2] = weights_update*labels_update**2
-
-            moments[:,0] = moments[:,0] + moments_update
-            moments[:,1] = moments[:,1] - moments_update
+            self._update_moments(moments, moments_update, W[row], Y[row])
 
             possible_stumps = ~np.isclose(sorted_X[i+1] - sorted_X[i], 0)
-
             if possible_stumps.any():
 
                 risk = self._compute_risk(moments[:,:,possible_stumps,:])
@@ -86,14 +72,13 @@ class MulticlassDecisionStump:
 
         return best_stump_idx, best_feature
     
-    def _update_moments(self, prev_stump_idx, stump_idx, feature_sorted_X_idx, Y, W, moments):
-        for feature, (ps, s) in enumerate(zip(prev_stump_idx, stump_idx)):
-            x_idx = feature_sorted_X_idx[ps:s,feature]
-            self.moments_update[0,feature] = np.sum(W[x_idx], axis=0)
-            self.moments_update[1,feature] = np.sum(W[x_idx]*Y[x_idx], axis=0)
-            self.moments_update[2,feature] = np.sum(W[x_idx]*Y[x_idx]**2, axis=0)        
-        moments[:,0] = moments[:,0] + self.moments_update
-        moments[:,1] = moments[:,1] - self.moments_update
+    def _update_moments(self, moments, moments_update, weights_update, labels_update):
+        moments_update[0] = weights_update
+        moments_update[1] = weights_update*labels_update
+        moments_update[2] = weights_update*labels_update**2
+
+        moments[:,0] += moments_update
+        moments[:,1] -= moments_update
 
     def _compute_risk(self, moments):
         moments[np.isclose(moments,0)] = 0
@@ -122,7 +107,7 @@ class MulticlassDecisionStump:
         if self.encoder != None:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)    
-        
+
 
 @timed
 def main():
@@ -134,7 +119,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 60000
+    m = 10000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
