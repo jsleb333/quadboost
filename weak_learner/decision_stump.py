@@ -19,12 +19,17 @@ class MulticlassDecisionStump:
         sorted_X = X[sorted_X_idx, range(X.shape[1])]
 
         batch_size = X.shape[1]
-        stump_idx, self.feature = self.find_stump(sorted_X[:,:batch_size],
-                                                  sorted_X_idx[:,:batch_size],
-                                                  Y, W)
+        stump = self.find_stump(sorted_X[:,:batch_size], sorted_X_idx[:,:batch_size], Y, W)
+        
+        self.feature = stump.feature
+        self.confidence_rates = stump.compute_confidence_rates()
+        idx = stump.stump_idx
 
-        feature_value = lambda stump_idx: X[sorted_X_idx[stump_idx,self.feature],self.feature]
-        self.stump = (feature_value(stump_idx) + feature_value(stump_idx-1))/2 if stump_idx != 0 else feature_value(stump_idx) - 1
+        feature_value = lambda idx: X[sorted_X_idx[idx, self.feature], self.feature]
+        if idx != 0:
+            self.stump = (feature_value(idx) + feature_value(idx-1))/2
+        else:
+            self.stump = feature_value(idx) - 1
         
         return self
     
@@ -45,12 +50,7 @@ class MulticlassDecisionStump:
         moments[2,1] = np.sum(W*Y**2, axis=0)
 
         risk = self._compute_risk(moments)
-
-        best_feature = risk.argmin()
-        best_risk = risk[best_feature]
-        best_moment_0 = moments[0,:,best_feature,:].copy()
-        best_moment_1 = moments[1,:,best_feature,:].copy()
-        best_stump_idx = 0
+        best_stump = Stump(risk, moments)
 
         for i, row in enumerate(sorted_X_idx[:-1]):
 
@@ -60,17 +60,9 @@ class MulticlassDecisionStump:
             if possible_stumps.any():
 
                 risk = self._compute_risk(moments[:,:,possible_stumps,:])
-                feature = risk.argmin()
-                if risk[feature] < best_risk:
-                    best_feature = possible_stumps.nonzero()[0][feature]
-                    best_risk = risk[feature]
-                    best_moment_0 = moments[0,:,best_feature,:].copy()
-                    best_moment_1 = moments[1,:,best_feature,:].copy()
-                    best_stump_idx = i + 1
+                best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
         
-        self.confidence_rates = np.divide(best_moment_1, best_moment_0, where=best_moment_0!=0)
-
-        return best_stump_idx, best_feature
+        return best_stump
     
     def _update_moments(self, moments, moments_update, weights_update, labels_update):
         moments_update[0] = weights_update
@@ -107,6 +99,27 @@ class MulticlassDecisionStump:
         if self.encoder != None:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)    
+
+
+class Stump:
+    def __init__(self, risk, moments):
+        self.feature = risk.argmin()
+        self.risk = risk[self.feature]
+        self.stump_idx = 0
+        self.moment_0 = moments[0,:,self.feature,:].copy()
+        self.moment_1 = moments[1,:,self.feature,:].copy()
+    
+    def update(self, risk, moments, possible_stumps, stump_idx):
+        feature = risk.argmin()
+        if risk[feature] < self.risk:
+            self.feature = possible_stumps.nonzero()[0][feature]
+            self.risk = risk[feature]
+            self.moment_0 = moments[0,:,self.feature,:].copy()
+            self.moment_1 = moments[1,:,self.feature,:].copy()
+            self.stump_idx = stump_idx
+    
+    def compute_confidence_rates(self):
+        return np.divide(self.moment_1, self.moment_0, where=self.moment_0!=0)
 
 
 @timed
