@@ -1,6 +1,9 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 import torch
+import sys, os
+print(os.getcwd())
+sys.path.append(os.getcwd())
 
 from weak_learner import cloner
 from utils import *
@@ -10,7 +13,7 @@ from utils import *
 class MulticlassDecisionStump:
     def __init__(self, encoder=None):
         self.encoder = encoder
-    
+
     def fit(self, X, Y, W=None):
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
@@ -18,7 +21,7 @@ class MulticlassDecisionStump:
         torch.no_grad()
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
         X, Y, W = map(torch.from_numpy, [X,Y,W]) # Convert to torch tensors with shared memory
-        X_gpu, Y_gpu, W_gpu = map(lambda Z: Z.cuda(), [X,Y,W]) # Copied to GPU
+        X_gpu, Y_gpu, W_gpu = [Z.cuda() for Z in [X,Y,W]] # Copied to GPU
 
         sorted_X, sorted_X_idx = torch.sort(X_gpu, dim=0)
 
@@ -29,9 +32,9 @@ class MulticlassDecisionStump:
 
         feature_value = lambda stump_idx: X[sorted_X_idx[stump_idx,self.feature],self.feature]
         self.stump = (feature_value(stump_idx) + feature_value(stump_idx-1))/2 if stump_idx != 0 else feature_value(stump_idx) - 1
-        
+
         return self
-    
+
     @timed
     def find_stump(self, sorted_X, sorted_X_idx, Y, W):
         n_examples, n_classes = Y.shape
@@ -71,11 +74,11 @@ class MulticlassDecisionStump:
                     best_moment_0 = moments[0,:,best_feature,:].cpu()
                     best_moment_1 = moments[1,:,best_feature,:].cpu()
                     best_stump_idx = i + 1
-        
+
         self.confidence_rates = np.divide(best_moment_1, best_moment_0, where=best_moment_0!=0)
 
         return best_stump_idx, best_feature
-    
+
     def _update_moments(self, moments, moments_update, weights_update, labels_update):
         moments_update[0] = weights_update
         moments_update[1] = weights_update*labels_update
@@ -90,7 +93,7 @@ class MulticlassDecisionStump:
         normalized_m1[valid_idx] = moments[1][valid_idx]**2/moments[0][valid_idx]
         risk = torch.sum(torch.sum(moments[2] - normalized_m1, dim=2), dim=0)
         return risk
-        
+
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
         n_examples = X.shape[0]
@@ -102,12 +105,12 @@ class MulticlassDecisionStump:
             else:
                 Y_pred[i] = self.confidence_rates[1]
         return Y_pred
-    
+
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
         if self.encoder != None:
             Y_pred = self.encoder.decode_labels(Y_pred)
-        return accuracy_score(y_true=Y, y_pred=Y_pred)    
+        return accuracy_score(y_true=Y, y_pred=Y_pred)
 
 
 def near_zero(X, atol=1E-5):
@@ -124,7 +127,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 1_000
+    m = 10_000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
@@ -138,4 +141,4 @@ if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import *
     import cProfile
-    cProfile.run('main()')
+    cProfile.run('main()', sort='tottime')
