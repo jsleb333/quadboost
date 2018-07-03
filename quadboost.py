@@ -53,9 +53,9 @@ class QuadBoost:
             boosting_round.train_acc = self.evaluate(X, Y)
             if X_val is not None and Y_val is not None:
                 boosting_round.valid_acc = self.evaluate(X_val, Y_val)
-            
+
             print(boosting_round)
-                
+
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
             self.weak_predictors_weights = [np.array([1])]*len(self.weak_predictors)
@@ -82,23 +82,23 @@ class QuadBoost:
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
-    
+
 
     def visualize_coef(self):
         fig, axes = make_fig_axes(self.encoder.encoding_dim)
         coefs = self.coef_
-        
+
         for i, ax in enumerate(axes):
             ax.imshow(coefs[i,:,:], cmap='gray_r')
 
         plt.get_current_fig_manager().window.showMaximized()
         plt.show()
-    
+
 
     @property
     def coef_(self):
         return self._compute_coef()
-    
+
 
     def _compute_coef(self):
         coefs = [wp_w.reshape(-1,1)*wp.coef_ for wp_w, wp in zip(self.weak_predictors_weights, self.weak_predictors)]
@@ -117,7 +117,7 @@ class QuadBoostMH(QuadBoost):
 
     def _boost(self, X, residue, weights):
         """
-        Implements one round of boosting. 
+        Implements one round of boosting.
         Appends the lists of weak_predictors and of weak_predictors_weights with the fitted weak learner and its computed weight.
 
         X (Array of shape (n_examples, ...)): Examples.
@@ -150,7 +150,7 @@ class QuadBoostMHCR(QuadBoost):
 
     def _boost(self, X, residue, weights):
         """
-        Implements one round of boosting. 
+        Implements one round of boosting.
         Appends the lists of weak_predictors with the fitted weak learner.
 
         X (Array of shape (n_examples, ...)): Examples.
@@ -187,7 +187,7 @@ def main():
     m = 100
     qb.fit(Xtr[:m], Ytr[:m], T=-1, X_val=Xts, Y_val=Yts, patience=2)
     # qb.visualize_coef()
-    
+
 
 if __name__ == '__main__':
     main()
