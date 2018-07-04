@@ -10,7 +10,7 @@ def to_one_hot(Y):
     Y_one_hot = np.zeros((len(Y), n_classes))
     for i, label in enumerate(Y):
         Y_one_hot[i,label] = 1
-    
+
     return Y_one_hot
 
 
@@ -20,7 +20,7 @@ def compute_subplots_shape(N, aspect_ratio=9/16):
     """
     if aspect_ratio == 0:
         return N, 1
-    
+
     n = int(np.sqrt(aspect_ratio*N))
     m = int(np.sqrt(1/aspect_ratio*N))
 
@@ -36,7 +36,7 @@ def compute_subplots_shape(N, aspect_ratio=9/16):
 def make_fig_axes(N, aspect_ratio=9/16):
     n, m = compute_subplots_shape(N)
     fig, axes = plt.subplots(n, m)
-    
+
     # Reshaping axes
     if n == 1 and m == 1:
         axes = [[axes]]
@@ -47,6 +47,15 @@ def make_fig_axes(N, aspect_ratio=9/16):
         ax.axis('off')
 
     return fig, axes[:N]
+
+
+def split_int(n, k):
+    indices = (0,-1)
+    for i in range(n%k):
+        indices = (indices[1]+1, indices[0]+i*(n//(k+1)))
+        yield indices
+    # sample = [i*(n//(k+1)) for i in range(n%k)] + [i*(n//k) for i in range(n%k,k)]
+    # return sample
 
 
 def haar_projection(images):
@@ -65,7 +74,7 @@ def haar_projection(images):
 
 def haar_projector(N):
     """
-    Generates the Haar projector of size N (N must be a power of 2). 
+    Generates the Haar projector of size N (N must be a power of 2).
     """
     projection = np.zeros((N,N))
     for i in range(N//2):
@@ -75,7 +84,7 @@ def haar_projector(N):
         projection[i+N//2,2*i] = 1
         projection[i+N//2,2*i+1] = -1
     projection /= 2
-    
+
     return projection
 
 
@@ -96,4 +105,4 @@ def timed(func):
 
 
 if __name__ == '__main__':
-    timed(compute_subplots_shape)(4)
+    print([idx for idx in split_int(20,3)])
