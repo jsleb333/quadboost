@@ -181,10 +181,10 @@ def main():
 
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = MulticlassDecisionStump
+    weak_learner = MulticlassDecisionStump(n_jobs=4)
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    m = 100
+    m = 60_000
     qb.fit(Xtr[:m], Ytr[:m], T=-1, X_val=Xts, Y_val=Yts, patience=2)
     # qb.visualize_coef()
 
