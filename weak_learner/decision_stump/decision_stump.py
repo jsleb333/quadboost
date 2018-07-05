@@ -13,10 +13,29 @@ from utils import *
 
 @cloner
 class MulticlassDecisionStump:
+    """
+    Decision stump classifier with innate multiclass algorithm.
+    It finds a stump to partition examples into 2 parts which minimizes the quadratic multiclass risk.
+    It assigns a confidence rates (scalar) for each class for each partition.
+    Parallelization is implemented in the 'fit' method.
+    """
     def __init__(self, encoder=None):
+        """
+        encoder (LabelEncoder object, optional, default=None): Encoder to encode labels. If None, no encoding will be made before fitting.
+        """
         self.encoder = encoder
 
-    def fit(self, X, Y, W=None, n_jobs=4):
+    def fit(self, X, Y, W=None, n_jobs=1):
+        """
+        Fits the model by finding the best decision stump using the algorithm implemented in the StumpFinder class.
+
+        X (Array of shape (n_examples, ...)): Examples
+        Y (Array of shape (n_examples,) or (n_examples, n_classes)): Labels for the examples. If an encoder was provided at construction, Y should be a vector to be encoded.
+        W (Array of shape (n_examples, n_classes)): Weights of each examples according to their class. Should be None if Y is not encoded.
+        n_jobs (int, optional, default=1): Number of processes to execute in parallel to find the stump.
+
+        Returns self
+        """
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
         X = X.reshape((X.shape[0], -1))
@@ -31,6 +50,9 @@ class MulticlassDecisionStump:
         return self
 
     def parallel_find_stump(self, X, Y, W, n_jobs):
+        """
+        Parallelizes the processes.
+        """
         n_features = X.shape[1]
         stump_finder = StumpFinder(X, Y, W)
         if n_jobs > 1:
@@ -62,7 +84,7 @@ class MulticlassDecisionStump:
 
 class StumpFinder:
     """
-    Implements the algorithm to find the stump.
+    Implements the algorithm to find the stump. It is separated from the class MulticlassDecisionStump so that it can be pickled when parallelized with 'multiprocessing' (which uses pickle).
     """
     def __init__(self, X, Y, W):
         self.X = X
@@ -70,6 +92,9 @@ class StumpFinder:
         self.W = W
 
     def find_stump(self, sub_idx=(None,)):
+        """
+        Algorithm to the best stump within the sub array of X specfied by the bounds 'sub_idx'.
+        """
         n_examples, n_classes = self.Y.shape
         _, n_features = self.X[:,slice(*sub_idx)].shape
         n_partitions = 2
