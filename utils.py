@@ -50,12 +50,17 @@ def make_fig_axes(N, aspect_ratio=9/16):
 
 
 def split_int(n, k):
-    indices = (0,-1)
-    for i in range(n%k):
-        indices = (indices[1]+1, indices[0]+i*(n//(k+1)))
-        yield indices
-    # sample = [i*(n//(k+1)) for i in range(n%k)] + [i*(n//k) for i in range(n%k,k)]
-    # return sample
+    """
+    Equivalent of numpy 'array_split' function, but for integers instead of arrays.
+    Returns n%k tuples of integers with difference equal to (n//k) + 1 and k - n%k tuples of integers with difference equal to n//k.
+    """
+    idx0, idx1 = 0, 0
+    for i in range(k):
+        idx0 = idx1
+        idx1 = idx1 + n//k
+        if i < n%k:
+            idx1 += 1
+        yield idx0, idx1
 
 
 def haar_projection(images):
@@ -105,4 +110,5 @@ def timed(func):
 
 
 if __name__ == '__main__':
-    print([idx for idx in split_int(20,3)])
+    a = np.arange(20)
+    print([a[slice(*idx)] for idx in split_int(20,3)])
