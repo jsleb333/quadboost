@@ -10,7 +10,7 @@ class Stump:
         self.stump_idx = 0
         self.moment_0 = moments[0,:,self.feature,:].copy()
         self.moment_1 = moments[1,:,self.feature,:].copy()
-    
+
     def update(self, risk, moments, possible_stumps, stump_idx):
         """
         Updates the current stump with the new stumps only if the new risk is lower than the previous one.
@@ -24,10 +24,18 @@ class Stump:
             self.moment_0 = moments[0,:,self.feature,:].copy()
             self.moment_1 = moments[1,:,self.feature,:].copy()
             self.stump_idx = stump_idx
-    
+
     def compute_confidence_rates(self):
         return np.divide(self.moment_1, self.moment_0, where=self.moment_0!=0)
-    
+
+    def compute_stump_value(self, sorted_X):
+        feat_val = lambda idx: sorted_X[idx, self.feature]
+        if self.stump_idx != 0:
+            self.stump = (feat_val(self.stump_idx) + feat_val(self.stump_idx-1))/2
+        else:
+            self.stump = feat_val(self.stump_idx) - 1
+        return self.stump
+
     def __lt__(self, other):
         return self.risk < other.risk
 
@@ -45,4 +53,3 @@ class Stump:
 
     def __ne__(self, other):
         return self.risk != other.risk
-

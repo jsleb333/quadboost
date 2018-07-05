@@ -109,6 +109,8 @@ def timed(func):
     return wrapper
 
 
+from mnist_dataset import MNISTDataset
+from label_encoder import OneHotEncoder
 if __name__ == '__main__':
-    a = np.arange(20)
-    print([a[slice(*idx)] for idx in split_int(20,3)])
+    from weak_learner.decision_stump_parallelized import main
+    main()

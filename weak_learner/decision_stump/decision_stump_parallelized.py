@@ -1,10 +1,14 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
+from multiprocessing import Pool
+import joblib as jl
+from functools import partial
+
 import sys, os
 sys.path.append(os.getcwd())
 
 from weak_learner import cloner
-from weak_learner.stump import Stump
+from weak_learner.decision_stump import Stump
 from utils import *
 
 
@@ -13,35 +17,39 @@ class MulticlassDecisionStump:
     def __init__(self, encoder=None):
         self.encoder = encoder
 
-    def fit(self, X, Y, W=None):
+    def fit(self, X, Y, W=None, n_jobs=4):
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
         X = X.reshape((X.shape[0], -1))
 
-        sorted_X_idx = X.argsort(axis=0)
-        sorted_X = X[sorted_X_idx, range(X.shape[1])]
-
-        batch_size = X.shape[1]
-        stump = self.find_stump(sorted_X[:,:batch_size], sorted_X_idx[:,:batch_size], Y, W)
+        # stump = self.find_stump(X, Y, W, n_jobs=n_jobs)
+        stump = self._find_stump(X, Y, W)
 
         self.feature = stump.feature
         self.confidence_rates = stump.compute_confidence_rates()
-        idx = stump.stump_idx
-
-        feature_value = lambda idx: X[sorted_X_idx[idx, self.feature], self.feature]
-        if idx != 0:
-            self.stump = (feature_value(idx) + feature_value(idx-1))/2
-        else:
-            self.stump = feature_value(idx) - 1
+        self.stump = stump.stump
 
         return self
 
-    @timed
-    def find_stump(self, sorted_X, sorted_X_idx, Y, W):
+    def find_stump(self, X, Y, W, n_jobs):
+        n_features = X.shape[1]
+        # self.pool = Pool(n_jobs)
+        find_stump_XYW = partial(self._find_stump, X, Y, W)
+        # stumps = self.pool.map(find_stump_XYW, split_int(n_features, n_jobs))
+
+        parallelizer = jl.Parallel(n_jobs=n_jobs)
+        stumps = parallelizer(jl.delayed(find_stump_XYW)(sub_idx) for sub_idx in split_int(n_features, n_jobs))
+        stump = min(stumps)
+        return stump
+
+    def _find_stump(self, X, Y, W, sub_idx=(None,)):
         n_examples, n_classes = Y.shape
-        _, n_features = sorted_X.shape
+        _, n_features = X[:,slice(*sub_idx)].shape
         n_partitions = 2
         n_moments = 3
+
+        sorted_X_idx = X[:,slice(*sub_idx)].argsort(axis=0)
+        sorted_X = X[:,slice(*sub_idx)][sorted_X_idx, range(n_features)]
 
         moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
         moments_update = np.zeros((n_moments, n_features, n_classes))
@@ -63,6 +71,8 @@ class MulticlassDecisionStump:
                 risk = self._compute_risk(moments[:,:,possible_stumps,:])
                 best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
 
+        best_stump.compute_stump_value(sorted_X)
+        best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
         return best_stump
 
     def _update_moments(self, moments, moments_update, weights_update, labels_update):
@@ -101,6 +111,10 @@ class MulticlassDecisionStump:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
+    # def __getstate__(self):
+    #     self_dict = self.__dict__.copy()
+    #     del self_dict['pool']
+    #     return self_dict
 
 @timed
 def main():
@@ -117,7 +131,7 @@ def main():
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
-    wl.fit(X, Y)
+    wl.fit(X, Y, n_jobs=4)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
@@ -125,5 +139,4 @@ def main():
 if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import *
-    import cProfile
-    cProfile.run('main()', sort='tottime')
+    main()
