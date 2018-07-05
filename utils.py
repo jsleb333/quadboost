@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from functools import wraps
-
+from multiprocessing import Pool
 
 def to_one_hot(Y):
     labels = set(Y)
@@ -60,7 +60,7 @@ def split_int(n, k):
         idx1 = idx1 + n//k
         if i < n%k:
             idx1 += 1
-        yield idx0, idx1
+        yield (idx0, idx1)
 
 
 def haar_projection(images):
@@ -91,6 +91,12 @@ def haar_projector(N):
     projection /= 2
 
     return projection
+
+
+def parallelize(func, func_args, n_jobs):
+    with Pool(n_jobs) as pool:
+        parallel_return = pool.map(func, func_args)
+    return parallel_return
 
 
 def timed(func):
