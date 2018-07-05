@@ -19,20 +19,21 @@ class MulticlassDecisionStump:
     It assigns a confidence rates (scalar) for each class for each partition.
     Parallelization is implemented in the 'fit' method.
     """
-    def __init__(self, encoder=None):
+    def __init__(self, encoder=None, n_jobs=1):
         """
         encoder (LabelEncoder object, optional, default=None): Encoder to encode labels. If None, no encoding will be made before fitting.
+        n_jobs (int, optional, default=1): Number of processes to execute in parallel to find the stump.
         """
         self.encoder = encoder
+        self.n_jobs = n_jobs
 
-    def fit(self, X, Y, W=None, n_jobs=1):
+    def fit(self, X, Y, W=None):
         """
         Fits the model by finding the best decision stump using the algorithm implemented in the StumpFinder class.
 
         X (Array of shape (n_examples, ...)): Examples
         Y (Array of shape (n_examples,) or (n_examples, n_classes)): Labels for the examples. If an encoder was provided at construction, Y should be a vector to be encoded.
         W (Array of shape (n_examples, n_classes)): Weights of each examples according to their class. Should be None if Y is not encoded.
-        n_jobs (int, optional, default=1): Number of processes to execute in parallel to find the stump.
 
         Returns self
         """
@@ -41,7 +42,7 @@ class MulticlassDecisionStump:
         X = X.reshape((X.shape[0], -1))
         _, n_features = X.shape
 
-        stump = self.parallel_find_stump(X, Y, W, n_jobs=n_jobs)
+        stump = self.parallel_find_stump(X, Y, W)
 
         self.feature = stump.feature
         self.confidence_rates = stump.compute_confidence_rates()
@@ -49,15 +50,15 @@ class MulticlassDecisionStump:
 
         return self
 
-    def parallel_find_stump(self, X, Y, W, n_jobs):
+    def parallel_find_stump(self, X, Y, W):
         """
         Parallelizes the processes.
         """
         n_features = X.shape[1]
         stump_finder = StumpFinder(X, Y, W)
-        if n_jobs > 1:
-            pool = Pool(n_jobs)
-            stumps = pool.map(stump_finder.find_stump, split_int(n_features, n_jobs))
+        if self.n_jobs > 1:
+            pool = Pool(self.n_jobs)
+            stumps = pool.map(stump_finder.find_stump, split_int(n_features, self.n_jobs))
             stump = min(stumps)
         else:
             stump = stump_finder.find_stump()
@@ -156,12 +157,12 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 60_000
+    m = 10_000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
-    wl = MulticlassDecisionStump(encoder=encoder)
-    wl.fit(X, Y, n_jobs=4)
+    wl = MulticlassDecisionStump(encoder=encoder, n_jobs=4)
+    wl.fit(X, Y)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
