@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from functools import wraps
-
+from multiprocessing import Pool
 
 def to_one_hot(Y):
     labels = set(Y)
@@ -10,7 +10,7 @@ def to_one_hot(Y):
     Y_one_hot = np.zeros((len(Y), n_classes))
     for i, label in enumerate(Y):
         Y_one_hot[i,label] = 1
-    
+
     return Y_one_hot
 
 
@@ -20,7 +20,7 @@ def compute_subplots_shape(N, aspect_ratio=9/16):
     """
     if aspect_ratio == 0:
         return N, 1
-    
+
     n = int(np.sqrt(aspect_ratio*N))
     m = int(np.sqrt(1/aspect_ratio*N))
 
@@ -36,7 +36,7 @@ def compute_subplots_shape(N, aspect_ratio=9/16):
 def make_fig_axes(N, aspect_ratio=9/16):
     n, m = compute_subplots_shape(N)
     fig, axes = plt.subplots(n, m)
-    
+
     # Reshaping axes
     if n == 1 and m == 1:
         axes = [[axes]]
@@ -47,6 +47,20 @@ def make_fig_axes(N, aspect_ratio=9/16):
         ax.axis('off')
 
     return fig, axes[:N]
+
+
+def split_int(n, k):
+    """
+    Equivalent of numpy 'array_split' function, but for integers instead of arrays.
+    Returns n%k tuples of integers with difference equal to (n//k) + 1 and k - n%k tuples of integers with difference equal to n//k.
+    """
+    idx0, idx1 = 0, 0
+    for i in range(k):
+        idx0 = idx1
+        idx1 = idx1 + n//k
+        if i < n%k:
+            idx1 += 1
+        yield (idx0, idx1)
 
 
 def haar_projection(images):
@@ -65,7 +79,7 @@ def haar_projection(images):
 
 def haar_projector(N):
     """
-    Generates the Haar projector of size N (N must be a power of 2). 
+    Generates the Haar projector of size N (N must be a power of 2).
     """
     projection = np.zeros((N,N))
     for i in range(N//2):
@@ -75,8 +89,14 @@ def haar_projector(N):
         projection[i+N//2,2*i] = 1
         projection[i+N//2,2*i+1] = -1
     projection /= 2
-    
+
     return projection
+
+
+def parallelize(func, func_args, n_jobs):
+    with Pool(n_jobs) as pool:
+        parallel_return = pool.map(func, func_args)
+    return parallel_return
 
 
 def timed(func):
@@ -95,5 +115,8 @@ def timed(func):
     return wrapper
 
 
+from mnist_dataset import MNISTDataset
+from label_encoder import OneHotEncoder
 if __name__ == '__main__':
-    timed(compute_subplots_shape)(4)
+    from weak_learner.decision_stump_parallelized import main
+    main()
