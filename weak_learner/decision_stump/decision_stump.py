@@ -156,12 +156,12 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 10_000
+    m = 60_000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
-    wl = MulticlassDecisionStump(encoder=encoder, n_jobs=4)
-    wl.fit(X, Y)
+    wl = MulticlassDecisionStump(encoder=encoder)
+    wl.fit(X, Y, n_jobs=1)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
@@ -169,4 +169,6 @@ def main():
 if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import *
-    main()
+    import cProfile
+    cProfile.run('main()', sort='tottime')
+    # main()
