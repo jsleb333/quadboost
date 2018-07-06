@@ -21,7 +21,7 @@ class QuadBoost:
         self.weak_predictors_weights = []
 
 
-    def fit(self, X, Y, T=-1, f0=None, X_val=None, Y_val=None, patience=10):
+    def fit(self, X, Y, T=-1, f0=None, X_val=None, Y_val=None, patience=10, **kwargs):
         """
         X (Array of shape (n_examples, ...)): Examples.
         Y (Iterable of 'n_examples' elements): Labels for the examples X. Y is encoded with the encode_labels method if one is provided, else it is transformed as one-hot vectors.
@@ -30,6 +30,7 @@ class QuadBoost:
         X_val (Array of shape (n_val, ...), optional, default=None): Validation examples. If not None, the validation accuracy will be evaluated at each boosting round.
         Y_val (Iterable of 'n_val' elements, optional, default=None): Validation labels for the examples X_val. If not None, the validation accuracy will be evaluated at each boosting round.
         patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until T iterations.
+        kwargs: Keyword arguments to pass to the fit method of the weak learner.
         """
         # Encodes the labels
         if self.encoder == None:
@@ -46,7 +47,7 @@ class QuadBoost:
 
         # Boosting algorithm
         for boosting_round in BoostIterator(T, patience):
-            residue, weak_prediction = self._boost(X, residue, weights)
+            residue, weak_prediction = self._boost(X, residue, weights, **kwargs)
 
             # wp_acc = acc_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
             # print('weak predictor acc:' + str(wp_acc))
@@ -61,7 +62,7 @@ class QuadBoost:
             self.weak_predictors_weights = [np.array([1])]*len(self.weak_predictors)
 
 
-    def _boost(self, X, residue, weights):
+    def _boost(self, X, residue, weights, **kwargs):
         """
         Should implements one round of boosting.
         Must return the calculated residue and the weak_prediction.
@@ -115,7 +116,7 @@ class QuadBoostMH(QuadBoost):
         super().__init__(weak_learner, encoder)
 
 
-    def _boost(self, X, residue, weights):
+    def _boost(self, X, residue, weights, **kwargs):
         """
         Implements one round of boosting.
         Appends the lists of weak_predictors and of weak_predictors_weights with the fitted weak learner and its computed weight.
@@ -126,7 +127,7 @@ class QuadBoostMH(QuadBoost):
 
         Returns the calculated residue and the weak_prediction.
         """
-        weak_predictor = self.weak_learner().fit(X, residue, weights)
+        weak_predictor = self.weak_learner().fit(X, residue, weights, **kwargs)
         weak_prediction = weak_predictor.predict(X)
 
         n_examples = X.shape[0]
@@ -148,7 +149,7 @@ class QuadBoostMHCR(QuadBoost):
         super().__init__(confidence_rated_weak_learner, encoder)
 
 
-    def _boost(self, X, residue, weights):
+    def _boost(self, X, residue, weights, **kwargs):
         """
         Implements one round of boosting.
         Appends the lists of weak_predictors with the fitted weak learner.
@@ -159,7 +160,7 @@ class QuadBoostMHCR(QuadBoost):
 
         Returns the calculated residue and the confidence_rated_weak_prediction.
         """
-        confidence_rated_weak_predictor = self.weak_learner().fit(X, residue, weights)
+        confidence_rated_weak_predictor = self.weak_learner().fit(X, residue, weights, **kwargs)
         confidence_rated_weak_prediction = confidence_rated_weak_predictor.predict(X)
 
         residue -= confidence_rated_weak_prediction
@@ -176,16 +177,16 @@ def main():
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
-    # encoder = OneHotEncoder(Ytr)
-    encoder = AllPairsEncoder(Ytr)
+    encoder = OneHotEncoder(Ytr)
+    # encoder = AllPairsEncoder(Ytr)
 
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = MulticlassDecisionStump(n_jobs=4)
+    weak_learner = MulticlassDecisionStump
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    m = 60_000
-    qb.fit(Xtr[:m], Ytr[:m], T=-1, X_val=Xts, Y_val=Yts, patience=2)
+    m = 1_000
+    qb.fit(Xtr[:m], Ytr[:m], T=1, X_val=Xts, Y_val=Yts, patience=2, n_jobs=4)
     # qb.visualize_coef()
 
 
