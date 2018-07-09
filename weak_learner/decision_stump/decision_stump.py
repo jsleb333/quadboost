@@ -81,6 +81,20 @@ class MulticlassDecisionStump:
         if self.encoder != None:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
+    
+    @staticmethod
+    def sort_data(X):
+        """
+        Necessary sorting operations on the data to find the optimal stump. It is useful to sort the data prior to boost to speed up the algorithm, since the sorting step will not be made at each round.
+
+        'sorted_X' and 'sorted_X_idx' should be passed as keyword arguments to the 'fit' method to speed up the algorithm.
+        """
+        n_examples = X.shape[0]
+        X = X.reshape((n_examples,-1))
+        sorted_X_idx = X.argsort(axis=0)
+        sorted_X = X.sort(axis=0)
+
+        return sorted_X, sorted_X_idx
 
 class StumpFinder:
     """
