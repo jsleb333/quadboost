@@ -25,7 +25,7 @@ class MulticlassDecisionStump:
         """
         self.encoder = encoder
 
-    def fit(self, X, Y, W=None, n_jobs=1):
+    def fit(self, X, Y, W=None, n_jobs=1, sorted_X=None, sorted_X_idx=None):
         """
         Fits the model by finding the best decision stump using the algorithm implemented in the StumpFinder class.
 
@@ -33,15 +33,17 @@ class MulticlassDecisionStump:
         Y (Array of shape (n_examples,) or (n_examples, n_classes)): Labels for the examples. If an encoder was provided at construction, Y should be a vector to be encoded.
         W (Array of shape (n_examples, n_classes)): Weights of each examples according to their class. Should be None if Y is not encoded.
         n_jobs (int, optional, default=1): Number of processes to execute in parallel to find the stump.
+        sorted_X (Array of shape (n_examples, ...), optional, default=None): Sorted examples along axis 0. If None, 'X' will be sorted, else it will not.
+        sorted_X_idx (Array of shape (n_examples, ...), optional, default=None): Indices of the sorted examples along axis 0 (corresponds to argsort). If None, 'X' will be argsorted, else it will not.
 
         Returns self
         """
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
-        X = X.reshape((X.shape[0], -1))
-        _, n_features = X.shape
+        if sorted_X is None or sorted_X_idx is None:
+            sorted_X, sorted_X_idx = self.sort_data(X)
 
-        stump = self.parallel_find_stump(X, Y, W, n_jobs)
+        stump = self.parallel_find_stump(sorted_X, sorted_X_idx, Y, W, n_jobs)
 
         self.feature = stump.feature
         self.confidence_rates = stump.compute_confidence_rates()
@@ -49,12 +51,12 @@ class MulticlassDecisionStump:
 
         return self
 
-    def parallel_find_stump(self, X, Y, W, n_jobs):
+    def parallel_find_stump(self, sorted_X, sorted_X_idx, Y, W, n_jobs):
         """
         Parallelizes the processes.
         """
-        n_features = X.shape[1]
-        stump_finder = StumpFinder(X, Y, W)
+        _, n_features = sorted_X.shape
+        stump_finder = StumpFinder(sorted_X, sorted_X_idx, Y, W)
         if n_jobs > 1:
             pool = Pool(n_jobs)
             stumps = pool.map(stump_finder.find_stump, split_int(n_features, n_jobs))
@@ -81,6 +83,20 @@ class MulticlassDecisionStump:
         if self.encoder != None:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
+    
+    @staticmethod
+    def sort_data(X):
+        """
+        Necessary sorting operations on the data to find the optimal stump. It is useful to sort the data prior to boost to speed up the algorithm, since the sorting step will not be made at each round.
+
+        'sorted_X' and 'sorted_X_idx' should be passed as keyword arguments to the 'fit' method to speed up the algorithm.
+        """
+        n_examples = X.shape[0]
+        X = X.reshape((n_examples,-1))
+        sorted_X_idx = X.argsort(axis=0)
+        sorted_X = X.sort(axis=0)
+
+        return sorted_X, sorted_X_idx
 
 class StumpFinder:
     """
