@@ -83,7 +83,7 @@ class MulticlassDecisionStump:
         if self.encoder != None:
             Y_pred = self.encoder.decode_labels(Y_pred)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
-    
+
     @staticmethod
     def sort_data(X):
         """
@@ -91,10 +91,10 @@ class MulticlassDecisionStump:
 
         'sorted_X' and 'sorted_X_idx' should be passed as keyword arguments to the 'fit' method to speed up the algorithm.
         """
-        n_examples = X.shape[0]
+        n_examples, n_features = X.shape
         X = X.reshape((n_examples,-1))
-        sorted_X_idx = X.argsort(axis=0)
-        sorted_X = X.sort(axis=0)
+        sorted_X_idx = np.argsort(X, axis=0)
+        sorted_X = X[sorted_X_idx, range(n_features)]
 
         return sorted_X, sorted_X_idx
 
@@ -102,8 +102,10 @@ class StumpFinder:
     """
     Implements the algorithm to find the stump. It is separated from the class MulticlassDecisionStump so that it can be pickled when parallelized with 'multiprocessing' (which uses pickle).
     """
-    def __init__(self, X, Y, W):
-        self.X = X
+    def __init__(self, sorted_X, sorted_X_idx, Y, W):
+        self.sorted_X = sorted_X
+        self.sorted_X_idx = sorted_X_idx
+
         self.zeroth_moments = W
         self.first_moments = W*Y
         self.second_moments = W*Y**2
@@ -112,13 +114,13 @@ class StumpFinder:
         """
         Algorithm to the best stump within the sub array of X specfied by the bounds 'sub_idx'.
         """
+        X = self.sorted_X[:,slice(*sub_idx)]
+        X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
+
         n_examples, n_classes = self.zeroth_moments.shape
-        _, n_features = self.X[:,slice(*sub_idx)].shape
+        _, n_features = X.shape
         n_partitions = 2
         n_moments = 3
-
-        sorted_X_idx = self.X[:,slice(*sub_idx)].argsort(axis=0)
-        sorted_X = self.X[:,slice(*sub_idx)][sorted_X_idx, range(n_features)]
 
         moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
         # moments_update = np.zeros((n_moments, n_features, n_classes))
@@ -132,15 +134,15 @@ class StumpFinder:
         risk = self.compute_risk(moments)
         best_stump = Stump(risk, moments)
 
-        for i, row in enumerate(sorted_X_idx[:-1]):
+        for i, row in enumerate(X_idx[:-1]):
             self.update_moments(moments, row)
-            possible_stumps = ~np.isclose(sorted_X[i+1] - sorted_X[i], 0)
+            possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
 
             if possible_stumps.any():
                 risk = self.compute_risk(moments[:,:,possible_stumps,:])
                 best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
 
-        best_stump.compute_stump_value(sorted_X)
+        best_stump.compute_stump_value(X)
         best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
         return best_stump
 
@@ -150,14 +152,19 @@ class StumpFinder:
         # moments_update[2] = self.second_moments[row_idx]
         # moments[:,0] += moments_update
         # moments[:,1] -= moments_update
+        moments_update = np.array([self.zeroth_moments[row_idx],
+                                   self.first_moments[row_idx],
+                                   self.second_moments[row_idx]])
+        moments[:,0] += moments_update
+        moments[:,1] -= moments_update
 
-        moments[0,0] += self.zeroth_moments[row_idx]
-        moments[1,0] += self.first_moments[row_idx]
-        moments[2,0] += self.second_moments[row_idx]
+        # moments[0,0] += self.zeroth_moments[row_idx]
+        # moments[1,0] += self.first_moments[row_idx]
+        # moments[2,0] += self.second_moments[row_idx]
 
-        moments[0,1] -= self.zeroth_moments[row_idx]
-        moments[1,1] -= self.first_moments[row_idx]
-        moments[2,1] -= self.second_moments[row_idx]
+        # moments[0,1] -= self.zeroth_moments[row_idx]
+        # moments[1,1] -= self.first_moments[row_idx]
+        # moments[2,1] -= self.second_moments[row_idx]
 
     def compute_risk(self, moments):
         moments[np.isclose(moments,0)] = 0
