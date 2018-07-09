@@ -88,14 +88,15 @@ class StumpFinder:
     """
     def __init__(self, X, Y, W):
         self.X = X
-        self.Y = Y
-        self.W = W
+        self.zeroth_moments = W
+        self.first_moments = W*Y
+        self.second_moments = W*Y**2
 
     def find_stump(self, sub_idx=(None,)):
         """
         Algorithm to the best stump within the sub array of X specfied by the bounds 'sub_idx'.
         """
-        n_examples, n_classes = self.Y.shape
+        n_examples, n_classes = self.zeroth_moments.shape
         _, n_features = self.X[:,slice(*sub_idx)].shape
         n_partitions = 2
         n_moments = 3
@@ -104,19 +105,19 @@ class StumpFinder:
         sorted_X = self.X[:,slice(*sub_idx)][sorted_X_idx, range(n_features)]
 
         moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
-        moments_update = np.zeros((n_moments, n_features, n_classes))
+        # moments_update = np.zeros((n_moments, n_features, n_classes))
 
         # At first, all examples are in partition 1
         # Moments are not normalized so they can be computed cumulatively
-        moments[0,1] = np.sum(self.W, axis=0)
-        moments[1,1] = np.sum(self.W*self.Y, axis=0)
-        moments[2,1] = np.sum(self.W*self.Y**2, axis=0)
+        moments[0,1] = np.sum(self.zeroth_moments, axis=0)
+        moments[1,1] = np.sum(self.first_moments, axis=0)
+        moments[2,1] = np.sum(self.second_moments, axis=0)
 
         risk = self.compute_risk(moments)
         best_stump = Stump(risk, moments)
 
         for i, row in enumerate(sorted_X_idx[:-1]):
-            self.update_moments(moments, moments_update, self.W[row], self.Y[row])
+            self.update_moments(moments, row)
             possible_stumps = ~np.isclose(sorted_X[i+1] - sorted_X[i], 0)
 
             if possible_stumps.any():
@@ -127,13 +128,20 @@ class StumpFinder:
         best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
         return best_stump
 
-    def update_moments(self, moments, moments_update, weights_update, labels_update):
-        moments_update[0] = weights_update
-        moments_update[1] = weights_update*labels_update
-        moments_update[2] = weights_update*labels_update**2
+    def update_moments(self, moments, row_idx):
+        # moments_update[0] = self.zeroth_moments[row_idx]
+        # moments_update[1] = self.first_moments[row_idx]
+        # moments_update[2] = self.second_moments[row_idx]
+        # moments[:,0] += moments_update
+        # moments[:,1] -= moments_update
 
-        moments[:,0] += moments_update
-        moments[:,1] -= moments_update
+        moments[0,0] += self.zeroth_moments[row_idx]
+        moments[1,0] += self.first_moments[row_idx]
+        moments[2,0] += self.second_moments[row_idx]
+
+        moments[0,1] -= self.zeroth_moments[row_idx]
+        moments[1,1] -= self.first_moments[row_idx]
+        moments[2,1] -= self.second_moments[row_idx]
 
     def compute_risk(self, moments):
         moments[np.isclose(moments,0)] = 0
@@ -161,7 +169,7 @@ def main():
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
-    wl.fit(X, Y, n_jobs=1)
+    wl.fit(X, Y, n_jobs=4)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
