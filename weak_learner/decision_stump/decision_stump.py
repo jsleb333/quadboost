@@ -108,7 +108,7 @@ class StumpFinder:
 
         self.zeroth_moments = W
         self.first_moments = W*Y
-        self.second_moments = W*Y**2
+        self.second_moments = self.first_moments*Y
 
     def find_stump(self, sub_idx=(None,)):
         """
@@ -123,7 +123,7 @@ class StumpFinder:
         n_moments = 3
 
         moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
-        # moments_update = np.zeros((n_moments, n_features, n_classes))
+        moments_update = np.zeros((n_moments, n_features, n_classes))
 
         # At first, all examples are in partition 1
         # Moments are not normalized so they can be computed cumulatively
@@ -135,7 +135,7 @@ class StumpFinder:
         best_stump = Stump(risk, moments)
 
         for i, row in enumerate(X_idx[:-1]):
-            self.update_moments(moments, row)
+            self.update_moments(moments, moments_update, row)
             possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
 
             if possible_stumps.any():
@@ -146,15 +146,15 @@ class StumpFinder:
         best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
         return best_stump
 
-    def update_moments(self, moments, row_idx):
+    def update_moments(self, moments, moments_update, row_idx):
         # moments_update[0] = self.zeroth_moments[row_idx]
         # moments_update[1] = self.first_moments[row_idx]
         # moments_update[2] = self.second_moments[row_idx]
         # moments[:,0] += moments_update
         # moments[:,1] -= moments_update
-        moments_update = np.array([self.zeroth_moments[row_idx],
-                                   self.first_moments[row_idx],
-                                   self.second_moments[row_idx]])
+        moments_update[:] = np.array([self.zeroth_moments[row_idx],
+                                      self.first_moments[row_idx],
+                                      self.second_moments[row_idx]])
         moments[:,0] += moments_update
         moments[:,1] -= moments_update
 
