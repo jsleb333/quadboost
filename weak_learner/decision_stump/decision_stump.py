@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
-from multiprocessing import Pool
+import multiprocessing as mp
 from functools import partial
 
 import sys, os
@@ -17,7 +17,7 @@ class MulticlassDecisionStump:
     Decision stump classifier with innate multiclass algorithm.
     It finds a stump to partition examples into 2 parts which minimizes the quadratic multiclass risk.
     It assigns a confidence rates (scalar) for each class for each partition.
-    Parallelization is implemented in the 'fit' method.
+    Parallelization is implemented for the 'fit' method.
     """
     def __init__(self, encoder=None):
         """
@@ -51,18 +51,23 @@ class MulticlassDecisionStump:
 
         return self
 
+    @timed
     def parallel_find_stump(self, sorted_X, sorted_X_idx, Y, W, n_jobs):
         """
         Parallelizes the processes.
         """
-        _, n_features = sorted_X.shape
         stump_finder = StumpFinder(sorted_X, sorted_X_idx, Y, W)
-        if n_jobs > 1:
-            pool = Pool(n_jobs)
-            stumps = pool.map(stump_finder.find_stump, split_int(n_features, n_jobs))
-            stump = min(stumps)
-        else:
-            stump = stump_finder.find_stump()
+        n_features = stump_finder.sorted_X.shape[1]
+        stumps_queue = mp.Queue()
+        processes = []
+        for sub_idx in split_int(n_features, n_jobs):
+            process = mp.Process(target=stump_finder.find_stump, args=(stumps_queue, sub_idx))
+            processes.append(process)
+
+        for process in processes: process.start()
+        for process in processes: process.join()
+
+        stump = min(stumps_queue.get() for _ in processes)
 
         return stump
 
@@ -110,7 +115,8 @@ class StumpFinder:
         self.first_moments = W*Y
         self.second_moments = self.first_moments*Y
 
-    def find_stump(self, sub_idx=(None,)):
+    @timed
+    def find_stump(self, stumps_queue, sub_idx=(None,)):
         """
         Algorithm to the best stump within the sub array of X specfied by the bounds 'sub_idx'.
         """
@@ -144,27 +150,14 @@ class StumpFinder:
 
         best_stump.compute_stump_value(X)
         best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
-        return best_stump
+        stumps_queue.put(best_stump)
 
     def update_moments(self, moments, moments_update, row_idx):
-        # moments_update[0] = self.zeroth_moments[row_idx]
-        # moments_update[1] = self.first_moments[row_idx]
-        # moments_update[2] = self.second_moments[row_idx]
-        # moments[:,0] += moments_update
-        # moments[:,1] -= moments_update
         moments_update[:] = np.array([self.zeroth_moments[row_idx],
                                       self.first_moments[row_idx],
                                       self.second_moments[row_idx]])
         moments[:,0] += moments_update
         moments[:,1] -= moments_update
-
-        # moments[0,0] += self.zeroth_moments[row_idx]
-        # moments[1,0] += self.first_moments[row_idx]
-        # moments[2,0] += self.second_moments[row_idx]
-
-        # moments[0,1] -= self.zeroth_moments[row_idx]
-        # moments[1,1] -= self.first_moments[row_idx]
-        # moments[2,1] -= self.second_moments[row_idx]
 
     def compute_risk(self, moments):
         moments[np.isclose(moments,0)] = 0
@@ -200,6 +193,6 @@ def main():
 if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import *
-    import cProfile
-    cProfile.run('main()', sort='tottime')
-    # main()
+    # import cProfile
+    # cProfile.run('main()', sort='tottime')
+    main()
