@@ -1,5 +1,6 @@
 import numpy as np
 from warnings import warn
+from time import time
 
 
 class BoostingRound:
@@ -11,6 +12,8 @@ class BoostingRound:
         self._train_acc = 0
         self.train_acc_was_set_this_round = True
         self.valid_acc = None
+        self.start_time = 0
+        self.end_time = 0
 
     def __str__(self):
 
@@ -26,30 +29,34 @@ class BoostingRound:
         if self.valid_acc is not None:
             v_acc = 'val accuracy: {:.3f}'.format(self.valid_acc)
             output.append(v_acc)
-        
+
+        output.append(f'Round time: {self.end_time-self.start_time:.2f}s')
+
         return ' | '.join(output)
 
     def warn_train_acc_was_not_updated(self):
         if not self.train_acc_was_set_this_round:
             warn("The train_acc attribute should be set for the iterator to work properly. Otherwise, the 'patience' mechanism will not work, and the iteration will not stop if the training accuracy reaches 1.0.")
-    
+
     @property
     def train_acc(self):
         return self._train_acc
-    
+
     @train_acc.setter
     def train_acc(self, train_acc):
         self.train_acc_was_set_this_round = True
         self._train_acc = train_acc
-    
+        self.end_time = time()
+
     @property
     def t(self):
         return self._t
-    
+
     @t.setter
     def t(self, t):
         self.train_acc_was_set_this_round = False # On a new round, train_acc is not yet updated.
         self._t = t
+        self.start_time = time()
 
 
 class BoostIterator:
@@ -73,10 +80,10 @@ class BoostIterator:
 
         if T == -1 and patience is None:
             warn("Beware that the values of 'T=-1' and 'patience=None' may result in an infinite loop if the algorithm does not converge to a training accuracy of 1.0.")
-    
+
     def __iter__(self):
         return self
-    
+
     def __next__(self):
         if self.t == 0: # On first round, no check needed.
             self.t = self.boosting_round.t = 1
@@ -84,7 +91,7 @@ class BoostIterator:
 
         if self.T != -1 and self.t >= self.T:
             raise StopIteration
-        
+
         if self.boosting_round.train_acc_was_set_this_round:
             self.update_best_train_acc()
 
@@ -95,11 +102,11 @@ class BoostIterator:
                 raise StopIteration
         else:
             self.boosting_round.warn_train_acc_was_not_updated()
-        
+
         self.t += 1
         self.boosting_round.t = self.t
         return self.boosting_round
-    
+
     def update_best_train_acc(self):
         if self.boosting_round.train_acc > self.best_train_acc:
             self.best_train_acc = self.boosting_round.train_acc
@@ -120,7 +127,7 @@ if __name__ == '__main__':
         # br.train_acc = a
         br.valid_acc = a
         print(br)
-        
+
         safe += 1
         if safe >= 100:
             break
