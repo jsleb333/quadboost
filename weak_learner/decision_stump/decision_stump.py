@@ -95,8 +95,8 @@ class MulticlassDecisionStump:
 
         'sorted_X' and 'sorted_X_idx' should be passed as keyword arguments to the 'fit' method to speed up the algorithm.
         """
+        X = X.reshape((X.shape[0],-1))
         n_examples, n_features = X.shape
-        X = X.reshape((n_examples,-1))
         sorted_X_idx = np.argsort(X, axis=0)
         sorted_X = X[sorted_X_idx, range(n_features)]
 
