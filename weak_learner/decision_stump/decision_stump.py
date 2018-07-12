@@ -50,6 +50,7 @@ class MulticlassDecisionStump:
 
         return self
 
+    @timed
     def parallel_find_stump(self, X, Y, W):
         """
         Parallelizes the processes.
@@ -157,7 +158,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 10_000
+    m = 60_000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
