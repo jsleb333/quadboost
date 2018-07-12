@@ -51,7 +51,6 @@ class MulticlassDecisionStump:
 
         return self
 
-    @timed
     def parallel_find_stump(self, sorted_X, sorted_X_idx, Y, W, n_jobs):
         """
         Parallelizes the processes.
@@ -115,7 +114,6 @@ class StumpFinder:
         self.first_moments = W*Y
         self.second_moments = self.first_moments*Y
 
-    @timed
     def find_stump(self, stumps_queue, sub_idx=(None,)):
         """
         Algorithm to the best stump within the sub array of X specfied by the bounds 'sub_idx'.
@@ -184,7 +182,8 @@ def main():
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
-    wl.fit(X, Y, n_jobs=4)
+    sorted_X, sorted_X_idx = wl.sort_data(X)
+    wl.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
