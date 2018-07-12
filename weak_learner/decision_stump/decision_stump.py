@@ -93,6 +93,7 @@ class StumpFinder:
         self.Y = Y
         self.W = W
 
+    @timed
     def find_stump(self, sub_idx=(None,)):
         """
         Algorithm to the best stump within the sub array of X specfied by the bounds 'sub_idx'.
