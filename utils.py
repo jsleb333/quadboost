@@ -66,28 +66,26 @@ def split_int(n, k):
 def haar_projection(images):
     """
     Recursively computes the Haar projection of an array of 2D images.
-    Currently only supports images size that are powers of 2.
+    Uses a non-standard Haar projection for sizes that are not powers of 2.
     """
     projected_images = images.astype(dtype=float)
     m, N, _ = images.shape
     while N > 1:
         projector = haar_projector(N)
         np.matmul(np.matmul(projector, projected_images[:,:N,:N]), projector.T, out=projected_images[:,:N,:N])
-        N = N//2
+        N = N//2 if N%2 == 0 else N//2+1
+        # print(N)
     return projected_images
 
 
 def haar_projector(N):
     """
-    Generates the Haar projector of size N (N must be a power of 2).
+    Generates the Haar projector of size N.
     """
     projection = np.zeros((N,N))
-    for i in range(N//2):
-        projection[i,2*i] = 1
-        projection[i,2*i+1] = 1
-
-        projection[i+N//2,2*i] = 1
-        projection[i+N//2,2*i+1] = -1
+    for i in range(N):
+        projection[i//2,i] = 1
+        projection[(i+N)//2,i] = 1 if (i+N)%2 == 0 else -1
     projection /= 2
 
     return projection
@@ -118,5 +116,4 @@ def timed(func):
 from mnist_dataset import MNISTDataset
 from label_encoder import OneHotEncoder
 if __name__ == '__main__':
-    from weak_learner.decision_stump_parallelized import main
-    main()
+    print(haar_projector(7).T.dot(haar_projector(7)))
