@@ -67,15 +67,15 @@ def visualize_mnist(X, Y):
 
 class MNISTDataset:
     def __init__(self, Xtr, Ytr, Xts=None, Yts=None):
-        self.Xtr = Xtr
+        self.Xtr = Xtr.reshape(Xtr.shape[0],-1)
         self.Ytr = Ytr
-        self.Xts = Xts
+        self.Xts = Xts.reshape(Xts.shape[0],-1)
         self.Yts = Yts
 
         self.side_size = 28
-        
+
         self.scaler = StandardScaler()
-        self.scaler.fit(self.Xtr)    
+        self.scaler.fit(self.Xtr)
 
     @property
     def mean(self):
@@ -88,7 +88,7 @@ class MNISTDataset:
 
     def get_train(self, center=True, reduce=False):
         return self._get_data(self.Xtr, self.Ytr, center, reduce)
-    
+
     def get_test(self, center=True, reduce=False):
         if self.Xts is None:
             return self.Xts, self.Yts
@@ -105,7 +105,7 @@ class MNISTDataset:
             elif not center and reduce:
                 X = StandardScaler(with_mean=False).fit(self.Xtr).transform(X)
         return X.reshape((-1, self.side_size, self.side_size)), Y
-    
+
     def get_train_test(self, center=True, reduce=False):
         return self.get_train(center, reduce), self.get_test(center, reduce)
 
@@ -114,14 +114,15 @@ class MNISTDataset:
     def load(filename='mnist.pkl', filepath='./data/'):
         with open(filepath + filename, 'rb') as file:
             return pkl.load(file)
-    
+
 
     def save(self, filename='mnist.pkl', filepath='./data/'):
         os.makedirs(filepath, exist_ok=True)
         with open(filepath + filename, 'wb') as file:
             pkl.dump(self, file)
+        print('saved')
 
-    
+
     def test(self):
         print(self.mean.shape, self.std.shape)
         self.get_train_test(center=True, reduce=True)
@@ -146,6 +147,6 @@ if __name__ == '__main__':
 
     t1 = time()
     print(t1-t0, 'sec')
-    
+
 
     # visualize_mnist(Xtr[:5], Ytr[:5])
