@@ -10,7 +10,7 @@ def to_one_hot(Y):
     Y_one_hot = np.zeros((len(Y), n_classes))
     for i, label in enumerate(Y):
         Y_one_hot[i,label] = 1
-    
+
     return Y_one_hot
 
 
@@ -20,7 +20,7 @@ def compute_subplots_shape(N, aspect_ratio=9/16):
     """
     if aspect_ratio == 0:
         return N, 1
-    
+
     n = int(np.sqrt(aspect_ratio*N))
     m = int(np.sqrt(1/aspect_ratio*N))
 
@@ -36,7 +36,7 @@ def compute_subplots_shape(N, aspect_ratio=9/16):
 def make_fig_axes(N, aspect_ratio=9/16):
     n, m = compute_subplots_shape(N)
     fig, axes = plt.subplots(n, m)
-    
+
     # Reshaping axes
     if n == 1 and m == 1:
         axes = [[axes]]
@@ -52,30 +52,28 @@ def make_fig_axes(N, aspect_ratio=9/16):
 def haar_projection(images):
     """
     Recursively computes the Haar projection of an array of 2D images.
-    Currently only supports images size that are powers of 2.
+    Uses a non-standard Haar projection for sizes that are not powers of 2.
     """
     projected_images = images.astype(dtype=float)
     m, N, _ = images.shape
     while N > 1:
         projector = haar_projector(N)
         np.matmul(np.matmul(projector, projected_images[:,:N,:N]), projector.T, out=projected_images[:,:N,:N])
-        N = N//2
+        N = N//2 if N%2 == 0 else N//2+1
+        # print(N)
     return projected_images
 
 
 def haar_projector(N):
     """
-    Generates the Haar projector of size N (N must be a power of 2). 
+    Generates the Haar projector of size N.
     """
     projection = np.zeros((N,N))
-    for i in range(N//2):
-        projection[i,2*i] = 1
-        projection[i,2*i+1] = 1
-
-        projection[i+N//2,2*i] = 1
-        projection[i+N//2,2*i+1] = -1
+    for i in range(N):
+        projection[i//2,i] = 1
+        projection[(i+N)//2,i] = 1 if (i+N)%2 == 0 else -1
     projection /= 2
-    
+
     return projection
 
 
@@ -96,4 +94,4 @@ def timed(func):
 
 
 if __name__ == '__main__':
-    pass
+    print(haar_projector(7).T.dot(haar_projector(7)))
