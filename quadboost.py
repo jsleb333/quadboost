@@ -172,9 +172,10 @@ class QuadBoostMHCR(QuadBoost):
 
 @timed
 def main():
-    mnist = MNISTDataset.load()
+    mnist = MNISTDataset.load('haar_mnist.pkl')
+    # mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 10_000
+    m = 60_000
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
@@ -187,7 +188,7 @@ def main():
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], T=3, patience=2,
+    qb.fit(Xtr[:m], Ytr[:m], T=-1, patience=10,
            X_val=Xts, Y_val=Yts,
            n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     # qb.visualize_coef()

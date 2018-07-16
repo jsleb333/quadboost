@@ -24,3 +24,7 @@ def show_im(images):
 
 haar_mnist = MNISTDataset(haar_Xtr, Ytr, haar_Xts, Yts)
 haar_mnist.save(filename='haar_mnist.pkl', filepath='./data/')
+
+haar_mnist = MNISTDataset.load('haar_mnist.pkl')
+(Xtr, Ytr), (Xts, Yts) = haar_mnist.get_train_test(center=False, reduce=False)
+show_im(Xtr[:5])
