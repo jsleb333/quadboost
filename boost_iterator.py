@@ -5,7 +5,7 @@ from time import time
 
 class BoostingRound:
     """
-    Class that stores information about the current boosting round, such as the number of the iteration 't' and the training and validation accuracies. The class contains a flag to indicate if the training accuracy have been updated for the current boosting round, and provides a formatting of the informations in the __str__ method.
+    Class that stores information about the current boosting round, such as the number of the iteration 'round_number' and the training and validation accuracies. The class contains a flag to indicate if the training accuracy have been updated for the current boosting round, and provides a formatting of the informations in the __str__ method.
     """
     def __init__(self):
         self.round_log = {'round':0,
@@ -56,11 +56,11 @@ class BoostingRound:
         self.round_log['valid_acc'] = valid_acc
 
     @property
-    def t(self):
+    def round_number(self):
         return self.round_log['round']
 
-    @t.setter
-    def t(self, round_number):
+    @round_number.setter
+    def round_number(self, round_number):
         self.train_acc_was_set_this_round = False # On a new round, train_acc is not yet updated.
         self.round_log['round'] = round_number
         self.start_time = time()
@@ -69,34 +69,34 @@ class BoostingRound:
 class BoostIterator:
     """
     Class that implements an iterator to boost in QuadBoost. The iterator yields a BoostingRound object that should be updated at each boosting round with the training accuracy. The iterator stops the iteration when:
-        - the maximum number of boosting rounds 'T' has been reached (if T is not -1)
+        - the maximum number of boosting rounds has been reached (if 'max_round_number' is not -1)
         - the training accuracy did not improve for 'patience' rounds (if patience is not None)
         - the training accuracy has reached 1.0
     """
-    def __init__(self, T, patience):
+    def __init__(self, max_round_number, patience):
         """
-        T (int, optional, default=-1): Number of boosting rounds. If T=-1, the algorithm will boost indefinitely, until reaching a training accuracy of 1.0, or until the training accuracy does not improve for 'patience' consecutive boosting rounds.
-        patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until T iterations.
+        max_round_number (int, optional, default=-1): Number of boosting rounds. If max_round_number=-1, the algorithm will boost indefinitely, until reaching a training accuracy of 1.0, or until the training accuracy does not improve for 'patience' consecutive boosting rounds.
+        patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until max_round_number iterations.
         """
-        self.T = T
-        self.t = 0
+        self.max_round_number = max_round_number
+        self.round_number = 0
         self.best_train_acc = -1
         self.rounds_since_no_improvements = 0
         self.patience = patience
         self.boosting_round = BoostingRound()
 
-        if T == -1 and patience is None:
-            warn("Beware that the values of 'T=-1' and 'patience=None' may result in an infinite loop if the algorithm does not converge to a training accuracy of 1.0.")
+        if max_round_number == -1 and patience is None:
+            warn("Beware that the values of 'max_round_number=-1' and 'patience=None' may result in an infinite loop if the algorithm does not converge to a training accuracy of 1.0.")
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self.t == 0: # On first round, no check needed.
-            self.t = self.boosting_round.t = 1
+        if self.round_number == 0: # On first round, no check needed.
+            self.round_number = self.boosting_round.round_number = 1
             return self.boosting_round
 
-        if self.T != -1 and self.t >= self.T:
+        if self.max_round_number != -1 and self.round_number >= self.max_round_number:
             raise StopIteration
 
         if self.boosting_round.train_acc_was_set_this_round:
@@ -110,8 +110,8 @@ class BoostIterator:
         else:
             self.boosting_round.warn_train_acc_was_not_updated()
 
-        self.t += 1
-        self.boosting_round.t = self.t
+        self.round_number += 1
+        self.boosting_round.round_number = self.round_number
         return self.boosting_round
 
     def update_best_train_acc(self):
@@ -125,14 +125,14 @@ class BoostIterator:
 if __name__ == '__main__':
     a = 0
     safe = 0
-    T = 10
+    max_round_number = 10
     patience = None
-    bi = BoostIterator(T, patience)
+    bi = BoostIterator(max_round_number, patience)
     for br in bi:
         # if safe == 0:
         a += .1
         br.train_acc = a
-        br.valid_acc = a
+        # br.valid_acc = a
         print(br)
 
         safe += 1
