@@ -106,7 +106,7 @@ class BoostManager:
             self.callbacks.append(BreakOnPerfectTrainAccuracy(self))
 
         if self.callbacks.break_callbacks == []:
-            warn("The algorithm will loop indefinitelty since no break conditions were given.")
+            warn("The algorithm will loop indefinitelty since no break conditions were given.chan")
 
         self.callbacks.on_fit_begin()
 
