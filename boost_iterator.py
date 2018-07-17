@@ -25,7 +25,7 @@ class BoostingRound:
             self.warn_train_acc_was_not_updated()
             output.append('Train acc: ?.???')
 
-        if self.round_log['valid_acc'] is not None:
+        if self.valid_acc is not None:
             output.append('Valid acc: {valid_acc:.3f}')
 
         if self.end_time is not None:
@@ -64,6 +64,12 @@ class BoostingRound:
         self.train_acc_was_set_this_round = False # On a new round, train_acc is not yet updated.
         self.round_log['round'] = round_number
         self.start_time = time()
+    
+    def log(self):
+        output = [self.round_number]
+        if self.train_acc_was_set_this_round: output.append(self.train_acc)
+        if self.valid_acc is not None: output.append(self.valid_acc)
+        return output
 
 
 class BoostIterator:
@@ -132,7 +138,7 @@ if __name__ == '__main__':
         # if safe == 0:
         a += .1
         br.train_acc = a
-        # br.valid_acc = a
+        br.valid_acc = a
         print(br)
 
         safe += 1
