@@ -38,5 +38,6 @@ The module `weak_learner` provides some weak learners to be used with QuadBoost.
 
 The file `label_encoder.py` provides an implementation of LabelEncoder and inherited classes. These LabelEncoder can transform a set of labels into vectors encoding the classes, such as _one-hot_ encoding or _all-pairs_ encodings. The class provides a method to encode and decode labels, and support custom encodings. Examples of such custom encodings are presented in the `encodings.json` file.
 
+The module `data_preprocessing` provides scripts to preprocess MNIST to extract features. Current version only implements 2D Haar wavelet transform on features.
 
-
+The file `boost_iterator.py` implements an iterator to handle the various ways of terminating the boosting process. It also provides a class that record some boosting info and print it to easily follow the progression of the algorithm.
