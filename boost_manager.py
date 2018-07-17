@@ -8,7 +8,7 @@ from callbacks import UpdateTrainAcc
 
 class BoostingRound:
     """
-    Class that stores information about the current boosting round, such as the number of the iteration 'round_number' and the training and validation accuracies. The class contains a flag to indicate if the training accuracy have been updated for the current boosting round, and provides a formatting of the informations in the __str__ method.
+    Class that stores information about the current boosting round, such as the number of the iteration 'round_number' and the training and validation accuracies. The class contains a flag to indicate if the training accuracy have been updated for the current boosting round, and provides a formatting of the informations in the __str__ method. It also provides a 'log' method to easily follow the progression of the boosting procedure.
     """
     def __init__(self):
         self.round_log = {'round':0,
@@ -77,10 +77,14 @@ class BoostingRound:
 
 class BoostManager:
     """
-    Class that implements an iterator to boost in QuadBoost. The iterator yields a BoostingRound object that should be updated at each boosting round with the training accuracy. The iterator stops the iteration when:
-        - the maximum number of boosting rounds has been reached (if 'max_round_number' is not -1)
-        - the training accuracy did not improve for 'patience' rounds (if patience is not None)
-        - the training accuracy has reached 1.0
+    Class that manages the QuadBoost algorithm. Its goal is 2 sided:
+        - Handles callbacks at 4 moments in the procedures: on_fit_begin, on_fit_end, on_boosting_round_begin, on_boosting_round_end;
+        - Handles iteration of the boosting algorithm since these are closely related to callbacks.
+
+    The iteration is managed with BreakCallbacks which raise a StopIteration exception on_boosting_round_begin or on_boosting_round_end when a condition is not satisfied.
+    An iteration procedure can be launched by calling the 'iterate' method.
+
+    Boosting rounds info (training accuracy, validation accuracy, round number and time) are handle in a BoostingRound object which is returned by the iterator.
     """
     def __init__(self, boost_model=None, callbacks=None):
         """
@@ -96,6 +100,15 @@ class BoostManager:
         return self
 
     def iterate(self, max_round_number=None, patience=None, break_on_perfect_train_acc=True):
+        """
+        Initialize an iteration procedure to boost in QuadBoost. The iterator is itself and yields a BoostingRound object that should be updated at each boosting round with the training accuracy. The iterator stops the iteration when:
+            - the maximum number of boosting rounds has been reached (if 'max_round_number' is not None)
+            - the training accuracy did not improve for 'patience' rounds (if patience is not None)
+            - the training accuracy has reached 1.0
+        Break conditions are handled through callbacks.
+
+        The callback 'on_fit_begin' is called here.
+        """
         self.boosting_round.round_number = 0
 
         if max_round_number:
@@ -113,6 +126,11 @@ class BoostManager:
         return self
 
     def __next__(self):
+        """
+        Steps to next iteration. Callbacks 'on_boosting_round_begin', 'on_boosting_round_end' and 'on_fit_end' are called here.
+
+        Returns a BoostingRound object to be updated with train_acc and valid_acc.
+        """
         try:
             if self.boosting_round.round_number != 0:
                 self.callbacks.on_boosting_round_end()
