@@ -50,7 +50,7 @@ class QuadBoost:
 
         residue = encoded_Y - self.f0
 
-        boost_manager = BoostManager(self)
+        boost_manager = BoostManager(self, callbacks)
 
         # Boosting algorithm
         for boosting_round in boost_manager.iterate(max_round_number,
