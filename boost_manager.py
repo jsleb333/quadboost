@@ -82,15 +82,14 @@ class BoostManager:
         - the training accuracy did not improve for 'patience' rounds (if patience is not None)
         - the training accuracy has reached 1.0
     """
-    def __init__(self, boost_model):
+    def __init__(self, boost_model, callbacks):
         """
         boost_model (QuadBoost object): Reference to the QuadBoost object to manage.
         max_round_number (int, optional, default=-1): Number of boosting rounds. If max_round_number=-1, the algorithm will boost indefinitely, until reaching a training accuracy of 1.0, or until the training accuracy does not improve for 'patience' consecutive boosting rounds.
         patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until max_round_number iterations.
         """
         self.boost_model = boost_model
-        self.best_train_acc = -1
-        self.callbacks = CallbackList([UpdateTrainAcc(self)])
+        self.callbacks = CallbackList(callbacks)
         self.boosting_round = BoostingRound()
 
     def __iter__(self):
