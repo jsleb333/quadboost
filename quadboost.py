@@ -20,7 +20,6 @@ class QuadBoost:
         self.weak_predictors = []
         self.weak_predictors_weights = []
 
-
     def fit(self, X, Y, T=-1, f0=None, X_val=None, Y_val=None, patience=10, **kwargs):
         """
         X (Array of shape (n_examples, ...)): Examples.
@@ -46,7 +45,7 @@ class QuadBoost:
         residue = encoded_Y - self.f0
 
         # Boosting algorithm
-        for boosting_round in BoostIterator(T, patience):
+        for boosting_round in BoostIterator(max_round_number=T, patience=patience):
             residue, weak_prediction = self._boost(X, residue, weights, **kwargs)
 
             # wp_acc = acc_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
@@ -61,7 +60,6 @@ class QuadBoost:
         if self.weak_predictors_weights == []:
             self.weak_predictors_weights = [np.array([1])]*len(self.weak_predictors)
 
-
     def _boost(self, X, residue, weights, **kwargs):
         """
         Should implements one round of boosting.
@@ -69,7 +67,6 @@ class QuadBoost:
         Should append self.weak_predictors with a fitted self.weak_learner.
         """
         raise NotImplementedError
-
 
     def predict(self, X):
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
@@ -79,11 +76,9 @@ class QuadBoost:
 
         return self.encoder.decode_labels(encoded_Y_pred)
 
-
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
         return accuracy_score(y_true=Y, y_pred=Y_pred)
-
 
     def visualize_coef(self):
         fig, axes = make_fig_axes(self.encoder.encoding_dim)
@@ -95,11 +90,9 @@ class QuadBoost:
         plt.get_current_fig_manager().window.showMaximized()
         plt.show()
 
-
     @property
     def coef_(self):
         return self._compute_coef()
-
 
     def _compute_coef(self):
         coefs = [wp_w.reshape(-1,1)*wp.coef_ for wp_w, wp in zip(self.weak_predictors_weights, self.weak_predictors)]
@@ -114,7 +107,6 @@ class QuadBoostMH(QuadBoost):
         encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
         """
         super().__init__(weak_learner, encoder)
-
 
     def _boost(self, X, residue, weights, **kwargs):
         """
@@ -148,7 +140,6 @@ class QuadBoostMHCR(QuadBoost):
         """
         super().__init__(confidence_rated_weak_learner, encoder)
 
-
     def _boost(self, X, residue, weights, **kwargs):
         """
         Implements one round of boosting.
@@ -175,7 +166,7 @@ def main():
     mnist = MNISTDataset.load('haar_mnist.pkl')
     # mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 60_000
+    m = 1_000
 
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
@@ -188,9 +179,9 @@ def main():
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], T=-1, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], T=3, patience=10,
            X_val=Xts, Y_val=Yts,
-           n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+           n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     # qb.visualize_coef()
 
 
