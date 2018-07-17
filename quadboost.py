@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
-from boost_iterator import BoostIterator
+from boost_manager import BoostManager
 from utils import *
 
 
@@ -20,16 +20,22 @@ class QuadBoost:
         self.weak_predictors = []
         self.weak_predictors_weights = []
 
-    def fit(self, X, Y, T=-1, f0=None, X_val=None, Y_val=None, patience=10, **kwargs):
+    def fit(self, X, Y, f0=None,
+            max_round_number=None, patience=None, break_on_perfect_train_acc=False,
+            X_val=None, Y_val=None,
+            callbacks=None,
+            **weak_learner_fit_kwargs):
         """
         X (Array of shape (n_examples, ...)): Examples.
         Y (Iterable of 'n_examples' elements): Labels for the examples X. Y is encoded with the encode_labels method if one is provided, else it is transformed as one-hot vectors.
-        T (int, optional, default=-1): Number of boosting rounds. If T=-1, the algorithm will boost indefinitely, until reaching a training accuracy of 1.0, or until the training accuracy does not improve for 'patience' consecutive boosting rounds.
         f0 (Array of shape (encoding_dim,), optional, default=None): Initial prediction function. If None, f0 is set to 0.
+        max_round_number (int, optional, default=-1): Maximum number of boosting rounds. If None, the algorithm will boost indefinitely, until reaching a perfect training accuracy (if True), or until the training accuracy does not improve for 'patience' consecutive boosting rounds (if not None).
+        patience (int, optional, default=None): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If None, the boosting rounds will continue until max_round_number iterations (if not None).
+        break_on_perfect_train_acc (Boolean, optional, default=False): If True, it will stop the iterations if a perfect train accuracy of 1.0 is achieved.
         X_val (Array of shape (n_val, ...), optional, default=None): Validation examples. If not None, the validation accuracy will be evaluated at each boosting round.
         Y_val (Iterable of 'n_val' elements, optional, default=None): Validation labels for the examples X_val. If not None, the validation accuracy will be evaluated at each boosting round.
-        patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until T iterations.
-        kwargs: Keyword arguments to pass to the fit method of the weak learner.
+        callbacks (Iterable of Callback objects, optional, default=None): Callbacks objects to be called at some specific step of the training procedure to execute something. Ending conditions of the boosting iteration are handled with BreakCallbacks. If callbacks contains BreakCallbacks and terminating conditions (max_round_number, patience, break_on_perfect_train_acc) are not None, all conditions will be checked at each round and the first that is not verified will stop the iteration.
+        weak_learner_fit_kwargs: Keyword arguments to pass to the fit method of the weak learner.
         """
         # Encodes the labels
         if self.encoder == None:
@@ -44,12 +50,15 @@ class QuadBoost:
 
         residue = encoded_Y - self.f0
 
-        # Boosting algorithm
-        for boosting_round in BoostIterator(max_round_number=T, patience=patience):
-            residue, weak_prediction = self._boost(X, residue, weights, **kwargs)
+        boost_manager = BoostManager(self)
 
-            # wp_acc = acc_score(y_true=Y, y_pred=self.encoder.decode_labels(weak_prediction))
-            # print('weak predictor acc:' + str(wp_acc))
+        # Boosting algorithm
+        for boosting_round in boost_manager.iterate(max_round_number,
+                                                    patience,
+                                                    break_on_perfect_train_acc):
+
+            residue, weak_prediction = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
+
             boosting_round.train_acc = self.evaluate(X, Y)
             if X_val is not None and Y_val is not None:
                 boosting_round.valid_acc = self.evaluate(X_val, Y_val)
