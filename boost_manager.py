@@ -98,15 +98,15 @@ class BoostManager:
     def iterate(self, max_round_number=None, patience=None, break_on_perfect_train_acc=True):
         self.boosting_round.round_number = 0
 
-        if max_round_number == None and patience is None:
-            warn("Beware that the values of 'max_round_number=None' and 'patience=None' may result in an infinite loop if the algorithm does not converge to a training accuracy of 1.0.")
-
         if max_round_number:
             self.callbacks.append(BreakOnMaxRound(self, max_round_number=max_round_number))
         if patience:
             self.callbacks.append(BreakOnPlateau(self, patience=patience))
         if break_on_perfect_train_acc:
             self.callbacks.append(BreakOnPerfectTrainAccuracy(self))
+
+        if self.callbacks.break_callbacks == []:
+            warn("The algorithm will loop indefinitelty since no break conditions were given.")
 
         self.callbacks.on_fit_begin()
 
