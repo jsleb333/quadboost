@@ -8,31 +8,30 @@ class BoostingRound:
     Class that stores information about the current boosting round, such as the number of the iteration 't' and the training and validation accuracies. The class contains a flag to indicate if the training accuracy have been updated for the current boosting round, and provides a formatting of the informations in the __str__ method.
     """
     def __init__(self):
-        self._t = 0
-        self._train_acc = 0
+        self.round_log = {'round':0,
+                          'train_acc':0,
+                          'valid_acc':None}
         self.train_acc_was_set_this_round = True
-        self.valid_acc = None
-        self.start_time = 0
-        self.end_time = 0
+        self.start_time = None
+        self.end_time = None
 
     def __str__(self):
 
-        boosting_round = 'Boosting round {t:03d}'.format(t=self.t)
+        output = ['Boosting round {round:03d}']
 
         if self.train_acc_was_set_this_round:
-            t_acc = 'train accuracy: {train_acc:.3f}'.format(train_acc=self.train_acc)
+            output.append('Train acc: {train_acc:.3f}')
         else:
             self.warn_train_acc_was_not_updated()
-            t_acc = 'train accuracy: ?.???'
+            output.append('Train acc: ?.???')
 
-        output = [boosting_round, t_acc]
-        if self.valid_acc is not None:
-            v_acc = 'val accuracy: {:.3f}'.format(self.valid_acc)
-            output.append(v_acc)
+        if self.round_log['valid_acc'] is not None:
+            output.append('Valid acc: {valid_acc:.3f}')
 
-        output.append(f'Round time: {self.end_time-self.start_time:.2f}s')
-
-        return ' | '.join(output)
+        if self.end_time is not None:
+            output.append(f'Time: {self.end_time-self.start_time:.2f}s')
+        
+        return ' | '.join(output).format(**self.round_log)
 
     def warn_train_acc_was_not_updated(self):
         if not self.train_acc_was_set_this_round:
@@ -40,22 +39,30 @@ class BoostingRound:
 
     @property
     def train_acc(self):
-        return self._train_acc
+        return self.round_log['train_acc']
 
     @train_acc.setter
     def train_acc(self, train_acc):
         self.train_acc_was_set_this_round = True
-        self._train_acc = train_acc
+        self.round_log['train_acc'] = train_acc
         self.end_time = time()
 
     @property
+    def valid_acc(self):
+        return self.round_log['valid_acc']
+
+    @valid_acc.setter
+    def valid_acc(self, valid_acc):
+        self.round_log['valid_acc'] = valid_acc
+
+    @property
     def t(self):
-        return self._t
+        return self.round_log['round']
 
     @t.setter
-    def t(self, t):
+    def t(self, round_number):
         self.train_acc_was_set_this_round = False # On a new round, train_acc is not yet updated.
-        self._t = t
+        self.round_log['round'] = round_number
         self.start_time = time()
 
 
@@ -124,7 +131,7 @@ if __name__ == '__main__':
     for br in bi:
         # if safe == 0:
         a += .1
-        # br.train_acc = a
+        br.train_acc = a
         br.valid_acc = a
         print(br)
 
