@@ -24,7 +24,7 @@ class BreakOnPlateau(BreakCallback):
         super().__init__(manager)
         self.patience = patience
         self.rounds_since_no_improvements = 0
-        self.best_train_acc = 0
+        self.best_train_acc = -1
 
     def on_boosting_round_end(self):
         if self.manager.boosting_round.train_acc_was_set_this_round:
