@@ -15,8 +15,9 @@ class BreakOnMaxRound(BreakCallback):
         self.max_round_number = max_round_number
 
     def on_boosting_round_begin(self):
-        if self.max_round_number is not None and self.manager.round_number >= self.max_round_number:
-            raise StopIteration
+        if self.max_round_number is not None:
+            if self.manager.boosting_round.round_number >= self.max_round_number:
+                raise StopIteration
 
 
 class BreakOnPlateau(BreakCallback):
