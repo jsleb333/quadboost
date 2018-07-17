@@ -33,7 +33,7 @@ class BoostingRound:
 
         if self.end_time is not None:
             output.append(f'Time: {self.end_time-self.start_time:.2f}s')
-        
+
         return ' | '.join(output).format(**self.round_log)
 
     def warn_train_acc_was_not_updated(self):
@@ -67,7 +67,7 @@ class BoostingRound:
         self.train_acc_was_set_this_round = False # On a new round, train_acc is not yet updated.
         self.round_log['round'] = round_number
         self.start_time = time()
-    
+
     def log(self):
         output = [self.round_number]
         if self.train_acc_was_set_this_round: output.append(self.train_acc)
@@ -82,31 +82,40 @@ class BoostManager:
         - the training accuracy did not improve for 'patience' rounds (if patience is not None)
         - the training accuracy has reached 1.0
     """
-    def __init__(self, max_round_number, patience):
+    def __init__(self, boost_model):
         """
+        boost_model (QuadBoost object): Reference to the QuadBoost object to manage.
         max_round_number (int, optional, default=-1): Number of boosting rounds. If max_round_number=-1, the algorithm will boost indefinitely, until reaching a training accuracy of 1.0, or until the training accuracy does not improve for 'patience' consecutive boosting rounds.
         patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until max_round_number iterations.
         """
-        self.round_number = 0
+        self.boost_model = boost_model
         self.best_train_acc = -1
-        self.callbacks = CallbackList([
-            UpdateTrainAcc(self),
-            BreakOnMaxRound(self, max_round_number=max_round_number),
-            BreakOnPlateau(self, patience=patience),
-            BreakOnPerfectTrainAccuracy(self),
-            ])
+        self.callbacks = CallbackList([UpdateTrainAcc(self)])
         self.boosting_round = BoostingRound()
 
-        if max_round_number == -1 and patience is None:
-            warn("Beware that the values of 'max_round_number=-1' and 'patience=None' may result in an infinite loop if the algorithm does not converge to a training accuracy of 1.0.")
-
     def __iter__(self):
+        return self
+
+    def iterate(self, max_round_number=None, patience=None, break_on_perfect_train_acc=True):
+        self.boosting_round.round_number = 0
+
+        if max_round_number == None and patience is None:
+            warn("Beware that the values of 'max_round_number=None' and 'patience=None' may result in an infinite loop if the algorithm does not converge to a training accuracy of 1.0.")
+
+        if max_round_number:
+            self.callbacks.append(BreakOnMaxRound(self, max_round_number=max_round_number))
+        if patience:
+            self.callbacks.append(BreakOnPlateau(self, patience=patience))
+        if break_on_perfect_train_acc:
+            self.callbacks.append(BreakOnPerfectTrainAccuracy(self))
+
         self.callbacks.on_fit_begin()
+
         return self
 
     def __next__(self):
         try:
-            if self.round_number != 0:
+            if self.boosting_round.round_number != 0:
                 self.callbacks.on_boosting_round_end()
 
             self.callbacks.on_boosting_round_begin()
@@ -115,8 +124,7 @@ class BoostManager:
             self.callbacks.on_fit_end()
             raise
 
-        self.round_number += 1
-        self.boosting_round.round_number = self.round_number
+        self.boosting_round.round_number += 1
         return self.boosting_round
 
 
