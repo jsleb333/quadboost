@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 from boost_manager import BoostManager
+from callbacks import ModelCheckpoint
 from utils import *
 
 
@@ -172,25 +173,36 @@ class QuadBoostMHCR(QuadBoost):
 
 @timed
 def main():
+    ### Data loading
     mnist = MNISTDataset.load('haar_mnist.pkl')
     # mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 1_000
+    m = 100
 
+    ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
+    ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
     weak_learner = MulticlassDecisionStump()
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
+    ### Callbacks
+    ckpt = ModelCheckpoint(filename='best_test{step}.ckpt', dirname='./results', period=2,
+                           save_last=True,
+                           save_best_only=True)
+    callbacks = [ckpt]
+
+
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], T=3, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
            X_val=Xts, Y_val=Yts,
-           n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+           callbacks=callbacks,
+           n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     # qb.visualize_coef()
 
 
