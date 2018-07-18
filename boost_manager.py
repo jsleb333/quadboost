@@ -86,12 +86,12 @@ class BoostManager:
 
     Boosting rounds info (training accuracy, validation accuracy, round number and time) are handle in a BoostingRound object which is returned by the iterator.
     """
-    def __init__(self, boost_model=None, callbacks=None):
+    def __init__(self, model=None, callbacks=None):
         """
-        boost_model (QuadBoost object, optional): Reference to the QuadBoost object to manage. If the callbacks do not use the model, it can be omitted.
+        model (QuadBoost object, optional): Reference to the QuadBoost object to manage. If the callbacks do not use the model, it can be omitted.
         callbacks (Iterable of Callbacks objects, optional): Callbacks handles functions to call at specific time in the program. Usage examples: stop the iteration or save the model or the logs.
         """
-        self.boost_model = boost_model
+        self.model = model
         self.callbacks = CallbackList(manager=self, callbacks=callbacks or [])
         self.boosting_round = BoostingRound()
 

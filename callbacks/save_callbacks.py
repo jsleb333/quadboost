@@ -36,8 +36,8 @@ class SaveCallback(Callback):
             self._save(self.filedir, *args, **kwargs)
     
     def _atomic_save(self, *args, **kwargs):
+        self._save(self.tmp_filedir, *args, **kwargs)
         try:
-            self._save(self.tmp_filedir, *args, **kwargs)
             os.replace(self.tmp_filedir, self.filedir)
             atomic_save_successful = True
         except OSError:
@@ -52,7 +52,7 @@ class SaveCallback(Callback):
         return self.dirname + '/' + self.format_filename(self.filename)
     
     @property
-    def tmp_filedir(self)
+    def tmp_filedir(self):
         return self.dirname + '/tmp_' + self.format_filename(self.filename)
     
     def format_filename(self, filename):
@@ -60,7 +60,7 @@ class SaveCallback(Callback):
 
 
 class PeriodicSaveCallback(SaveCallback):
-    def __init__(self, *args, **kwargs, period=1):
+    def __init__(self, *args, period=1, **kwargs):
         super().__init__(*args, **kwargs)
         self.n_calls = 0
         self.period = period
@@ -71,8 +71,9 @@ class PeriodicSaveCallback(SaveCallback):
             super().save(*args, **kwargs)
 
 
-class PickleSave:
-    def __init__(self, protocol=pkl.HIGHEST_PROTOCOL):
+class PickleSave(SaveCallback):
+    def __init__(self, *args, protocol=pkl.HIGHEST_PROTOCOL, **kwargs):
+        super().__init__(*args, **kwargs)
         self.protocol = protocol
 
     def _save_file(self, file, obj):
@@ -113,11 +114,11 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
         self.save_checkpoint_every_period = save_checkpoint_every_period
 
     def format_filename(self, filename):
-        return filename.format(step=self.manager.boosting_round.round)
+        return filename.format(step=self.manager.boosting_round.round_number)
 
     def on_boosting_round_end(self):
-        if save_checkpoint_every_period:
-            if save_best_only:
+        if self.save_checkpoint_every_period:
+            if self.save_best_only:
                 if self.manager.boosting_round.round_log[monitor] > self.current_best:
                     self.current_best = self.manager.boosting_round.round_log[monitor]
                     self.save(self.manager.model)
@@ -125,8 +126,8 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
                 self.save(self.manager.model)
     
     def on_fit_end(self):
-        if save_last:
-            if save_best_only:
+        if self.save_last:
+            if self.save_best_only:
                 if self.manager.boosting_round.round_log[monitor] > self.current_best:
                     self.current_best = self.manager.boosting_round.round_log[monitor]
                     self.save(self.manager.model, override_period=True)

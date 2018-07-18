@@ -8,11 +8,9 @@ class CallbackList:
     def __init__(self, manager=None, callbacks=list()):
         self.break_callbacks = []
         self.callbacks = []
+        self.manager = manager
 
         for callback in callbacks: self.append(callback)
-
-        self._manager = manager
-        if manager is not None: self.manager = manager
     
     @property
     def manager(self):
