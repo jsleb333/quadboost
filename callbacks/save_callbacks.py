@@ -19,33 +19,6 @@ class SaveCallback(Callback):
 
         self.atomic_write = atomic_write
         self.open_mode = open_mode
-
-    def _save_file(self, file, *args, **kwargs):
-        raise NotImplementedError
-    
-    def _save(self, filedir, *args, **kwargs):
-        with open(filedir, self.open_mode) as file:
-            self._save_file(file, *args, **kwargs)
-
-    def save(self, *args, **kwargs):
-        atomic_save_successful = True
-        if self.atomic_write:
-            atomic_save_successful = self._atomic_save(*args, **kwargs)
-        
-        if not atomic_save_successful:
-            self._save(self.filedir, *args, **kwargs)
-    
-    def _atomic_save(self, *args, **kwargs):
-        self._save(self.tmp_filedir, *args, **kwargs)
-        try:
-            os.replace(self.tmp_filedir, self.filedir)
-            atomic_save_successful = True
-        except OSError:
-            warnings.warn(f"Could not replace '{self.filedir}' with '{self.tmp_filedir}'. Saving non-atomically instead.")
-            os.remove(self.tmp_filedir)
-            atomic_save_successful = False
-        
-        return atomic_save_successful
     
     @property
     def filedir(self):
@@ -57,6 +30,33 @@ class SaveCallback(Callback):
     
     def format_filename(self, filename):
         return filename
+
+    def save(self, *args, **kwargs):
+        atomic_save_successful = False
+        if self.atomic_write:
+            atomic_save_successful = self._atomic_save(*args, **kwargs)
+        
+        if not atomic_save_successful:
+            self._save(self.filedir, *args, **kwargs)
+
+    def _atomic_save(self, *args, **kwargs):
+        self._save(self.tmp_filedir, *args, **kwargs)
+        try:
+            os.replace(self.tmp_filedir, self.filedir)
+            atomic_save_successful = True
+        except OSError:
+            warnings.warn(f"Could not replace '{self.filedir}' with '{self.tmp_filedir}'. Saving non-atomically instead.")
+            os.remove(self.tmp_filedir)
+            atomic_save_successful = False
+        
+        return atomic_save_successful
+
+    def _save(self, filedir, *args, **kwargs):
+        with open(filedir, self.open_mode) as file:
+            self._save_file(file, *args, **kwargs)
+
+    def _save_file(self, file, *args, **kwargs):
+        raise NotImplementedError
 
 
 class PeriodicSaveCallback(SaveCallback):
