@@ -1,12 +1,11 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVR
-from weak_learner import cloner
+from weak_learner import Cloner
 from utils import *
 
 
-@cloner
-class MultidimSVR:
+class MultidimSVR(Cloner):
     """
     Implements a non-coupled multidimensional output SVM regressor based on the LinearSVR of sci-kit learn. This is highly non-efficient for large dataset. 
     """

@@ -6,13 +6,12 @@ from functools import partial
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import cloner
+from weak_learner import Cloner
 from weak_learner.decision_stump import Stump
 from utils import *
 
 
-@cloner
-class MulticlassDecisionStump:
+class MulticlassDecisionStump(Cloner):
     """
     Decision stump classifier with innate multiclass algorithm.
     It finds a stump to partition examples into 2 parts which minimizes the quadratic multiclass risk.

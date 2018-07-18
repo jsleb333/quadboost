@@ -1,11 +1,11 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
-from weak_learner import cloner
+from weak_learner import Cloner
 from utils import *
 
-@cloner
-class WLRidge(Ridge):
+
+class WLRidge(Cloner, Ridge):
     """
     Confidence rated Ridge classification based on a Ridge regression.
     Inherits from Ridge of the scikit-learn package.
@@ -37,8 +37,7 @@ class WLRidge(Ridge):
         return accuracy_score(y_true=Y, y_pred=Y_pred)
 
 
-@cloner
-class WLThresholdedRidge(Ridge):
+class WLThresholdedRidge(Cloner, Ridge):
     """
     Ridge classification based on a ternary vote (1, 0, -1) of a Ridge regression based on a threshold. For a threshold of 0, it is equivalent to take the sign of the prediction.
     Inherits from Ridge of the scikit-learn package.
@@ -80,7 +79,8 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    wl = WLThresholdedRidge(encoder=encoder)
+    # wl = WLThresholdedRidge(encoder=encoder)
+    wl = WLRidge(encoder=encoder)
     wl.fit(Xtr, Ytr)
     print(wl.evaluate(Xts, Yts))
 
