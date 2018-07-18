@@ -24,10 +24,11 @@ class CallbackList:
         for callback in self: callbacks.manager = manager
 
     def append(self, callback):
-            if issubclass(type(callback), BreakCallback):
-                self.break_callbacks.append(callback)
-            else:
-                self.callbacks.append(callback)
+        callback.manager = self.manager
+        if issubclass(type(callback), BreakCallback):
+            self.break_callbacks.append(callback)
+        else:
+            self.callbacks.append(callback)
 
     def __iter__(self):
         yield from self.callbacks

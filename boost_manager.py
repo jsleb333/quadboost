@@ -92,7 +92,7 @@ class BoostManager:
         callbacks (Iterable of Callbacks objects, optional): Callbacks handles functions to call at specific time in the program. Usage examples: stop the iteration or save the model or the logs.
         """
         self.boost_model = boost_model
-        self.callbacks = CallbackList(callbacks or [])
+        self.callbacks = CallbackList(manager=self, callbacks=callbacks or [])
         self.boosting_round = BoostingRound()
 
     def __iter__(self):
@@ -116,14 +116,14 @@ class BoostManager:
         self.boosting_round.round_number = 0
 
         if max_round_number:
-            self.callbacks.append(BreakOnMaxRound(self, max_round_number=max_round_number))
+            self.callbacks.append(BreakOnMaxRound(max_round_number=max_round_number))
         if patience:
-            self.callbacks.append(BreakOnPlateau(self, patience=patience))
+            self.callbacks.append(BreakOnPlateau(patience=patience))
         if break_on_perfect_train_acc:
-            self.callbacks.append(BreakOnPerfectTrainAccuracy(self))
+            self.callbacks.append(BreakOnPerfectTrainAccuracy())
 
         if self.callbacks.break_callbacks == []:
-            warn("The algorithm will loop indefinitelty since no break conditions were given.chan")
+            warn("The algorithm will loop indefinitelty since no break conditions were given.")
 
         self.callbacks.on_fit_begin()
 
