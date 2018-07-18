@@ -35,15 +35,13 @@ class CallbackList:
         yield from self.break_callbacks
 
     def on_fit_begin(self):
-        for callback in self.callbacks: callback.on_fit_begin()
+        for callback in self: callback.on_fit_begin()
 
     def on_fit_end(self):
-        for callback in self.callbacks: callback.on_fit_end()
+        for callback in self: callback.on_fit_end()
 
     def on_boosting_round_begin(self):
-        for callback in self.callbacks: callback.on_boosting_round_begin()
-        for callback in self.break_callbacks: callback.on_boosting_round_begin()
+        for callback in self: callback.on_boosting_round_begin()
 
     def on_boosting_round_end(self):
-        for callback in self.callbacks: callback.on_boosting_round_end()
-        for callback in self.break_callbacks: callback.on_boosting_round_end()
+        for callback in self: callback.on_boosting_round_end()
