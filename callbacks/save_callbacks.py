@@ -67,8 +67,11 @@ class PeriodicSaveCallback(SaveCallback):
     
     def save(self, *args, override_period=False, **kwargs):
         self.n_calls += 1
+        saved = False
         if self.n_calls % self.period == 0 or override_period:
             super().save(*args, **kwargs)
+            saved = True
+        return saved
 
 
 class PickleSave(SaveCallback):
@@ -119,17 +122,17 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
     def on_boosting_round_end(self):
         if self.save_checkpoint_every_period:
             if self.save_best_only:
-                if self.manager.boosting_round.round_log[monitor] > self.current_best:
-                    self.current_best = self.manager.boosting_round.round_log[monitor]
-                    self.save(self.manager.model)
+                if self.manager.boosting_round.round_log[self.monitor] > self.current_best:
+                    if self.save(self.manager.model):
+                        self.current_best = self.manager.boosting_round.round_log[self.monitor]
             else:
                 self.save(self.manager.model)
     
     def on_fit_end(self):
         if self.save_last:
             if self.save_best_only:
-                if self.manager.boosting_round.round_log[monitor] > self.current_best:
-                    self.current_best = self.manager.boosting_round.round_log[monitor]
+                if self.manager.boosting_round.round_log[self.monitor] > self.current_best:
+                    self.current_best = self.manager.boosting_round.round_log[self.monitor]
                     self.save(self.manager.model, override_period=True)
             else:
                 self.save(self.manager.model, override_period=True)
