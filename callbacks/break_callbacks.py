@@ -10,7 +10,7 @@ class BreakCallback(Callback):
 
 
 class BreakOnMaxRound(BreakCallback):
-    def __init__(self, manager, max_round_number=None):
+    def __init__(self, manager=None, max_round_number=None):
         super().__init__(manager)
         self.max_round_number = max_round_number
 
@@ -21,7 +21,7 @@ class BreakOnMaxRound(BreakCallback):
 
 
 class BreakOnPlateau(BreakCallback):
-    def __init__(self, manager, patience=None):
+    def __init__(self, manager=None, patience=None):
         super().__init__(manager)
         self.patience = patience
         self.rounds_since_no_improvements = 0
@@ -44,7 +44,7 @@ class BreakOnPlateau(BreakCallback):
 
 
 class BreakOnPerfectTrainAccuracy(BreakCallback):
-    def __init__(self, manager):
+    def __init__(self, manager=None):
         super().__init__(manager)
 
     def on_boosting_round_end(self):

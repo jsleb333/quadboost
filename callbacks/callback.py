@@ -1,7 +1,7 @@
 
 
 class Callback:
-    def __init__(self, manager):
+    def __init__(self, manager=None):
         self.manager = manager
     
     def on_fit_begin(self):

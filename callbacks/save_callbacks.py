@@ -9,12 +9,13 @@ from callbacks import Callback
 
 
 class SaveCallback(Callback):
-    def __init__(self, manager,
-                 filename, dirname='.',
+    def __init__(self, filename, dirname='.',
+                 manager=None,
                  atomic_write=True, open_mode='wb'):
         super().__init__(manager)
         self.filename = filename
         self.dirname = dirname
+        os.makedirs(dirname, exist_ok=True)
 
         self.atomic_write = atomic_write
         self.open_mode = open_mode

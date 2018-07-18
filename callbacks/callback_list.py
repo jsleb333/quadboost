@@ -5,12 +5,23 @@ from callbacks import Callback, BreakCallback
 
 
 class CallbackList:
-    def __init__(self, callbacks=list()):
-
+    def __init__(self, manager=None, callbacks=list()):
         self.break_callbacks = []
         self.callbacks = []
 
         for callback in callbacks: self.append(callback)
+
+        self._manager = manager
+        if manager is not None: self.manager = manager
+    
+    @property
+    def manager(self):
+        return self._manager
+    
+    @manager.setter
+    def manager(self, manager):
+        self._manager = manager
+        for callback in self: callbacks.manager = manager
 
     def append(self, callback):
             if issubclass(type(callback), BreakCallback):
