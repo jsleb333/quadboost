@@ -108,6 +108,11 @@ class BoostManager:
         Break conditions are handled through callbacks.
 
         The callback 'on_fit_begin' is called here.
+
+        Args:
+            max_round_number (int, optional, default=-1): Number of boosting rounds. If max_round_number=-1, the algorithm will boost indefinitely, until reaching a training accuracy of 1.0, or until the training accuracy does not improve for 'patience' consecutive boosting rounds.
+            patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until max_round_number iterations.
+            break_on_perfect_train_acc (Boolean, optional, default=True): If True, iteration will stop when a perfect training accuracy is reached.
         """
         self.boosting_round.round_number = 0
 
