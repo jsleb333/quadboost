@@ -88,9 +88,8 @@ class BoostManager:
     """
     def __init__(self, boost_model=None, callbacks=None):
         """
-        boost_model (QuadBoost object): Reference to the QuadBoost object to manage.
-        max_round_number (int, optional, default=-1): Number of boosting rounds. If max_round_number=-1, the algorithm will boost indefinitely, until reaching a training accuracy of 1.0, or until the training accuracy does not improve for 'patience' consecutive boosting rounds.
-        patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until max_round_number iterations.
+        boost_model (QuadBoost object, optional): Reference to the QuadBoost object to manage. If the callbacks do not use the model, it can be omitted.
+        callbacks (Iterable of Callbacks objects, optional): Callbacks handles functions to call at specific time in the program. Usage examples: stop the iteration or save the model or the logs.
         """
         self.boost_model = boost_model
         self.callbacks = CallbackList(callbacks or [])
