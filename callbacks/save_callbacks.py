@@ -68,9 +68,10 @@ class PeriodicSaveCallback(SaveCallback):
     def save(self, *args, override_period=False, **kwargs):
         self.n_calls += 1
         saved = False
-        if self.n_calls % self.period == 0 or override_period:
-            super().save(*args, **kwargs)
-            saved = True
+        if self.period is not None:
+            if self.n_calls % self.period == 0 or override_period:
+                super().save(*args, **kwargs)
+                saved = True
         return saved
 
 
