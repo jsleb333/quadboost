@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
-from boost_manager import BoostManager
-from callbacks import ModelCheckpoint
+from callbacks import BoostManager, ModelCheckpoint
 from utils import *
 
 
@@ -190,9 +189,11 @@ def main():
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
-    ckpt = ModelCheckpoint(filename='best_test{step}.ckpt', dirname='./results', period=2,
+    ckpt = ModelCheckpoint(filename='test{step}.ckpt', dirname='./results',
+                           period=2,
                            save_last=True,
-                           save_best_only=True)
+                        #    save_best_only=True,
+                           )
     callbacks = [ckpt]
 
 
@@ -200,7 +201,7 @@ def main():
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
            X_val=Xts, Y_val=Yts,
            callbacks=callbacks,
-           n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+           n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     # qb.visualize_coef()
 
 
