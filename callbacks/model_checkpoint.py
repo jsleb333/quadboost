@@ -1,7 +1,7 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import SaveCallback, PickleSave
+from callbacks import PeriodicSaveCallback, PickleSave
 
 
 class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
@@ -30,22 +30,22 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
         self.save_checkpoint_every_period = save_checkpoint_every_period
 
     def format_filename(self, filename):
-        return filename.format(step=self.manager.step.round_number)
+        return filename.format(step=self.manager.step_number+1)
 
     def on_step_end(self):
         if self.save_checkpoint_every_period:
             if self.save_best_only:
-                if self.manager.step.round_log[self.monitor] > self.current_best:
+                if getattr(self.manager.step, self.monitor) > self.current_best:
                     if self.save(self.manager.caller):
-                        self.current_best = self.manager.step.round_log[self.monitor]
+                        self.current_best = getattr(self.manager.step, self.monitor)
             else:
                 self.save(self.manager.caller)
 
     def on_iteration_end(self):
         if self.save_last:
             if self.save_best_only:
-                if self.manager.step.round_log[self.monitor] > self.current_best:
-                    self.current_best = self.manager.step.round_log[self.monitor]
+                if getattr(self.manager.step, self.monitor) > self.current_best:
+                    self.current_best = getattr(self.manager.step, self.monitor)
                     self.save(self.manager.caller, override_period=True)
             else:
                 self.save(self.manager.caller, override_period=True)
