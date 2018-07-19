@@ -11,11 +11,11 @@ class CallbackList:
         self.manager = manager
 
         for callback in callbacks: self.append(callback)
-    
+
     @property
     def manager(self):
         return self._manager
-    
+
     @manager.setter
     def manager(self, manager):
         self._manager = manager
@@ -32,14 +32,14 @@ class CallbackList:
         yield from self.callbacks
         yield from self.break_callbacks
 
-    def on_fit_begin(self):
-        for callback in self: callback.on_fit_begin()
+    def on_iteration_begin(self):
+        for callback in self: callback.on_iteration_begin()
 
-    def on_fit_end(self):
-        for callback in self: callback.on_fit_end()
+    def on_iteration_end(self):
+        for callback in self: callback.on_iteration_end()
 
-    def on_boosting_round_begin(self):
-        for callback in self: callback.on_boosting_round_begin()
+    def on_step_begin(self):
+        for callback in self: callback.on_step_begin()
 
-    def on_boosting_round_end(self):
-        for callback in self: callback.on_boosting_round_end()
+    def on_step_end(self):
+        for callback in self: callback.on_step_end()
