@@ -7,6 +7,7 @@ try:
     from iterator_manager import *
     from boost_manager import *
     from model_checkpoint import *
+    from logger import *
 except ModuleNotFoundError:
     from callbacks.callback import *
     from callbacks.break_callbacks import *
@@ -16,3 +17,4 @@ except ModuleNotFoundError:
     from callbacks.iterator_manager import *
     from callbacks.boost_manager import *
     from callbacks.model_checkpoint import *
+    from callbacks.logger import *
