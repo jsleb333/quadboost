@@ -84,9 +84,11 @@ class PickleSave(SaveCallback):
         pkl.dump(obj, file, protocol=self.protocol)
 
 
-class CSVSave:
-    def __init__(self):
-        pass
-
+class CSVSave(SaveCallback):
+    def __init__(self, *args, open_mode='w', delimiter=',', **kwargs):
+        super().__init__(*args, open_mode=open_mode, **kwargs)
+        self.delimiter = delimiter
+        
     def _save_file(self, file, doc):
-        pass
+        writer = csv.writer(file, delimiter=self.delimiter)
+        writer.writerows(doc)
