@@ -52,10 +52,6 @@ class SaveCallback(Callback):
         return atomic_save_successful
 
     def _save(self, filedir, *args, **kwargs):
-        with open(filedir, self.open_mode) as file:
-            self._save_file(file, *args, **kwargs)
-
-    def _save_file(self, file, *args, **kwargs):
         raise NotImplementedError
 
 
@@ -80,15 +76,17 @@ class PickleSave(SaveCallback):
         super().__init__(*args, **kwargs)
         self.protocol = protocol
 
-    def _save_file(self, file, obj):
-        pkl.dump(obj, file, protocol=self.protocol)
+    def _save(self, filedir, obj):
+        with open(filedir, self.open_mode) as file:
+            pkl.dump(obj, file, protocol=self.protocol)
 
 
 class CSVSave(SaveCallback):
-    def __init__(self, *args, open_mode='w', delimiter=',', **kwargs):
+    def __init__(self, *args, open_mode='w', delimiter=',', newline='', **kwargs):
         super().__init__(*args, open_mode=open_mode, **kwargs)
         self.delimiter = delimiter
-        
-    def _save_file(self, file, doc):
-        writer = csv.writer(file, delimiter=self.delimiter)
-        writer.writerows(doc)
+    
+    def _save(self, filedir, doc):
+        with open(filedir, self.open_mode, newline=self.newline)
+            writer = csv.writer(file, delimiter=self.delimiter)
+            writer.writerows(doc)
