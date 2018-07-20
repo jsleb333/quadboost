@@ -5,20 +5,22 @@ import numpy as np
 from warnings import warn
 from time import time
 
-from callbacks import IteratorManager
+from callbacks import IteratorManager, Step
 from callbacks import BreakOnMaxStep, BreakOnPlateau, BreakOnPerfectTrainAccuracy
 from callbacks import Progression
 
 
-class BoostingRound:
+class BoostingRound(Step):
     """
-    Class that stores information about the current boosting round, the training and validation accuracies.
+    Class that stores information about the current boosting round, storing the round number and the training and validation accuracies.
     """
     def __init__(self):
+        self.round = 0
         self.train_acc = None
         self.valid_acc = None
 
-    def __call__(self):
+    def __next__(self):
+        self.round += 1
         return self
 
 
@@ -57,7 +59,6 @@ class BoostManager(IteratorManager):
             patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until max_round_number iterations.
             break_on_perfect_train_acc (Boolean, optional, default=True): If True, iteration will stop when a perfect training accuracy is reached.
         """
-
         if max_round_number:
             self.callbacks.append(BreakOnMaxStep(max_step_number=max_round_number))
         if patience:
@@ -77,10 +78,11 @@ if __name__ == '__main__':
     patience = 3
     bi = BoostManager()
     for br in bi.iterate(max_round_number, patience, True):
-        a += .1
+        # a += .1
+        a = 1
         br.train_acc = a
         br.valid_acc = a
-        sleep(.1)
+        # sleep(.1)
         safe += 1
         if safe >= 100:
             break

@@ -4,6 +4,19 @@ sys.path.append(os.getcwd())
 from callbacks import CallbackList, BreakOnMaxStep
 
 
+class Step:
+    """
+    Simple Step class. Step subclasses should define the __next__ method, which is called by the __next__ method of the IteratorManager.
+
+    This class only returns the step number of the iteration.
+    """
+    def __init__(self, manager=None):
+        self.manager = manager
+
+    def __next__(self):
+        return self.manager.step_number    
+
+
 class IteratorManager:
     """
     Class that manages an iterator using callbacks at 4 different moments in the iteration: on_iteration_begin, on_iteration_end, on_step_begin, on_step_end.
@@ -15,39 +28,39 @@ class IteratorManager:
     """
     def __init__(self, caller=None, callbacks=None, step=None):
         """
-        caller (Object which initialize a IteratorManager, optional): Reference to the caller object. If the callbacks do not use the attributes of the caller, it can be omitted.
-        callbacks (Iterable of Callback objects, optional): Callbacks handles functions to call at specific time in the program. Usage examples: stop the iteration or save the caller or the logs.
-        step (Callable, optional): Each __next__ call will return the object returned by step(). If None, the step number will be returned.
+        Args:
+            caller (Object which creates an IteratorManager, optional): Reference to the caller object. If the callbacks do not use the attributes of the caller, it can be omitted.
+            callbacks (Iterable of Callback objects, optional): Callbacks handles functions to call at specific time in the program. Usage examples: stop the iteration or save the caller or the logs.
+            step (Object with __next__ method defined, optional): Each __next__ call of IteratorManager will return the object returned by next(step). If None, the step number will be returned.
         """
         self.caller = caller
         self.callbacks = CallbackList(manager=self, callbacks=callbacks or [])
-        self.step_number = -1
-        self.step = step
-
-    @property
-    def step(self):
-        return self._step or (lambda: self.step_number)
-    @step.setter
-    def step(self, step):
-        self._step = step
+        self.step = step or Step(self)
 
     def __iter__(self):
+        """
+        The callback 'on_iteration_begin' is called here.
+        """
         if self.callbacks.break_callbacks == []:
             raise RuntimeError('Callbacks should include at least one BreakCallback, else it would result in an infinite loop.')
+
+        self.step_number = -1
+        self.first_step = True
+        self.callbacks.on_iteration_begin()
+        
         return self
 
     def iterate(self, max_step_number=None):
         """
         Initialize an iteration procedure. The iterator is itself and yields the step number if no 'step' callable was given in the constructor. The iterator stops the iteration when a BreakCallback raise a StopIteration exception.
 
-        max_step_number (int, optional): If max_step_number is not None, the IteratorManager will act like the standard 'range' function with callbacks.
+        This method is useful to initialize an iteration with arguments since iter does not allow it.
 
-        The callback 'on_iteration_begin' is called here.
+        Args:
+            max_step_number (int, optional): If max_step_number is not None, the IteratorManager will act like the standard 'range' function with callbacks.
         """
-        if max_step_number: self.callbacks.append(BreakOnMaxStep(max_step_number))
-
-        self.step_number = -1
-        self.callbacks.on_iteration_begin()
+        if max_step_number:
+            self.callbacks.append(BreakOnMaxStep(max_step_number))
 
         return self
 
@@ -55,11 +68,13 @@ class IteratorManager:
         """
         Steps to next iteration. Callbacks 'on_step_begin', 'on_step_end' and 'on_iteration_end' are called here.
 
-        Returns a Step object to be updated if needed.
+        Returns the object returned by next(self.step).
         """
         try:
-            if self.step_number != -1:
+            if not self.first_step:
                 self.callbacks.on_step_end()
+            else:
+                self.first_step = False
 
             self.callbacks.on_step_begin()
 
@@ -68,7 +83,7 @@ class IteratorManager:
             raise
 
         self.step_number += 1
-        return self.step()
+        return next(self.step)
 
 
 if __name__ == '__main__':
