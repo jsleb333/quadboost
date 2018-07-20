@@ -84,8 +84,9 @@ class CSVSave(SaveCallback):
     def __init__(self, *args, open_mode='w', delimiter=',', newline='', **kwargs):
         super().__init__(*args, open_mode=open_mode, **kwargs)
         self.delimiter = delimiter
-    
-    def _save(self, filedir, row):
-        with open(filedir, self.open_mode, newline=self.newline)
+        self.newline = newline
+        
+    def _save(self, filedir, rows):
+        with open(filedir, self.open_mode, newline=self.newline) as file:
             writer = csv.writer(file, delimiter=self.delimiter)
-            writer.writerow(row)
+            writer.writerows(rows)
