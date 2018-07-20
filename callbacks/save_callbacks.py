@@ -26,7 +26,6 @@ class SaveCallback(Callback):
         os.makedirs(dirname, exist_ok=True)
 
         self.atomic_write = atomic_write
-        self.open_mode = open_mode
 
     @property
     def filedir(self):
@@ -107,10 +106,11 @@ class CSVSave(SaveCallback):
     Implements a saving protocol in CSV
     """
     def __init__(self, *args, open_mode='w', delimiter=',', newline='', **kwargs):
-        super().__init__(*args, open_mode=open_mode, **kwargs)
+        super().__init__(*args, **kwargs)
         self.delimiter = delimiter
         self.newline = newline
-        
+        self.open_mode = open_mode
+
     def _save(self, filedir, rows):
         with open(filedir, self.open_mode, newline=self.newline) as file:
             writer = csv.writer(file, delimiter=self.delimiter)
