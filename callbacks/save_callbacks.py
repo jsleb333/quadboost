@@ -9,9 +9,7 @@ from callbacks import Callback
 
 
 class SaveCallback(Callback):
-    def __init__(self, filename, dirname='.',
-                 manager=None,
-                 atomic_write=True, open_mode='wb'):
+    def __init__(self, filename, dirname='.', atomic_write=True, manager=None):
         super().__init__(manager)
         self.filename = filename
         self.dirname = dirname
@@ -71,9 +69,10 @@ class PeriodicSaveCallback(SaveCallback):
 
 
 class PickleSave(SaveCallback):
-    def __init__(self, *args, protocol=pkl.HIGHEST_PROTOCOL, **kwargs):
+    def __init__(self, *args, protocol=pkl.HIGHEST_PROTOCOL, open_mode='wb', **kwargs):
         super().__init__(*args, **kwargs)
         self.protocol = protocol
+        self.open_mode = open_mode
 
     def _save(self, filedir, obj):
         with open(filedir, self.open_mode) as file:
