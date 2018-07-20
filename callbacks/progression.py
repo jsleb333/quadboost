@@ -5,11 +5,13 @@ sys.path.append(os.getcwd())
 from callbacks import Callback
 
 
-class UpdateCallback(Callback):
-    pass
-
-
-class Progression(UpdateCallback):
+class Progression(Callback):
+    """
+    This class format a readable output to the console to follow the progression of the training of the QuadBoost algorithm. It outputs a string in the format:
+        Boosting round ### | Train acc: #.### | Valid acc: #.### | Time: #.##s
+    
+    It omits 'Valid acc' if none was used in the algorithm.
+    """
     def on_iteration_begin(self):
         self.start_time = t.time()
 

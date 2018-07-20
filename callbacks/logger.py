@@ -5,6 +5,9 @@ from callbacks import PeriodicSaveCallback, CSVSave
 
 
 class CSVLogger(PeriodicSaveCallback, CSVSave):
+    """
+    This class will save a complete log of the 'step' object of the IteratorManager into a CSV. For more flexibility, define your own 'Step' class.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = []

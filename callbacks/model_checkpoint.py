@@ -5,6 +5,9 @@ from callbacks import PeriodicSaveCallback, PickleSave
 
 
 class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
+    """
+    This class will make a checkpoint of the whole QuadBoost object in a Pickle, which can be loaded later.
+    """
     def __init__(self, *args,
                  save_best_only=False, monitor='train_acc',
                  save_last=True,

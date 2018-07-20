@@ -9,7 +9,17 @@ from callbacks import Callback
 
 
 class SaveCallback(Callback):
+    """
+    This abstract callback provides the basics for a Callback which saves something. It handles the filename and directory formating and the necessary implementation for atomic writing (no information loss can occur if the process is killed during saving).
+    """
     def __init__(self, filename, dirname='.', atomic_write=True, manager=None):
+        """
+        Args:
+            filename (str): The name of the file to be saved. This string can be formated using the 'format_filename' method if it is overloaded in inherited classes.
+            dirname (str, optional): The name of the directory. By default, it saves in the save directory as the script.
+            atomic_write (Boolean, optional): If True, will try to save atomically the file.
+            manager: See Callback documentation.
+        """
         super().__init__(manager)
         self.filename = filename
         self.dirname = dirname
@@ -54,12 +64,22 @@ class SaveCallback(Callback):
 
 
 class PeriodicSaveCallback(SaveCallback):
+    """
+    This class offers the possibility to save periodically by keeping a counter to the number of calls made to 'save' and saving only on the specified 'period'.
+    """
     def __init__(self, *args, period=1, **kwargs):
+        """
+        Args:
+            period (int, optional): A save will be made every 'period' times the 'save' method is called.
+        """
         super().__init__(*args, **kwargs)
         self.n_calls = 0
         self.period = period
 
     def save(self, *args, override_period=False, **kwargs):
+        """
+        Periodically saves a file. If 'override_period' is True, the period is not considered
+        """
         self.n_calls += 1
         saved = False
         if self.n_calls % self.period == 0 or override_period:
@@ -69,6 +89,9 @@ class PeriodicSaveCallback(SaveCallback):
 
 
 class PickleSave(SaveCallback):
+    """
+    Implements a saving protocol in Pickle
+    """
     def __init__(self, *args, protocol=pkl.HIGHEST_PROTOCOL, open_mode='wb', **kwargs):
         super().__init__(*args, **kwargs)
         self.protocol = protocol
@@ -80,6 +103,9 @@ class PickleSave(SaveCallback):
 
 
 class CSVSave(SaveCallback):
+    """
+    Implements a saving protocol in CSV
+    """
     def __init__(self, *args, open_mode='w', delimiter=',', newline='', **kwargs):
         super().__init__(*args, open_mode=open_mode, **kwargs)
         self.delimiter = delimiter

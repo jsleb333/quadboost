@@ -2,7 +2,7 @@ try:
     from callback import *
     from break_callbacks import *
     from callback_list import *
-    from update_callbacks import *
+    from progression import *
     from save_callbacks import *
     from iterator_manager import *
     from boost_manager import *
@@ -12,7 +12,7 @@ except ModuleNotFoundError:
     from callbacks.callback import *
     from callbacks.break_callbacks import *
     from callbacks.callback_list import *
-    from callbacks.update_callbacks import *
+    from callbacks.progression import *
     from callbacks.save_callbacks import *
     from callbacks.iterator_manager import *
     from callbacks.boost_manager import *
