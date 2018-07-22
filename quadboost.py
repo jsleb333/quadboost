@@ -1,4 +1,5 @@
 import numpy as np
+import pickle as pkl
 from sklearn.metrics import accuracy_score
 from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump
 import matplotlib.pyplot as plt
@@ -105,6 +106,12 @@ class QuadBoost:
         coefs = [wp_w.reshape(-1,1)*wp.coef_ for wp_w, wp in zip(self.weak_predictors_weights, self.weak_predictors)]
         coefs = np.sum(coefs, axis=0).reshape((self.encoder.encoding_dim,28,28))
         return coefs
+    
+    @staticmethod
+    def load(filename):
+        with open(filename, 'rb') as file:
+            model = pkl.load(file)
+        return model
 
 
 class QuadBoostMH(QuadBoost):
@@ -189,16 +196,17 @@ def main():
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
-    ckpt = ModelCheckpoint(filename='test{step}.ckpt', dirname='./results')
+    ckpt = ModelCheckpoint(filename='test.ckpt', dirname='./results')
     logger = CSVLogger(filename='log_test.csv', dirname='./results')
     callbacks = [ckpt, logger]
 
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=1, patience=10,
            X_val=Xts, Y_val=Yts,
            callbacks=callbacks,
            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    qb = QuadBoostMHCR.load('./results/test.ckpt')
     # qb.visualize_coef()
 
 
