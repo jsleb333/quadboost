@@ -4,6 +4,7 @@ sys.path.append(os.getcwd())
 import warnings
 import pickle as pkl
 import csv
+import logging
 
 from callbacks import Callback
 
@@ -39,6 +40,7 @@ class SaveCallback(Callback):
         return filename
 
     def save(self, *args, **kwargs):
+        logging.info(f'Saving to file {self.filedir}')
         atomic_save_successful = False
         if self.atomic_write:
             atomic_save_successful = self._atomic_save(*args, **kwargs)
