@@ -44,7 +44,11 @@ class BoostManager(IteratorManager):
 
         super().__init__(caller=model, callbacks=callbacks, step=BoostingRound())
 
-    def iterate(self, max_round_number=None, patience=None, break_on_perfect_train_acc=True):
+    def iterate(self, max_round_number=None,
+                      patience=None,
+                      break_on_perfect_train_acc=True,
+                      starting_round_number=0
+                      ):
         """
         Initialize an iteration procedure to boost in QuadBoost. The iterator is itself and yields a BoostingRound object that should be updated at each boosting round with the training accuracy. The iterator stops the iteration when:
             - the maximum number of boosting rounds has been reached (if 'max_round_number' is not None)
@@ -58,6 +62,7 @@ class BoostManager(IteratorManager):
             max_round_number (int, optional, default=-1): Number of boosting rounds. If max_round_number=-1, the algorithm will boost indefinitely, until reaching a training accuracy of 1.0, or until the training accuracy does not improve for 'patience' consecutive boosting rounds.
             patience (int, optional, default=10): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If patience=None, the boosting rounds will continue until max_round_number iterations.
             break_on_perfect_train_acc (Boolean, optional, default=True): If True, iteration will stop when a perfect training accuracy is reached.
+            starting_round_number (int, optional): Indicates to which round number the iteration should start.
         """
         if max_round_number:
             self.callbacks.append(BreakOnMaxStep(max_step_number=max_round_number))
@@ -66,7 +71,7 @@ class BoostManager(IteratorManager):
         if break_on_perfect_train_acc:
             self.callbacks.append(BreakOnPerfectTrainAccuracy())
 
-        super().iterate()
+        super().iterate(starting_step_number=starting_round_number)
         return self
 
 

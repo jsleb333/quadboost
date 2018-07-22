@@ -36,6 +36,7 @@ class IteratorManager:
         self.caller = caller
         self.callbacks = CallbackList(manager=self, callbacks=callbacks or [])
         self.step = step or Step(self)
+        self.starting_step_number = -1
 
     def __iter__(self):
         """
@@ -44,13 +45,13 @@ class IteratorManager:
         if self.callbacks.break_callbacks == []:
             raise RuntimeError('Callbacks should include at least one BreakCallback, else it would result in an infinite loop.')
 
-        self.step_number = -1
+        self.step_number = self.starting_step_number
         self.first_step = True
         self.callbacks.on_iteration_begin()
         
         return self
 
-    def iterate(self, max_step_number=None):
+    def iterate(self, max_step_number=None, starting_step_number=0):
         """
         Initialize an iteration procedure. The iterator is itself and yields the step number if no 'step' callable was given in the constructor. The iterator stops the iteration when a BreakCallback raise a StopIteration exception.
 
@@ -58,9 +59,11 @@ class IteratorManager:
 
         Args:
             max_step_number (int, optional): If max_step_number is not None, the IteratorManager will act like the standard 'range' function with callbacks.
+            starting_step_number (int, optional): Indicates to which step number the iteration should start.
         """
         if max_step_number:
             self.callbacks.append(BreakOnMaxStep(max_step_number))
+        self.starting_step_number = starting_step_number - 1
 
         return self
 
@@ -93,7 +96,7 @@ if __name__ == '__main__':
     max_step_number = 10
 
     bi = IteratorManager()
-    for br in bi.iterate(max_step_number):
+    for br in bi.iterate(max_step_number, 0):
         print(br)
 
         safe += 1
