@@ -54,6 +54,8 @@ class IteratorManager:
         The callback 'on_iteration_end' is called here.
         """
         self.has_entered = False
+        if exception_type is not None:
+            self.step_number -= 1 # If iteration did not end normally, all work done this iteration is lost, hence the current step number is actually the last one.
         self.callbacks.on_iteration_end()
 
     def __iter__(self):
