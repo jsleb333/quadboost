@@ -26,6 +26,8 @@ class IteratorManager:
 
     The 'with' statement syntax can be used to make sure the 'on_iteration_end' is called at the end, even if an error is raised.
 
+    On __exit__, the exception is saved as an attribute so that the callbacks can access it.
+
     At each step, __next__ will return an object. By default, it returns the step number.
     """
     def __init__(self, caller=None, callbacks=None, step=None):
@@ -53,10 +55,13 @@ class IteratorManager:
         """
         The callback 'on_iteration_end' is called here.
         """
-        self.has_entered = False
+        self.exception_on_exit = {'type':exception_type,
+                                  'message':exception_message,
+                                  'trace back':trace_back}
         if exception_type is not None:
             self.step_number -= 1 # If iteration did not end normally, all work done this iteration is lost, hence the current step number is actually the last one.
         self.callbacks.on_iteration_end()
+        self.has_entered = False
 
     def __iter__(self):
         """
