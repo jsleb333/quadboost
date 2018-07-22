@@ -6,7 +6,7 @@ from callbacks import PeriodicSaveCallback, PickleSave
 
 class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
     """
-    This class will make a checkpoint of the whole QuadBoost object in a Pickle, which can be loaded later.
+    This class will make a checkpoint of the whole QuadBoost object in a Pickle, which can be loaded later. The class handles exception exits so that the model can easily resume its fit procedure by adding an attribute 'boost_manager' to the saved model.
     """
     def __init__(self, *args,
                  save_best_only=False, monitor='train_acc',
@@ -17,7 +17,7 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
         Args:
             save_best_only (Boolean, optional, default=False): If True, a checkpoint of the model will be made at every period only if it is better than the previous checkpoint according to 'monitor'.
             monitor (String, optional, either 'train_acc' or 'valid_acc', default='train_acc'): Value to monitor if 'save_best_only' is True.
-            save_last (Boolean, optional, default=True): In the case 'period' is not 1, if 'save_last' is True, a checkpoint will be saved at the end of the iteration, regarless if the period.
+            save_last (Boolean, optional, default=True): In the case 'period' is not 1, if 'save_last' is True, a checkpoint will be saved at the end of the iteration, regarless if the period. Moreover, if the process exits on an exception, the checkpoint will save a copy of the BoostManager as an attribute (called 'boost_manager') to the model to allow easy resume of fit. In the latter case, the model filename will be appended the string '_exception_exit'.
             save_checkpoint_every_period (Boolean, optional, default=True): If True, a checkpoint will be saved every periods.
 
         See PeriodicSaveCallback and PickleSave documentation for other arguments.
@@ -45,6 +45,10 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
                 self.save(self.manager.caller)
 
     def on_iteration_end(self):
+        if self.manager.exception_on_exit['type'] is not None:
+            self.manager.model.boost_manager = self.manager
+            self.filename = self.filename.format(step='{step}_exception_exit')
+
         if self.save_last:
             if self.save_best_only:
                 if getattr(self.manager.step, self.monitor) > self.current_best:
