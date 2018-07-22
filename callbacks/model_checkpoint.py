@@ -44,9 +44,9 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
             else:
                 self.save(self.manager.caller)
 
-    def on_iteration_end(self):
-        if self.manager.exception_on_exit['type'] is not None:
-            self.manager.model.boost_manager = self.manager
+    def on_iteration_end(self, exception_type=None, exception_message=None, trace_back=None):
+        if exception_type is not None:
+            self.manager.caller.boost_manager = self.manager
             self.filename = self.filename.format(step='{step}_exception_exit')
 
         if self.save_last:

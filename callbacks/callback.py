@@ -14,7 +14,7 @@ class Callback:
     def on_iteration_begin(self):
         pass
 
-    def on_iteration_end(self):
+    def on_iteration_end(self, exception_type=None, exception_message=None, trace_back=None):
         pass
 
     def on_step_begin(self):

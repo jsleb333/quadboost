@@ -46,8 +46,8 @@ class CallbackList:
     def on_iteration_begin(self):
         for callback in self: callback.on_iteration_begin()
 
-    def on_iteration_end(self):
-        for callback in self: callback.on_iteration_end()
+    def on_iteration_end(self, exception_type=None, exception_message=None, trace_back=None):
+        for callback in self: callback.on_iteration_end(exception_type, exception_message, trace_back)
 
     def on_step_begin(self):
         for callback in self: callback.on_step_begin()
