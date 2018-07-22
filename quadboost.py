@@ -75,6 +75,9 @@ class QuadBoost:
         Should append self.weak_predictors with a fitted self.weak_learner.
         """
         raise NotImplementedError
+    
+    def resume_fit(X, Y, f0=None, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
+        return NotImplemented
 
     def predict(self, X):
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
@@ -204,14 +207,14 @@ def main():
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
-           X_val=Xts, Y_val=Yts,
-           callbacks=callbacks,
-           n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
-    # qb.visualize_coef()
-
-
+            X_val=Xts, Y_val=Yts,
+            callbacks=callbacks,
+            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    
 if __name__ == '__main__':
     import logging
-    logging.basicConfig(level=0, style='{', format='[{levelname}] {message}')
-    main()
+    logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
+    qb2 = QuadBoost.load('results/test1_exception_exit.ckpt')
+    print(qb2.__dict__)
+    # main()
     
