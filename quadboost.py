@@ -196,37 +196,19 @@ def main():
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
-<<<<<<< HEAD
     ckpt = ModelCheckpoint(filename='test{step}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename='log_test.csv', dirname='./results')
     callbacks = [ckpt,
                 # logger,
                 ]
 
-    # qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    # qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
-    #        X_val=Xts, Y_val=Yts,
-    #        callbacks=callbacks,
-    #        n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
-=======
-    ckpt = ModelCheckpoint(filename='test.ckpt', dirname='./results')
-    logger = CSVLogger(filename='log_test.csv', dirname='./results')
-    callbacks = [ckpt, logger]
-
-
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=1, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
            X_val=Xts, Y_val=Yts,
            callbacks=callbacks,
            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
-    qb = QuadBoostMHCR.load('./results/test.ckpt')
->>>>>>> dev
     # qb.visualize_coef()
 
-    a = QuadBoostMHCR.load('results/test2.pkl')
-    b = QuadBoostMHCR.load('results/test1.pkl')
-    print(a.evaluate(Xts, Yts))
-    print(b.evaluate(Xts, Yts))
 
 if __name__ == '__main__':
     import logging
