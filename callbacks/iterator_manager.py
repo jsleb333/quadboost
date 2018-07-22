@@ -24,6 +24,8 @@ class IteratorManager:
     The iteration is managed with BreakCallbacks which should raise a StopIteration exception on_step_begin or on_step_end when a condition is not satisfied.
     An iteration procedure can be launched by calling the 'iterate' method.
 
+    The 'with' statement syntax can be used to make sure the 'on_iteration_end' is called at the end, even if an error is raised.
+
     At each step, __next__ will return an object. By default, it returns the step number.
     """
     def __init__(self, caller=None, callbacks=None, step=None):
@@ -37,17 +39,33 @@ class IteratorManager:
         self.callbacks = CallbackList(manager=self, callbacks=callbacks or [])
         self.step = step or Step(self)
         self.starting_step_number = -1
+        self.has_entered = False
+    
+    def __enter__(self):
+        """
+        The callback 'on_iteration_begin' is called here.
+        """
+        self.has_entered = True
+        self.callbacks.on_iteration_begin()
+        return self
+    
+    def __exit__(self, exception_type, exception_message, trace_back):
+        """
+        The callback 'on_iteration_end' is called here.
+        """
+        self.has_entered = False
+        self.callbacks.on_iteration_end()
 
     def __iter__(self):
         """
-        The callback 'on_iteration_begin' is called here.
+        If the 'with' statement was not used, the callback 'on_iteration_begin' is called here.
         """
         if self.callbacks.break_callbacks == []:
             raise RuntimeError('Callbacks should include at least one BreakCallback, else it would result in an infinite loop.')
 
         self.step_number = self.starting_step_number
         self.first_step = True
-        self.callbacks.on_iteration_begin()
+        if not self.has_entered: self.callbacks.on_iteration_begin()
         
         return self
 
@@ -69,7 +87,7 @@ class IteratorManager:
 
     def __next__(self):
         """
-        Steps to next iteration. Callbacks 'on_step_begin', 'on_step_end' and 'on_iteration_end' are called here.
+        Steps to next iteration. Callbacks 'on_step_begin', 'on_step_end' are called here. If the 'with' statement was not used, the callback 'on_iteration_end' is also called here.
 
         Returns the object returned by next(self.step).
         """
@@ -82,7 +100,7 @@ class IteratorManager:
             self.callbacks.on_step_begin()
 
         except StopIteration:
-            self.callbacks.on_iteration_end()
+            if not self.has_entered: self.callbacks.on_iteration_end()
             raise
 
         self.step_number += 1
@@ -95,10 +113,10 @@ if __name__ == '__main__':
     safe = 0
     max_step_number = 10
 
-    bi = IteratorManager()
-    for br in bi.iterate(max_step_number, 0):
-        print(br)
+    with IteratorManager() as bi:
+        for br in bi.iterate(max_step_number, 0):
+            print(br)
 
-        safe += 1
-        if safe >= 100:
-            break
+            safe += 1
+            if safe >= 100:
+                break

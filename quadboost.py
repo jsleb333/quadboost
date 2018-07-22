@@ -50,18 +50,18 @@ class QuadBoost:
 
         residue = encoded_Y - self.f0
 
-        boost_manager = BoostManager(self, callbacks)
+        with BoostManager(self, callbacks) as boost_manager:
+            # Boosting algorithm
+            for boosting_round in boost_manager.iterate(max_round_number,
+                                                        patience,
+                                                        break_on_perfect_train_acc):
 
-        # Boosting algorithm
-        for boosting_round in boost_manager.iterate(max_round_number,
-                                                    patience,
-                                                    break_on_perfect_train_acc):
+                residue, weak_prediction = self._boost(X, residue, weights,
+                                                       **weak_learner_fit_kwargs)
 
-            residue, weak_prediction = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
-
-            boosting_round.train_acc = self.evaluate(X, Y)
-            if X_val is not None and Y_val is not None:
-                boosting_round.valid_acc = self.evaluate(X_val, Y_val)
+                boosting_round.train_acc = self.evaluate(X, Y)
+                if X_val is not None and Y_val is not None:
+                    boosting_round.valid_acc = self.evaluate(X_val, Y_val)
 
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
@@ -189,10 +189,9 @@ def main():
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
-    ckpt = ModelCheckpoint(filename='test{step}.ckpt', dirname='./results')
+    ckpt = ModelCheckpoint(filename='test{step}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename='log_test.csv', dirname='./results')
     callbacks = [ckpt, logger]
-
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
