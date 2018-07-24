@@ -25,6 +25,7 @@ class QuadBoost:
             max_round_number=None, patience=None, break_on_perfect_train_acc=False,
             X_val=None, Y_val=None,
             callbacks=None,
+            starting_round_number=0,
             **weak_learner_fit_kwargs):
         """
         X (Array of shape (n_examples, ...)): Examples.
@@ -36,6 +37,7 @@ class QuadBoost:
         X_val (Array of shape (n_val, ...), optional, default=None): Validation examples. If not None, the validation accuracy will be evaluated at each boosting round.
         Y_val (Iterable of 'n_val' elements, optional, default=None): Validation labels for the examples X_val. If not None, the validation accuracy will be evaluated at each boosting round.
         callbacks (Iterable of Callback objects, optional, default=None): Callbacks objects to be called at some specific step of the training procedure to execute something. Ending conditions of the boosting iteration are handled with BreakCallbacks. If callbacks contains BreakCallbacks and terminating conditions (max_round_number, patience, break_on_perfect_train_acc) are not None, all conditions will be checked at each round and the first that is not verified will stop the iteration.
+        starting_round_number (int, optional): Number of the round the iteration should start. This is mainly used to resume a fit process that was interrupted.
         weak_learner_fit_kwargs: Keyword arguments to pass to the fit method of the weak learner.
         """
         # Encodes the labels
@@ -55,7 +57,8 @@ class QuadBoost:
             # Boosting algorithm
             for boosting_round in boost_manager.iterate(max_round_number,
                                                         patience,
-                                                        break_on_perfect_train_acc):
+                                                        break_on_perfect_train_acc,
+                                                        starting_round_number):
 
                 residue, weak_prediction = self._boost(X, residue, weights,
                                                        **weak_learner_fit_kwargs)
@@ -67,6 +70,8 @@ class QuadBoost:
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
             self.weak_predictors_weights = [np.array([1])]*len(self.weak_predictors)
+
+        return self
 
     def _boost(self, X, residue, weights, **kwargs):
         """
