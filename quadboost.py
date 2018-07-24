@@ -198,7 +198,7 @@ def main():
     mnist = MNISTDataset.load('haar_mnist.pkl')
     # mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 1_000
+    m = 60_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -213,21 +213,22 @@ def main():
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
-    ckpt = ModelCheckpoint(filename='test{step}.ckpt', dirname='./results', save_last=True)
-    logger = CSVLogger(filename='log_test.csv', dirname='./results')
+    filename = 'haar_onehot_ds_'
+    ckpt = ModelCheckpoint(filename=filename+'{step}.ckpt', dirname='./results', save_last=True)
+    logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
     callbacks = [ckpt,
-                # logger,
+                logger,
                 ]
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=1000, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
-            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+            n_jobs=6, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
 
 if __name__ == '__main__':
     import logging
-    logging.basicConfig(level=10, style='{', format='[{levelname}] {message}')
+    logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
     # qb2 = QuadBoost.load('results/test1_exception_exit.ckpt')
     # print(qb2.__dict__)
     main()
