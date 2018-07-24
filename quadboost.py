@@ -71,7 +71,7 @@ class QuadBoost:
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
             self.weak_predictors_weights = [np.array([1])]*len(self.weak_predictors)
-        
+
         return self
 
     def _boost(self, X, residue, weights, **kwargs):
@@ -81,7 +81,7 @@ class QuadBoost:
         Should append self.weak_predictors with a fitted self.weak_learner.
         """
         raise NotImplementedError
-    
+
     def resume_fit(X, Y, f0=None, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
         try:
             return self.fit(X, Y, f0,
@@ -123,7 +123,7 @@ class QuadBoost:
         coefs = [wp_w.reshape(-1,1)*wp.coef_ for wp_w, wp in zip(self.weak_predictors_weights, self.weak_predictors)]
         coefs = np.sum(coefs, axis=0).reshape((self.encoder.encoding_dim,28,28))
         return coefs
-    
+
     @staticmethod
     def load(filename):
         with open(filename, 'rb') as file:
@@ -198,7 +198,7 @@ def main():
     mnist = MNISTDataset.load('haar_mnist.pkl')
     # mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 100
+    m = 1_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -224,11 +224,10 @@ def main():
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
             n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
-    
+
 if __name__ == '__main__':
     import logging
-    logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
-    qb2 = QuadBoost.load('results/test1_exception_exit.ckpt')
-    print(qb2.__dict__)
-    # main()
-    
+    logging.basicConfig(level=10, style='{', format='[{levelname}] {message}')
+    # qb2 = QuadBoost.load('results/test1_exception_exit.ckpt')
+    # print(qb2.__dict__)
+    main()
