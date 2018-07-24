@@ -3,6 +3,7 @@ import pickle as pkl
 from sklearn.metrics import accuracy_score
 from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump
 import matplotlib.pyplot as plt
+import logging
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
@@ -70,7 +71,7 @@ class QuadBoost:
         # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
         if self.weak_predictors_weights == []:
             self.weak_predictors_weights = [np.array([1])]*len(self.weak_predictors)
-
+        
         return self
 
     def _boost(self, X, residue, weights, **kwargs):
@@ -82,7 +83,15 @@ class QuadBoost:
         raise NotImplementedError
     
     def resume_fit(X, Y, f0=None, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
-        return NotImplemented
+        try:
+            return self.fit(X, Y, f0,
+                            X_val=X_val, Y_val=Y_val,
+                            callbacks=self.callbacks,
+                            starting_round_number=0,
+                            **weak_learner_fit_kwargs)
+        except AttributeError:
+            logging.error("Can't resume fit if previous training did not end on an exception. Use 'fit' instead.")
+
 
     def predict(self, X):
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
