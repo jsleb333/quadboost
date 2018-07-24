@@ -82,7 +82,7 @@ class QuadBoost:
         """
         raise NotImplementedError
 
-    def resume_fit(X, Y, f0=None, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
+    def resume_fit(self, X, Y, f0=None, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
         try:
             return self.fit(X, Y, f0,
                             X_val=X_val, Y_val=Y_val,
