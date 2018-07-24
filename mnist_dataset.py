@@ -1,11 +1,12 @@
 import os, struct
 import numpy as np
 import matplotlib.pyplot as plt
+import gzip, urllib, io # To download MNIST
 try:
     from datasets import path_to
 except:
     def path_to(dataset='mnist'):
-        return "/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/" + dataset
+        return "data/mnist"
 
 import pickle as pkl
 from sklearn.preprocessing import StandardScaler
@@ -21,6 +22,17 @@ data_type_header, data_bytes_header = 'I', 4
 data_type_labels, data_bytes_labels = 'B', 1
 data_type_images, data_bytes_images = 'B', 1
 
+
+def download_mnist(filepath='data/mnist/raw/'):
+    os.makedirs(filepath, exist_ok=True)
+    for filename in [filename_images_train,
+                     filename_images_test,
+                     filename_labels_train,
+                     filename_labels_test]:
+        url = f'http://yann.lecun.com/exdb/mnist/{filename}.gz'
+        content = urllib.request.urlopen(url)
+        with open(filepath + filename, 'wb') as file:
+            file.write(gzip.decompress(content.read()))
 
 def load_raw_data(filename, N):
     with open(filename, 'rb') as file:
@@ -46,8 +58,8 @@ def load_raw_labels(filename, N):
 		return header, np.array(labels)
 
 
-def load_raw_mnist(Ntr=60000, Nts=10000):
-    mnist_path = path_to('mnist') + '/raw/'
+def load_raw_mnist(Ntr=60000, Nts=10000, path=None):
+    mnist_path = path or path_to('mnist') + '/raw/'
     h, Xtr = load_raw_data(mnist_path + filename_images_train, Ntr)
     h, Xts = load_raw_data(mnist_path + filename_images_test, Nts)
     h, Ytr = load_raw_labels(mnist_path + filename_labels_train, Ntr)
@@ -111,12 +123,12 @@ class MNISTDataset:
 
 
     @staticmethod
-    def load(filename='mnist.pkl', filepath='./data/'):
+    def load(filename='mnist.pkl', filepath='./data/preprocessed/'):
         with open(filepath + filename, 'rb') as file:
             return pkl.load(file)
 
 
-    def save(self, filename='mnist.pkl', filepath='./data/'):
+    def save(self, filename='mnist.pkl', filepath='./data/preprocessed/'):
         os.makedirs(filepath, exist_ok=True)
         with open(filepath + filename, 'wb') as file:
             pkl.dump(self, file)
@@ -132,21 +144,13 @@ class MNISTDataset:
 
 
 if __name__ == '__main__':
-    from utils import to_one_hot
-    from collections import Counter
 
-    t0 = time()
+    download_mnist()
+    # path_to_mnist = '/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/mnist/raw/'
     (Xtr, Ytr), (Xts, Yts) = load_raw_mnist()
     dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
     dataset.save()
     # dataset = MNISTDataset.load()
-
-
-    dataset.test()
-
-
-    t1 = time()
-    print(t1-t0, 'sec')
-
+    # dataset.test()
 
     # visualize_mnist(Xtr[:5], Ytr[:5])
