@@ -224,11 +224,10 @@ def main():
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=400, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
-            n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+            n_jobs=6, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    # qb = QuadBoostMHCR.load('results/haar_onehot_ds_126_exception_exit.ckpt')
 
 if __name__ == '__main__':
     import logging
     logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
-    # qb2 = QuadBoost.load('results/test1_exception_exit.ckpt')
-    # print(qb2.__dict__)
     main()
