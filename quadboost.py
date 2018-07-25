@@ -87,7 +87,7 @@ class QuadBoost:
             return self.fit(X, Y, f0,
                             X_val=X_val, Y_val=Y_val,
                             callbacks=self.callbacks,
-                            starting_round_number=0,
+                            starting_round_number=len(self.weak_predictors),
                             **weak_learner_fit_kwargs)
         except AttributeError:
             logging.error("Can't resume fit if previous training did not end on an exception. Use 'fit' instead.")
@@ -220,12 +220,13 @@ def main():
                 logger,
                 ]
 
-    qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=400, patience=10,
-            X_val=Xts, Y_val=Yts,
-            callbacks=callbacks,
-            n_jobs=6, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
-    # qb = QuadBoostMHCR.load('results/haar_onehot_ds_126_exception_exit.ckpt')
+    # qb = QuadBoostMHCR(weak_learner, encoder=encoder)
+    # qb.fit(Xtr[:m], Ytr[:m], max_round_number=400, patience=10,
+    #         X_val=Xts, Y_val=Yts,
+    #         callbacks=callbacks,
+    #         n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    qb = QuadBoostMHCR.load('results/haar_onehot_ds_126_exception_exit.ckpt')
+    qb.resume_fit(Xtr, Ytr, X_val=Xts, Y_val=Yts, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
 
 if __name__ == '__main__':
     import logging
