@@ -31,9 +31,13 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
 
         self.save_last = save_last
         self.save_checkpoint_every_period = save_checkpoint_every_period
+        self.exception_exit = False
 
     def format_filename(self, filename):
-        return filename.format(step=self.manager.step_number+1)
+        formatting = str(self.manager.step_number+1)
+        if self.exception_exit:
+            formatting += '_exception_exit'
+        return filename.format(step=formatting)
 
     def on_step_end(self):
         if self.save_checkpoint_every_period:
@@ -46,9 +50,9 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
 
     def on_iteration_end(self, exception_type=None, exception_message=None, trace_back=None):
         if exception_type is not None:
+            self.exception_exit = True
             self.manager.caller.callbacks = self.manager.callbacks
-            self.filename = self.filename.format(step='{step}_exception_exit')
-
+            
         if self.save_last:
             if self.save_best_only:
                 if getattr(self.manager.step, self.monitor) > self.current_best:
@@ -56,3 +60,5 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
                     self.save(self.manager.caller, override_period=True)
             else:
                 self.save(self.manager.caller, override_period=True)
+        
+        self.exception_exit = False
