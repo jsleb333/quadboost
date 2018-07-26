@@ -39,7 +39,7 @@ class BoostManager(IteratorManager):
         """
         if callbacks is None:
             callbacks = [Progression()]
-        else:
+        elif not any(isinstance(callback, Progression) for callback in callbacks):
             callbacks.append(Progression())
 
         super().__init__(caller=model, callbacks=callbacks, step=BoostingRound())
