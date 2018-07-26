@@ -68,18 +68,33 @@ class QuadBoost:
                 if X_val is not None and Y_val is not None:
                     boosting_round.valid_acc = self.evaluate(X_val, Y_val)
 
-        # If the boosting algorithm uses the confidence of the WeakLearner as a weights instead of computing one, we set a weight of 1 for every weak predictor.
-        if self.weak_predictors_weights == []:
-            self.weak_predictors_weights = [np.array([1])]*len(self.weak_predictors)
-
         return self
-
+    
     def _boost(self, X, residue, weights, **kwargs):
         """
-        Should implements one round of boosting.
-        Must return the calculated residue and the weak_prediction.
-        Should append self.weak_predictors with a fitted self.weak_learner.
+        Implements one round of boosting.
+        Appends the lists of weak_predictors and of weak_predictors_weights with the fitted weak learner and its computed weight.
+
+        Args:
+            X (Array of shape (n_examples, ...)): Examples.
+            residue (Array of shape (n_examples, encoding_dim)): Residues to fit for the examples X.
+            weights (Array of shape (n_examples, encoding_dim)): Weights of the examples X for each encoding.
+            kwargs: Keyword arguments to be passed to the weak learner fit method.
+
+        Returns the calculated residue and the weak_prediction.
         """
+        weak_predictor = self.weak_learner().fit(X, residue, weights, **kwargs)
+        weak_prediction = weak_predictor.predict(X)
+
+        weak_predictor_weight = self._compute_weak_predictor_weight(weights, residue, weak_prediction)
+        residue -= weak_predictor_weight * weak_prediction
+
+        self.weak_predictors_weights.append(weak_predictor_weight)
+        self.weak_predictors.append(weak_predictor)
+
+        return residue, weak_prediction
+    
+    def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         raise NotImplementedError
 
     def resume_fit(self, X, Y, f0=None, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
@@ -138,29 +153,10 @@ class QuadBoostMH(QuadBoost):
         encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
         """
         super().__init__(weak_learner, encoder)
-
-    def _boost(self, X, residue, weights, **kwargs):
-        """
-        Implements one round of boosting.
-        Appends the lists of weak_predictors and of weak_predictors_weights with the fitted weak learner and its computed weight.
-
-        X (Array of shape (n_examples, ...)): Examples.
-        residue (Array of shape (n_examples, encoding_dim)): Residues to fit for the examples X.
-        weights (Array of shape (n_examples, encoding_dim)): Weights of the examples X for each encoding.
-
-        Returns the calculated residue and the weak_prediction.
-        """
-        weak_predictor = self.weak_learner().fit(X, residue, weights, **kwargs)
-        weak_prediction = weak_predictor.predict(X)
-
-        n_examples = X.shape[0]
-        alpha = np.sum(weights * residue * weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
-        residue -= alpha * weak_prediction
-
-        self.weak_predictors_weights.append(alpha)
-        self.weak_predictors.append(weak_predictor)
-
-        return residue, weak_prediction
+    
+    def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
+        n_examples = weights.shape[0]
+        return np.sum(weights*residue*weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
 
 
 class QuadBoostMHCR(QuadBoost):
@@ -171,26 +167,8 @@ class QuadBoostMHCR(QuadBoost):
         """
         super().__init__(confidence_rated_weak_learner, encoder)
 
-    def _boost(self, X, residue, weights, **kwargs):
-        """
-        Implements one round of boosting.
-        Appends the lists of weak_predictors with the fitted weak learner.
-
-        X (Array of shape (n_examples, ...)): Examples.
-        residue (Array of shape (n_examples, encoding_dim)): Residues to fit for the examples X.
-        weights (Array of shape (n_examples, encoding_dim)): Weights of the examples X for each encoding.
-
-        Returns the calculated residue and the confidence_rated_weak_prediction.
-        """
-        confidence_rated_weak_predictor = self.weak_learner().fit(X, residue, weights, **kwargs)
-        confidence_rated_weak_prediction = confidence_rated_weak_predictor.predict(X)
-
-        residue -= confidence_rated_weak_prediction
-
-        self.weak_predictors.append(confidence_rated_weak_predictor)
-        self.weak_predictors_weights.append(np.array([1]))
-
-        return residue, confidence_rated_weak_prediction
+    def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
+        return np.array([1])
 
 @timed
 def main():
@@ -198,7 +176,7 @@ def main():
     mnist = MNISTDataset.load('haar_mnist.pkl')
     # mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 60_000
+    m = 100
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -213,7 +191,8 @@ def main():
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
-    filename = 'haar_onehot_ds_'
+    # filename = 'haar_onehot_ds_'
+    filename = 'test'
     ckpt = ModelCheckpoint(filename=filename+'{step}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
     callbacks = [ckpt,
@@ -221,10 +200,10 @@ def main():
                 ]
 
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=400, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
-            n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
 
 if __name__ == '__main__':
     import logging
