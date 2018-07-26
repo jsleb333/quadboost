@@ -219,15 +219,19 @@ def main():
                 logger,
                 ]
 
+    ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
             n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    ### Or resume fitting a model
+    # qb = QuadBoostMHCR.load('results/test1_exception_exit.ckpt')
+    # qb.resume_fit(Xtr[:m], Ytr[:m],
+    #               X_val=Xts, Y_val=Yts,
+    #               n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
 
 if __name__ == '__main__':
     import logging
     logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
-    # qb2 = QuadBoost.load('results/test1_exception_exit.ckpt')
-    # print(qb2.__dict__)
     main()
