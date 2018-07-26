@@ -61,8 +61,7 @@ class QuadBoost:
                                                         break_on_perfect_train_acc,
                                                         starting_round_number):
 
-                residue, weak_prediction = self._boost(X, residue, weights,
-                                                       **weak_learner_fit_kwargs)
+                residue = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
 
                 boosting_round.train_acc = self.evaluate(X, Y)
                 if X_val is not None and Y_val is not None:
@@ -81,7 +80,7 @@ class QuadBoost:
             weights (Array of shape (n_examples, encoding_dim)): Weights of the examples X for each encoding.
             kwargs: Keyword arguments to be passed to the weak learner fit method.
 
-        Returns the calculated residue and the weak_prediction.
+        Returns the calculated residue.
         """
         weak_predictor = self.weak_learner().fit(X, residue, weights, **kwargs)
         weak_prediction = weak_predictor.predict(X)
@@ -92,7 +91,7 @@ class QuadBoost:
         self.weak_predictors_weights.append(weak_predictor_weight)
         self.weak_predictors.append(weak_predictor)
 
-        return residue, weak_prediction
+        return residue
     
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         raise NotImplementedError
