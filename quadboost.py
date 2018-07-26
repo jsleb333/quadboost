@@ -98,14 +98,35 @@ class QuadBoost:
 
     def resume_fit(self, X, Y, f0=None, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
         try:
-            return self.fit(X, Y, f0,
-                            X_val=X_val, Y_val=Y_val,
-                            callbacks=self.callbacks,
-                            starting_round_number=0,
-                            **weak_learner_fit_kwargs)
+            self.callbacks
         except AttributeError:
             logging.error("Can't resume fit if previous training did not end on an exception. Use 'fit' instead.")
+            return
+        
+        if self.encoder == None:
+            self.encoder = OneHotEncoder(Y)
+        encoded_Y, weights = self.encoder.encode_labels(Y)
 
+        # Initialization
+        if f0 == None:
+            self.f0 = np.zeros(self.encoder.encoding_dim)
+        else:
+            self.f0 = f0
+
+        residue = encoded_Y - self.f0
+        for predictor, predictor_weight in zip(self.weak_predictors, self.weak_predictors_weights):
+            residue -= predictor_weight * predictor.predict(X)
+
+        n_pred = len(self.weak_predictors)
+        with BoostManager(self, self.callbacks) as boost_manager:
+            for boosting_round in boost_manager.iterate(starting_round_number=n_pred):
+                residue = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
+                
+                boosting_round.train_acc = self.evaluate(X, Y)
+                if X_val is not None and Y_val is not None:
+                    boosting_round.valid_acc = self.evaluate(X_val, Y_val)
+
+        return self
 
     def predict(self, X):
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
