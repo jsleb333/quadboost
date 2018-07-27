@@ -13,8 +13,9 @@ class CSVLogger(PeriodicSaveCallback, CSVSave):
         self.log = []
 
     def on_iteration_begin(self):
-        self.log.append([field for field in self.manager.step.__dict__])
-        self.save(self.log)
+        if not self.log:
+            self.log.append([field for field in self.manager.step.__dict__])
+            self.save(self.log)
         
     def on_step_end(self):
         self.log.append([value for value in self.manager.step.__dict__.values()])
