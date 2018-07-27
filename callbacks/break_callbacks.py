@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 import sys, os
 sys.path.append(os.getcwd())
 
@@ -22,6 +23,7 @@ class BreakOnMaxStep(BreakCallback):
     def on_step_begin(self):
         if self.max_step_number is not None:
             if self.manager.step_number >= self.max_step_number-1:
+                logging.info('Terminating iteration due to maximum round number reached.')
                 raise StopIteration
 
 
@@ -36,6 +38,7 @@ class BreakOnPlateau(BreakCallback):
         if self.manager.step.train_acc is not None:
             self._update_best_train_acc()
             if self.patience is not None and self.rounds_since_no_improvements > self.patience:
+                logging.info('Terminating iteration due to maximum round number without improvement reached.')
                 raise StopIteration
 
     def _update_best_train_acc(self):
@@ -53,4 +56,5 @@ class BreakOnPerfectTrainAccuracy(BreakCallback):
     def on_step_end(self):
         if self.manager.step.train_acc is not None:
             if np.isclose(self.manager.step.train_acc, 1.0):
+                logging.info('Terminating iteration due to maximum accuracy reached.')
                 raise StopIteration
