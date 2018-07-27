@@ -7,7 +7,9 @@ import logging
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
-from callbacks import BoostManager, ModelCheckpoint, CSVLogger
+# from callbacks import BoostManager, ModelCheckpoint, CSVLogger
+from callbacks import IteratorManager, BoostingRound, ModelCheckpoint, CSVLogger
+from callbacks import BreakOnMaxStep, BreakOnPerfectTrainAccuracy, BreakOnPlateau, Progression
 from utils import *
 
 
@@ -19,8 +21,6 @@ class QuadBoost:
         """
         self.weak_learner = weak_learner
         self.encoder = encoder
-        self.weak_predictors = []
-        self.weak_predictors_weights = []
 
     def fit(self, X, Y, f0=None,
             max_round_number=None, patience=None, break_on_perfect_train_acc=False,
@@ -47,6 +47,9 @@ class QuadBoost:
         encoded_Y, weights = self.encoder.encode_labels(Y)
 
         # Initialization
+        self.weak_predictors = []
+        self.weak_predictors_weights = []
+
         if f0 == None:
             self.f0 = np.zeros(self.encoder.encoding_dim)
         else:
@@ -54,19 +57,38 @@ class QuadBoost:
 
         residue = encoded_Y - self.f0
 
-        with BoostManager(self, callbacks) as boost_manager:
+        # Callbacks
+        if callbacks is None:
+            callbacks = [Progression()]
+        elif not any(isinstance(callback, Progression) for callback in callbacks):
+            callbacks.append(Progression())
+        
+        if break_on_perfect_train_acc:
+            callbacks.append(BreakOnPerfectTrainAccuracy())
+        if max_round_number:
+            callbacks.append(BreakOnMaxStep(max_step_number=max_round_number))
+        if patience:
+            callbacks.append(BreakOnPlateau(patience=patience))
+        
+        self.callbacks = callbacks
+        
+        return self._fit(X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs)
+
+    def _fit(self, X, Y, residue, weights,
+             X_val=None, Y_val=None,
+             starting_round_number=0,
+             **weak_learner_fit_kwargs):
+
+        with IteratorManager(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
             # Boosting algorithm
-            for boosting_round in boost_manager.iterate(max_round_number,
-                                                        patience,
-                                                        break_on_perfect_train_acc,
-                                                        starting_round_number):
+            for boosting_round in boost_manager.iterate(starting_step_number=starting_round_number):
 
                 residue = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
 
                 boosting_round.train_acc = self.evaluate(X, Y)
                 if X_val is not None and Y_val is not None:
                     boosting_round.valid_acc = self.evaluate(X_val, Y_val)
-
+        
         return self
     
     def _boost(self, X, residue, weights, **kwargs):
@@ -96,37 +118,22 @@ class QuadBoost:
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         raise NotImplementedError
 
-    def resume_fit(self, X, Y, f0=None, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
+    def resume_fit(self, X, Y, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
         try:
-            self.callbacks
+            self.weak_predictors
         except AttributeError:
-            logging.error("Can't resume fit if previous training did not end on an exception. Use 'fit' instead.")
-            return
+            logging.error("Can't resume fit if no previous fitting made. Use 'fit' instead.")
+            return self
         
-        if self.encoder == None:
-            self.encoder = OneHotEncoder(Y)
         encoded_Y, weights = self.encoder.encode_labels(Y)
-
-        # Initialization
-        if f0 == None:
-            self.f0 = np.zeros(self.encoder.encoding_dim)
-        else:
-            self.f0 = f0
 
         residue = encoded_Y - self.f0
         for predictor, predictor_weight in zip(self.weak_predictors, self.weak_predictors_weights):
             residue -= predictor_weight * predictor.predict(X)
 
-        n_pred = len(self.weak_predictors)
-        with BoostManager(self, self.callbacks) as boost_manager:
-            for boosting_round in boost_manager.iterate(starting_round_number=n_pred):
-                residue = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
-                
-                boosting_round.train_acc = self.evaluate(X, Y)
-                if X_val is not None and Y_val is not None:
-                    boosting_round.valid_acc = self.evaluate(X_val, Y_val)
+        starting_round_number = len(self.weak_predictors)
 
-        return self
+        return self._fit(X, Y, residue, weights, X_val, Y_val, starting_round_number, **weak_learner_fit_kwargs)
 
     def predict(self, X):
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
@@ -142,10 +149,9 @@ class QuadBoost:
 
     def visualize_coef(self):
         fig, axes = make_fig_axes(self.encoder.encoding_dim)
-        coefs = self.coef_
 
         for i, ax in enumerate(axes):
-            ax.imshow(coefs[i,:,:], cmap='gray_r')
+            ax.imshow(self.coef_[i,:,:], cmap='gray_r')
 
         plt.get_current_fig_manager().window.showMaximized()
         plt.show()
@@ -213,23 +219,23 @@ def main():
     ### Callbacks
     # filename = 'haar_onehot_ds_'
     filename = 'test'
-    ckpt = ModelCheckpoint(filename=filename+'{step}.ckpt', dirname='./results', save_last=True)
+    ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
     callbacks = [ckpt,
                 logger,
                 ]
 
     ### Fitting the model
-    qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
-            X_val=Xts, Y_val=Yts,
-            callbacks=callbacks,
-            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    # qb = QuadBoostMHCR(weak_learner, encoder=encoder)
+    # qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
+    #         X_val=Xts, Y_val=Yts,
+    #         callbacks=callbacks,
+    #         n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     ### Or resume fitting a model
-    # qb = QuadBoostMHCR.load('results/test1_exception_exit.ckpt')
-    # qb.resume_fit(Xtr[:m], Ytr[:m],
-    #               X_val=Xts, Y_val=Yts,
-    #               n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    qb = QuadBoostMHCR.load('results/test3.ckpt')
+    qb.resume_fit(Xtr[:m], Ytr[:m],
+                  X_val=Xts, Y_val=Yts,
+                  n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
 
 if __name__ == '__main__':
     import logging
