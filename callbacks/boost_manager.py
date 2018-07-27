@@ -14,8 +14,8 @@ class BoostingRound(Step):
     """
     Class that stores information about the current boosting round, storing the round number and the training and validation accuracies.
     """
-    def __init__(self):
-        self.round = 0
+    def __init__(self, round_number=0):
+        self.round = round_number
         self.train_acc = None
         self.valid_acc = None
 
