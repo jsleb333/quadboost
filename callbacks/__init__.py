@@ -5,7 +5,6 @@ try:
     from progression import *
     from save_callbacks import *
     from iterator_manager import *
-    from boost_manager import *
     from model_checkpoint import *
     from logger import *
 except ModuleNotFoundError:
@@ -15,6 +14,5 @@ except ModuleNotFoundError:
     from callbacks.progression import *
     from callbacks.save_callbacks import *
     from callbacks.iterator_manager import *
-    from callbacks.boost_manager import *
     from callbacks.model_checkpoint import *
     from callbacks.logger import *

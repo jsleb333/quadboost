@@ -7,9 +7,9 @@ import logging
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
-# from callbacks import BoostManager, ModelCheckpoint, CSVLogger
-from callbacks import IteratorManager, BoostingRound, ModelCheckpoint, CSVLogger
-from callbacks import BreakOnMaxStep, BreakOnPerfectTrainAccuracy, BreakOnPlateau, Progression
+from callbacks import IteratorManager
+from callbacks import ModelCheckpoint, CSVLogger, Progression
+from callbacks import BreakOnMaxStep, BreakOnPerfectTrainAccuracy, BreakOnPlateau
 from utils import *
 
 
@@ -218,6 +218,21 @@ class QuadBoostMHCR(QuadBoost):
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         return np.array([1])
 
+
+class BoostingRound:
+    """
+    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used in the IteratorManager
+    """
+    def __init__(self, round_number=0):
+        self.round = round_number
+        self.train_acc = None
+        self.valid_acc = None
+
+    def __next__(self):
+        self.round += 1
+        return self
+
+
 @timed
 def main():
     ### Data loading
@@ -248,16 +263,16 @@ def main():
                 ]
 
     ### Fitting the model
-    # qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    # qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
-    #         X_val=Xts, Y_val=Yts,
-    #         callbacks=callbacks,
-    #         n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    qb = QuadBoostMHCR(weak_learner, encoder=encoder)
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
+            X_val=Xts, Y_val=Yts,
+            callbacks=callbacks,
+            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     ### Or resume fitting a model
-    qb = QuadBoostMHCR.load('results/test3.ckpt')
-    qb.resume_fit(Xtr[:m], Ytr[:m],
-                  X_val=Xts, Y_val=Yts,
-                  n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    # qb = QuadBoostMHCR.load('results/test2.ckpt')
+    # qb.resume_fit(Xtr[:m], Ytr[:m],
+    #               X_val=Xts, Y_val=Yts,
+    #               n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
 
 if __name__ == '__main__':
     import logging
