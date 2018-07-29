@@ -125,15 +125,27 @@ class QuadBoost:
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         raise NotImplementedError
 
-    def resume_fit(self, X, Y, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
+    def resume_fit(self, X, Y, X_val=None, Y_val=None, max_round_number=None, **weak_learner_fit_kwargs):
         """
-        Function to resume a previous fit uncompleted, with the same callbacks and ending conditions.
+        Function to resume a previous fit uncompleted, with the same callbacks and ending conditions. See 'fit' for a description of the arguments.
+
+        The condition on the maximum number of round can be modified or added by specifying max_round_number.
+
+        Returns self.
         """
         try:
             self.weak_predictors
         except AttributeError:
             logging.error("Can't resume fit if no previous fitting made. Use 'fit' instead.")
             return self
+        
+        if max_round_number:
+            for callback in self.callbacks:
+                if isinstance(callback, BreakOnMaxStep):
+                    callback.max_step_number = max_round_number
+                    break
+            else:
+                self.callbacks.append(BreakOnMaxStep(max_round_number))
         
         encoded_Y, weights = self.encoder.encode_labels(Y)
 
