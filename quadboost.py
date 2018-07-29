@@ -26,20 +26,25 @@ class QuadBoost:
             max_round_number=None, patience=None, break_on_perfect_train_acc=False,
             X_val=None, Y_val=None,
             callbacks=None,
-            starting_round_number=0,
             **weak_learner_fit_kwargs):
         """
-        X (Array of shape (n_examples, ...)): Examples.
-        Y (Iterable of 'n_examples' elements): Labels for the examples X. Y is encoded with the encode_labels method if one is provided, else it is transformed as one-hot vectors.
-        f0 (Array of shape (encoding_dim,), optional, default=None): Initial prediction function. If None, f0 is set to 0.
-        max_round_number (int, optional, default=-1): Maximum number of boosting rounds. If None, the algorithm will boost indefinitely, until reaching a perfect training accuracy (if True), or until the training accuracy does not improve for 'patience' consecutive boosting rounds (if not None).
-        patience (int, optional, default=None): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If None, the boosting rounds will continue until max_round_number iterations (if not None).
-        break_on_perfect_train_acc (Boolean, optional, default=False): If True, it will stop the iterations if a perfect train accuracy of 1.0 is achieved.
-        X_val (Array of shape (n_val, ...), optional, default=None): Validation examples. If not None, the validation accuracy will be evaluated at each boosting round.
-        Y_val (Iterable of 'n_val' elements, optional, default=None): Validation labels for the examples X_val. If not None, the validation accuracy will be evaluated at each boosting round.
-        callbacks (Iterable of Callback objects, optional, default=None): Callbacks objects to be called at some specific step of the training procedure to execute something. Ending conditions of the boosting iteration are handled with BreakCallbacks. If callbacks contains BreakCallbacks and terminating conditions (max_round_number, patience, break_on_perfect_train_acc) are not None, all conditions will be checked at each round and the first that is not verified will stop the iteration.
-        starting_round_number (int, optional): Number of the round the iteration should start. This is mainly used to resume a fit process that was interrupted.
-        weak_learner_fit_kwargs: Keyword arguments to pass to the fit method of the weak learner.
+        Function that fits the model to the data.
+
+        The function is split into two parts: the first prepare the data and the callbacks, the second, done in _fit, actually executes the algorithm. The iteration and the callbacks are handled by a IteratorManager.
+
+        Args:
+            X (Array of shape (n_examples, ...)): Examples.
+            Y (Iterable of 'n_examples' elements): Labels for the examples X. Y is encoded with the encode_labels method if one is provided, else it is transformed as one-hot vectors.
+            f0 (Array of shape (encoding_dim,), optional, default=None): Initial prediction function. If None, f0 is set to 0.
+            max_round_number (int, optional, default=-1): Maximum number of boosting rounds. If None, the algorithm will boost indefinitely, until reaching a perfect training accuracy (if True), or until the training accuracy does not improve for 'patience' consecutive boosting rounds (if not None).
+            patience (int, optional, default=None): Number of boosting rounds before terminating the algorithm when the training accuracy shows no improvements. If None, the boosting rounds will continue until max_round_number iterations (if not None).
+            break_on_perfect_train_acc (Boolean, optional, default=False): If True, it will stop the iterations if a perfect train accuracy of 1.0 is achieved.
+            X_val (Array of shape (n_val, ...), optional, default=None): Validation examples. If not None, the validation accuracy will be evaluated at each boosting round.
+            Y_val (Iterable of 'n_val' elements, optional, default=None): Validation labels for the examples X_val. If not None, the validation accuracy will be evaluated at each boosting round.
+            callbacks (Iterable of Callback objects, optional, default=None): Callbacks objects to be called at some specific step of the training procedure to execute something. Ending conditions of the boosting iteration are handled with BreakCallbacks. If callbacks contains BreakCallbacks and terminating conditions (max_round_number, patience, break_on_perfect_train_acc) are not None, all conditions will be checked at each round and the first that is not verified will stop the iteration.
+            weak_learner_fit_kwargs: Keyword arguments to pass to the fit method of the weak learner.
+        
+        Returns self.
         """
         # Encodes the labels
         if self.encoder == None:
@@ -78,7 +83,9 @@ class QuadBoost:
              X_val=None, Y_val=None,
              starting_round_number=0,
              **weak_learner_fit_kwargs):
-
+        """
+        Function used to actually fit the model. Used by 'fit, and 'resume_fit'. Should not be used otherwise.
+        """
         with IteratorManager(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
             # Boosting algorithm
             for boosting_round in boost_manager.iterate(starting_step_number=starting_round_number):
@@ -119,6 +126,9 @@ class QuadBoost:
         raise NotImplementedError
 
     def resume_fit(self, X, Y, X_val=None, Y_val=None, **weak_learner_fit_kwargs):
+        """
+        Function to resume a previous fit uncompleted, with the same callbacks and ending conditions.
+        """
         try:
             self.weak_predictors
         except AttributeError:
