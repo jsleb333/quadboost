@@ -236,15 +236,16 @@ class BoostingRound:
 @timed
 def main():
     ### Data loading
-    mnist = MNISTDataset.load('haar_mnist.pkl')
-    # mnist = MNISTDataset.load()
+    # mnist = MNISTDataset.load('haar_mnist.pkl')
+    mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 100
+    m = 60_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
-    encoder = OneHotEncoder(Ytr)
+    encoder = LabelEncoder.load_encodings('ideal_mnist', convert_to_int=True)
+    # encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
     ### Choice of weak learner
@@ -255,7 +256,7 @@ def main():
 
     ### Callbacks
     # filename = 'haar_onehot_ds_'
-    filename = 'test'
+    filename = 'ideal_mnist_ds_'
     ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
     callbacks = [ckpt,
@@ -264,10 +265,10 @@ def main():
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=100, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
-            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+            n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     ### Or resume fitting a model
     # qb = QuadBoostMHCR.load('results/test2.ckpt')
     # qb.resume_fit(Xtr[:m], Ytr[:m],
