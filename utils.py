@@ -1,8 +1,9 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from functools import wraps
-from multiprocessing import Pool
+import functools
+import multiprocessing as mp
+from time import time
 
 def to_one_hot(Y):
     labels = set(Y)
@@ -92,15 +93,14 @@ def haar_projector(N):
 
 
 def parallelize(func, func_args, n_jobs):
-    with Pool(n_jobs) as pool:
+    with mp.Pool(n_jobs) as pool:
         parallel_return = pool.map(func, func_args)
     return parallel_return
 
 
 def timed(func):
-    @wraps(func)
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        from time import time
         t = time()
         try:
             func_return = func(*args, **kwargs)
@@ -113,7 +113,7 @@ def timed(func):
     return wrapper
 
 
-from mnist_dataset import MNISTDataset
-from label_encoder import OneHotEncoder
 if __name__ == '__main__':
+    from mnist_dataset import MNISTDataset
+    from label_encoder import OneHotEncoder
     print(haar_projector(7).T.dot(haar_projector(7)))
