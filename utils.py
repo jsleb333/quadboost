@@ -4,6 +4,28 @@ import matplotlib.pyplot as plt
 import functools
 import multiprocessing as mp
 from time import time
+import argparse
+import inspect
+
+
+def parse(func):
+    """
+    Quick and dirty way to make any main with optional keyword arguments parsable from the command line.
+    """
+    @functools.wraps(func)
+    def wrapper(**kwargs):
+        # Get default kwargs
+        signature_kwargs = {k:v.default for k, v in inspect.signature(func).parameters.items()}
+        # Update default values with values of caller
+        signature_kwargs.update(kwargs)
+        # Parse kwargs
+        parser = argparse.ArgumentParser()
+        for key, value in signature_kwargs.items():
+            parser.add_argument(f'--{key}', dest=key, default=value, type=type(value))
+        kwargs = vars(parser.parse_args())
+        # Returns the original func with new kwargs
+        return func(**kwargs)
+    return wrapper
 
 
 def to_one_hot(Y):
@@ -87,6 +109,4 @@ def timed(func):
 
 
 if __name__ == '__main__':
-    from mnist_dataset import MNISTDataset
-    from label_encoder import OneHotEncoder
-    print(haar_projector(7).T.dot(haar_projector(7)))
+    pass
