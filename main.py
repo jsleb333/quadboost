@@ -53,4 +53,5 @@ def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_job
     #               n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
     main()
