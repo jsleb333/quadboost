@@ -5,6 +5,7 @@ import functools
 import multiprocessing as mp
 from time import time
 
+
 def to_one_hot(Y):
     labels = set(Y)
     n_classes = len(labels)
@@ -62,34 +63,6 @@ def split_int(n, k):
         if i < n%k:
             idx1 += 1
         yield (idx0, idx1)
-
-
-def haar_projection(images):
-    """
-    Recursively computes the Haar projection of an array of 2D images.
-    Uses a non-standard Haar projection for sizes that are not powers of 2.
-    """
-    projected_images = images.astype(dtype=float)
-    m, N, _ = images.shape
-    while N > 1:
-        projector = haar_projector(N)
-        np.matmul(np.matmul(projector, projected_images[:,:N,:N]), projector.T, out=projected_images[:,:N,:N])
-        N = N//2 if N%2 == 0 else N//2+1
-        # print(N)
-    return projected_images
-
-
-def haar_projector(N):
-    """
-    Generates the Haar projector of size N.
-    """
-    projection = np.zeros((N,N))
-    for i in range(N):
-        projection[i//2,i] = 1
-        projection[(i+N)//2,i] = 1 if (i+N)%2 == 0 else -1
-    projection /= 2
-
-    return projection
 
 
 def parallelize(func, func_args, n_jobs):
