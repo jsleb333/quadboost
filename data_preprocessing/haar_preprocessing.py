@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import sys, os
 sys.path.append(os.getcwd())
 
-from utils import haar_projection
 from mnist_dataset import MNISTDataset
 
 
@@ -43,19 +42,27 @@ def show_im(images):
         plt.title(y)
         plt.show()
 
-        
+
 if __name__ == '__main__':
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
 
+    pad = True
+    if pad:
+        Xtr = np.pad(Xtr, ((0,0), (2,2), (2,2)), mode='constant')
+        Xts = np.pad(Xts, ((0,0), (2,2), (2,2)), mode='constant')
+
     haar_Xtr = haar_projection(Xtr)
     haar_Xts = haar_projection(Xts)
 
-    # show_im(haar_Xtr)
+    # show_im(haar_Xtr[:3])
 
-    haar_mnist = MNISTDataset(haar_Xtr, Ytr, haar_Xts, Yts)
-    haar_mnist.save(filename='haar_mnist.pkl')
+    haar_mnist = MNISTDataset(haar_Xtr, Ytr, haar_Xts, Yts, side=28+4*pad)
+    filename = 'haar_mnist'
+    if pad: filename += '_pad'
 
-    haar_mnist = MNISTDataset.load('haar_mnist.pkl')
+    haar_mnist.save(filename=filename+'.pkl')
+
+    haar_mnist = MNISTDataset.load(filename+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = haar_mnist.get_train_test(center=False, reduce=False)
     show_im(Xtr[:5])
