@@ -78,13 +78,13 @@ def visualize_mnist(X, Y):
 
 
 class MNISTDataset:
-    def __init__(self, Xtr, Ytr, Xts=None, Yts=None):
+    def __init__(self, Xtr, Ytr, Xts=None, Yts=None, side=28):
         self.Xtr = Xtr.reshape(Xtr.shape[0],-1)
         self.Ytr = Ytr
         self.Xts = Xts.reshape(Xts.shape[0],-1)
         self.Yts = Yts
 
-        self.side_size = 28
+        self.side_size = side
 
         self.scaler = StandardScaler()
         self.scaler.fit(self.Xtr)
