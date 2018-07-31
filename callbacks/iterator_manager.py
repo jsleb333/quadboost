@@ -40,7 +40,7 @@ class IteratorManager:
         self.caller = caller
         self.callbacks = CallbackList(manager=self, callbacks=callbacks or [])
         self.step = step or Step(self)
-        self.starting_step_number = -1
+        self.starting_step_number = self.step_number = -1
         self.has_entered = False
     
     def __enter__(self):

@@ -12,6 +12,7 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
                  save_best_only=False, monitor='train_acc',
                  save_last=True,
                  save_checkpoint_every_period=True,
+                 overwrite_old_save=True,
                  **kwargs):
         """
         Args:
@@ -19,6 +20,7 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
             monitor (String, optional, either 'train_acc' or 'valid_acc'): Value to monitor if 'save_best_only' is True.
             save_last (Boolean, optional): In the case 'period' is not 1, if 'save_last' is True, a checkpoint will be saved at the end of the iteration, regarless if the period.
             save_checkpoint_every_period (Boolean, optional): If True, a checkpoint will be saved every periods.
+            overwrite_old_save (Boolean, optional): If True, each time a checkpoint is made, the old checkpoint will be erased, even if the filename is different. To keep all models, set this parameter to False.
 
         See PeriodicSaveCallback and PickleSave documentation for other arguments.
 
@@ -31,9 +33,13 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
 
         self.save_last = save_last
         self.save_checkpoint_every_period = save_checkpoint_every_period
+        self.overwrite_old_save = overwrite_old_save
 
     def format_filename(self, filename):
         return filename.format(round=self.manager.step_number+1)
+    
+    def on_iteration_begin(self):
+        self.old_filedir = self.filedir
 
     def on_step_end(self):
         if self.save_checkpoint_every_period:
@@ -43,6 +49,8 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
                         self.current_best = getattr(self.manager.step, self.monitor)
             else:
                 self.save(self.manager.caller)
+            
+            self.erase_old_save()
 
     def on_iteration_end(self, exception_type=None, exception_message=None, trace_back=None):
         if self.save_last:
@@ -52,3 +60,13 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
                     self.save(self.manager.caller, override_period=True)
             else:
                 self.save(self.manager.caller, override_period=True)
+            
+            self.erase_old_save()
+
+    def erase_old_save(self):
+        if self.overwrite_old_save and (self.filedir != self.old_filedir):
+            try:
+                os.remove(self.old_filedir)
+            except FileNotFoundError: pass
+
+        self.old_filedir = self.filedir
