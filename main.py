@@ -1,4 +1,5 @@
-from utils import parse
+from utils import parse, timed
+from datetime import datetime
 from quadboost import QuadBoostMHCR
 from callbacks import ModelCheckpoint, CSVLogger
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
@@ -6,7 +7,7 @@ from mnist_dataset import MNISTDataset
 from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump
 import logging
 
-
+@timed
 @parse
 def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_jobs=1, max_round=400, patience=10, resume=0):
     ### Data loading
@@ -56,5 +57,5 @@ def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_job
                       **kwargs)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
+    logging.basicConfig(level=logging.WARNING, style='{', format='[{levelname}] {message}')
     main()
