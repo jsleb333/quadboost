@@ -8,7 +8,7 @@ import logging
 
 
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_jobs=1, max_round=400, patience=10):
+def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_jobs=1, max_round=400, patience=10, resume=0):
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
@@ -41,16 +41,19 @@ def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_job
                 ]
 
     ### Fitting the model
-    qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=max_round, patience=patience,
-           X_val=Xts, Y_val=Yts,
-           callbacks=callbacks,
-           **kwargs)
+    if not resume:
+        qb = QuadBoostMHCR(weak_learner, encoder=encoder)
+        qb.fit(Xtr[:m], Ytr[:m], max_round_number=max_round, patience=patience,
+               X_val=Xts, Y_val=Yts,
+               callbacks=callbacks,
+               **kwargs)
     ### Or resume fitting a model
-    # qb = QuadBoostMHCR.load('results/test2.ckpt')
-    # qb.resume_fit(Xtr[:m], Ytr[:m],
-    #               X_val=Xts, Y_val=Yts,
-    #               n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    else:
+        qb = QuadBoostMHCR.load(f'results/{filename}{resume}.ckpt')
+        qb.resume_fit(Xtr[:m], Ytr[:m],
+                      X_val=Xts, Y_val=Yts,
+                      max_round_number=max_round,
+                      **kwargs)
 
 if __name__ == '__main__':
     logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
