@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import functools
 import multiprocessing as mp
 from time import time
+from datetime import datetime as dt
 import argparse
 import inspect
 
@@ -97,16 +98,18 @@ def timed(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         t = time()
+        time_format = '%Y-%m-%d %Hh%Mm%Ss'
+        func_name = "of '" + func.__name__ + "' " if func.__name__ != 'main' else ''
+        print(f'Execution {func_name}started on {dt.now().strftime(time_format)}.\n')
         try:
             func_return = func(*args, **kwargs)
         except:
-            print(f'\nExecution terminated after {time()-t:.2f} seconds.\n')
+            print(f'\nExecution terminated after {time()-t:.2f} seconds on {dt.now().strftime(time_format)}.\n')
             raise
-        func_name = "of '" + func.__name__ + "' " if func.__name__ != 'main' else ''
-        print(f'\nExecution {func_name}completed in {time()-t:.2f} seconds.\n')
+        print(f'\nExecution {func_name}completed in {time()-t:.2f} seconds on {dt.now().strftime(time_format)}.\n')
         return func_return
     return wrapper
 
 
 if __name__ == '__main__':
-    pass
+    timed(split_int)(10,2)
