@@ -40,7 +40,7 @@ class SaveCallback(Callback):
         return filename
 
     def save(self, *args, **kwargs):
-        logging.info(f'Saving to file {self.filedir}')
+        logging.debug(f'Saving to file {self.filedir}')
         atomic_save_successful = False
         if self.atomic_write:
             atomic_save_successful = self._atomic_save(*args, **kwargs)
@@ -54,9 +54,13 @@ class SaveCallback(Callback):
             os.replace(self.tmp_filedir, self.filedir)
             atomic_save_successful = True
         except OSError:
-            warnings.warn(f"Could not replace '{self.filedir}' with '{self.tmp_filedir}'. Saving non-atomically instead.")
+            warning_message = f"Could not replace '{self.filedir}' with '{self.tmp_filedir}'. Saving non-atomically hereafter."
+            warnings.warn(warning_message)
+            logging.warning(warning_message)
+
             os.remove(self.tmp_filedir)
             atomic_save_successful = False
+            self.atomic_write = False
 
         return atomic_save_successful
 
