@@ -43,7 +43,7 @@ class QuadBoost:
             Y_val (Iterable of 'n_val' elements, optional, default=None): Validation labels for the examples X_val. If not None, the validation accuracy will be evaluated at each boosting round.
             callbacks (Iterable of Callback objects, optional, default=None): Callbacks objects to be called at some specific step of the training procedure to execute something. Ending conditions of the boosting iteration are handled with BreakCallbacks. If callbacks contains BreakCallbacks and terminating conditions (max_round_number, patience, break_on_perfect_train_acc) are not None, all conditions will be checked at each round and the first that is not verified will stop the iteration.
             weak_learner_fit_kwargs: Keyword arguments to pass to the fit method of the weak learner.
-        
+
         Returns self.
         """
         # Encodes the labels
@@ -67,16 +67,16 @@ class QuadBoost:
             callbacks = [Progression()]
         elif not any(isinstance(callback, Progression) for callback in callbacks):
             callbacks.append(Progression())
-        
+
         if break_on_perfect_train_acc:
             callbacks.append(BreakOnPerfectTrainAccuracy())
         if max_round_number:
             callbacks.append(BreakOnMaxStep(max_step_number=max_round_number))
         if patience:
             callbacks.append(BreakOnPlateau(patience=patience))
-        
+
         self.callbacks = callbacks
-        
+
         return self._fit(X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs)
 
     def _fit(self, X, Y, residue, weights,
@@ -95,9 +95,9 @@ class QuadBoost:
                 boosting_round.train_acc = self.evaluate(X, Y)
                 if X_val is not None and Y_val is not None:
                     boosting_round.valid_acc = self.evaluate(X_val, Y_val)
-        
+
         return self
-    
+
     def _boost(self, X, residue, weights, **kwargs):
         """
         Implements one round of boosting.
@@ -121,7 +121,7 @@ class QuadBoost:
         self.weak_predictors.append(weak_predictor)
 
         return residue
-    
+
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         raise NotImplementedError
 
@@ -138,7 +138,7 @@ class QuadBoost:
         except AttributeError:
             logging.error("Can't resume fit if no previous fitting made. Use 'fit' instead.")
             return self
-        
+
         if max_round_number:
             for callback in self.callbacks:
                 if isinstance(callback, BreakOnMaxStep):
@@ -146,7 +146,7 @@ class QuadBoost:
                     break
             else:
                 self.callbacks.append(BreakOnMaxStep(max_round_number))
-        
+
         encoded_Y, weights = self.encoder.encode_labels(Y)
 
         residue = encoded_Y - self.f0
@@ -201,7 +201,7 @@ class QuadBoostMH(QuadBoost):
         encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
         """
         super().__init__(weak_learner, encoder)
-    
+
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         n_examples = weights.shape[0]
         return np.sum(weights*residue*weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
@@ -277,5 +277,5 @@ def main():
 
 if __name__ == '__main__':
     import logging
-    logging.basicConfig(level=30, style='{', format='[{levelname}] {message}')
+    logging.basicConfig(level=logging.INFO, style='{', format='[{levelname}] {message}')
     main()

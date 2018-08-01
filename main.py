@@ -57,5 +57,5 @@ def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_job
                       **kwargs)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.WARNING, style='{', format='[{levelname}] {message}')
+    logging.basicConfig(level=logging.INFO, style='{', format='[{levelname}] {message}')
     main()
