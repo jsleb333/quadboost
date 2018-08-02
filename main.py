@@ -34,7 +34,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_job
         kwargs = {}
 
     ### Callbacks
-    filename = f'{dataset}_{encodings}_{wl}_'
+    filename = f'd={dataset}-e={encodings}-wl={wl}-'
     ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
     callbacks = [ckpt,
