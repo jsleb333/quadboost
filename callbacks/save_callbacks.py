@@ -30,11 +30,11 @@ class SaveCallback(Callback):
 
     @property
     def filedir(self):
-        return self.dirname + '/' + self.format_filename(self.filename)
+        return os.path.join(self.dirname, self.format_filename(self.filename))
 
     @property
     def tmp_filedir(self):
-        return self.dirname + '/tmp_' + self.format_filename(self.filename)
+        return os.path.join(self.dirname, 'tmp_' + self.format_filename(self.filename))
 
     def format_filename(self, filename):
         return filename

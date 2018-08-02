@@ -36,8 +36,8 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
         self.overwrite_old_save = overwrite_old_save
 
     def format_filename(self, filename):
-        return filename.format(round=self.manager.step_number+1)
-    
+        return filename.format(round=self.manager.step.step_number+1)
+
     def on_iteration_begin(self):
         self.old_filedir = self.filedir
 
@@ -49,10 +49,10 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
                         self.current_best = getattr(self.manager.step, self.monitor)
             else:
                 self.save(self.manager.caller)
-            
+
             self.erase_old_save()
 
-    def on_iteration_end(self, exception_type=None, exception_message=None, trace_back=None):
+    def on_iteration_end(self):
         if self.save_last:
             if self.save_best_only:
                 if getattr(self.manager.step, self.monitor) > self.current_best:
@@ -60,7 +60,7 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
                     self.save(self.manager.caller, override_period=True)
             else:
                 self.save(self.manager.caller, override_period=True)
-            
+
             self.erase_old_save()
 
     def erase_old_save(self):

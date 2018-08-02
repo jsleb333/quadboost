@@ -14,11 +14,14 @@ class Callback:
     def on_iteration_begin(self):
         pass
 
-    def on_iteration_end(self, exception_type=None, exception_message=None, trace_back=None):
+    def on_iteration_end(self):
         pass
 
     def on_step_begin(self):
         pass
 
     def on_step_end(self):
+        pass
+
+    def on_exception_exit(self, exception_type=None, exception_message=None, traceback=None):
         pass

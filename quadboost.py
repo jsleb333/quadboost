@@ -7,7 +7,7 @@ import logging
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
-from callbacks import IteratorManager
+from callbacks import IteratorManager, Step
 from callbacks import ModelCheckpoint, CSVLogger, Progression
 from callbacks import BreakOnMaxStep, BreakOnPerfectTrainAccuracy, BreakOnPlateau
 from utils import *
@@ -88,7 +88,7 @@ class QuadBoost:
         """
         with IteratorManager(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
             # Boosting algorithm
-            for boosting_round in boost_manager.iterate(starting_step_number=starting_round_number):
+            for boosting_round in boost_manager:
 
                 residue = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
 
@@ -219,18 +219,14 @@ class QuadBoostMHCR(QuadBoost):
         return np.array([1])
 
 
-class BoostingRound:
+class BoostingRound(Step):
     """
-    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used in the IteratorManager
+    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the IteratorManager in the QuadBoost._fit method.
     """
     def __init__(self, round_number=0):
-        self.round = round_number
+        super().__init__(step_number=round_number)
         self.train_acc = None
         self.valid_acc = None
-
-    def __next__(self):
-        self.round += 1
-        return self
 
 
 @timed
@@ -239,7 +235,7 @@ def main():
     # mnist = MNISTDataset.load('haar_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 60_000
+    m = 1_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -256,7 +252,8 @@ def main():
 
     ### Callbacks
     # filename = 'haar_onehot_ds_'
-    filename = 'ideal_mnist_ds_'
+    # filename = 'ideal_mnist_ds_'
+    filename = 'test_'
     ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
     callbacks = [ckpt,
@@ -265,7 +262,7 @@ def main():
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=100, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=5, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
             n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
