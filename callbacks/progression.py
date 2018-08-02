@@ -9,7 +9,7 @@ class Progression(Callback):
     """
     This class format a readable output to the console to follow the progression of the training of the QuadBoost algorithm. It outputs a string in the format:
         Boosting round ### | Train acc: #.### | Valid acc: #.### | Time: #.##s
-    
+
     It omits 'Valid acc' if none was used in the algorithm.
     """
     def on_iteration_begin(self):
@@ -17,7 +17,7 @@ class Progression(Callback):
 
     def on_step_end(self):
         # Round number
-        output = [f'Boosting round {self.manager.step_number+1:03d}']
+        output = [f'Boosting round {self.manager.step.step_number+1:03d}']
 
         # Train accuracy
         if self.manager.step.train_acc is not None:

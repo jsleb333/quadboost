@@ -36,7 +36,7 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
         self.overwrite_old_save = overwrite_old_save
 
     def format_filename(self, filename):
-        return filename.format(round=self.manager.step_number+1)
+        return filename.format(round=self.manager.step.step_number+1)
 
     def on_iteration_begin(self):
         self.old_filedir = self.filedir
