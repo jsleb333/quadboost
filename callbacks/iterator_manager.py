@@ -14,7 +14,7 @@ class Step:
         self.manager = manager
 
     def __next__(self):
-        return self.manager.step_number    
+        return self.manager.step_number
 
 
 class IteratorManager:
@@ -42,7 +42,7 @@ class IteratorManager:
         self.step = step or Step(self)
         self.starting_step_number = self.step_number = -1
         self.has_entered = False
-    
+
     def __enter__(self):
         """
         The callback 'on_iteration_begin' is called here.
@@ -50,14 +50,15 @@ class IteratorManager:
         self.has_entered = True
         self.callbacks.on_iteration_begin()
         return self
-    
-    def __exit__(self, exception_type, exception_message, trace_back):
+
+    def __exit__(self, exception_type, exception_message, traceback):
         """
         The callback 'on_iteration_end' is called here.
         """
         if exception_type is not None:
             self.step_number -= 1 # If iteration did not end normally, all work done this iteration is lost, hence the current step number is actually the last one.
-        self.callbacks.on_iteration_end(exception_type, exception_message, trace_back)
+            self.callbacks.on_exception_exit(exception_type, exception_message, traceback)
+        self.callbacks.on_iteration_end()
         self.has_entered = False
 
     def __iter__(self):
@@ -70,7 +71,7 @@ class IteratorManager:
         self.step_number = self.starting_step_number
         self.first_step = True
         if not self.has_entered: self.callbacks.on_iteration_begin()
-        
+
         return self
 
     def iterate(self, max_step_number=None, starting_step_number=0):
