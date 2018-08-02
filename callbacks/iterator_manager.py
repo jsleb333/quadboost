@@ -1,7 +1,7 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import CallbackList, BreakOnMaxStep
+from callbacks import CallbackList
 
 
 class Step:
