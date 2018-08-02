@@ -221,7 +221,7 @@ class QuadBoostMHCR(QuadBoost):
 
 class BoostingRound(Step):
     """
-    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used in the IteratorManager
+    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the IteratorManager in the QuadBoost._fit method.
     """
     def __init__(self, round_number=0):
         super().__init__(step_number=round_number)
