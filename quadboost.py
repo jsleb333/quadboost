@@ -9,7 +9,7 @@ from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 from callbacks import IteratorManager, Step
 from callbacks import ModelCheckpoint, CSVLogger, Progression
-from callbacks import BreakOnMaxStep, BreakOnPerfectTrainAccuracy, BreakOnPlateau
+from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback, BreakOnPlateauCallback
 from utils import *
 
 
@@ -69,11 +69,11 @@ class QuadBoost:
             callbacks.append(Progression())
 
         if break_on_perfect_train_acc:
-            callbacks.append(BreakOnPerfectTrainAccuracy())
+            callbacks.append(BreakOnPerfectTrainAccuracyCallback())
         if max_round_number:
-            callbacks.append(BreakOnMaxStep(max_step_number=max_round_number))
+            callbacks.append(BreakOnMaxStepCallback(max_step_number=max_round_number))
         if patience:
-            callbacks.append(BreakOnPlateau(patience=patience))
+            callbacks.append(BreakOnPlateauCallback(patience=patience))
 
         self.callbacks = callbacks
 
@@ -141,11 +141,11 @@ class QuadBoost:
 
         if max_round_number:
             for callback in self.callbacks:
-                if isinstance(callback, BreakOnMaxStep):
+                if isinstance(callback, BreakOnMaxStepCallback):
                     callback.max_step_number = max_round_number
                     break
             else:
-                self.callbacks.append(BreakOnMaxStep(max_round_number))
+                self.callbacks.append(BreakOnMaxStepCallback(max_round_number))
 
         encoded_Y, weights = self.encoder.encode_labels(Y)
 

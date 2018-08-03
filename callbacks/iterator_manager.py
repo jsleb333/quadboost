@@ -72,10 +72,10 @@ class IteratorManager:
 
 
 if __name__ == '__main__':
-    from callbacks import BreakOnMaxStep
+    from callbacks import BreakOnMaxStepCallback
     a = 0
     safe = 0
-    cb = [BreakOnMaxStep(10)]
+    cb = [BreakOnMaxStepCallback(10)]
 
     with IteratorManager(caller=None, callbacks=cb, starting_step_number=0) as bi:
         for br in bi:
