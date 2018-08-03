@@ -15,7 +15,7 @@ class BreakCallback(Callback):
     pass
 
 
-class BreakOnMaxStep(BreakCallback):
+class BreakOnMaxStepCallback(BreakCallback):
     def __init__(self, max_step_number=None, manager=None):
         super().__init__(manager)
         self.max_step_number = max_step_number
@@ -27,7 +27,7 @@ class BreakOnMaxStep(BreakCallback):
                 raise StopIteration
 
 
-class BreakOnPlateau(BreakCallback):
+class BreakOnPlateauCallback(BreakCallback):
     def __init__(self, patience=None, manager=None):
         super().__init__(manager)
         self.patience = patience
@@ -49,7 +49,7 @@ class BreakOnPlateau(BreakCallback):
             self.rounds_since_no_improvements += 1
 
 
-class BreakOnPerfectTrainAccuracy(BreakCallback):
+class BreakOnPerfectTrainAccuracyCallback(BreakCallback):
     def __init__(self, manager=None):
         super().__init__(manager)
 
