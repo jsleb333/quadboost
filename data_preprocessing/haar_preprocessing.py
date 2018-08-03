@@ -34,8 +34,8 @@ def haar_projector(N):
     return projection
 
 
-def show_im(images):
-    for im, y in zip(images, Ytr):
+def show_im(images, Y):
+    for im, y in zip(images, Y):
         vmax = np.max(np.abs(im))
         plt.imshow(im, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
         plt.colorbar()
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     haar_Xtr = haar_projection(Xtr)
     haar_Xts = haar_projection(Xts)
 
-    # show_im(haar_Xtr[:3])
+    # show_im(haar_Xtr[:3], Ytr[:3])
 
     haar_mnist = MNISTDataset(haar_Xtr, Ytr, haar_Xts, Yts, side=28+4*pad)
     filename = 'haar_mnist'
@@ -65,4 +65,4 @@ if __name__ == '__main__':
 
     haar_mnist = MNISTDataset.load(filename+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = haar_mnist.get_train_test(center=False, reduce=False)
-    show_im(Xtr[:5])
+    show_im(Xtr[:5], Ytr[:5])
