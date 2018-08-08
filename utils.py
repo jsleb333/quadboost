@@ -111,5 +111,24 @@ def timed(func):
     return wrapper
 
 
+class ComparableMixin:
+    """
+    Mixin class that delegates the rich comparison operators to the specified attribute.
+    """
+    def __init__(self, *, cmp_attr):
+        def get_cmp_attr(self): return getattr(self, cmp_attr)
+        type(self).cmp_attr = property(get_cmp_attr)
+
+        for operator_name in ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']:
+            def operator_func(self, other, operator_name=operator_name):
+                other_attr = other.cmp_attr if hasattr(other, 'cmp_attr') else other
+                try:
+                    return getattr(self.cmp_attr, operator_name)(other_attr)
+                except TypeError:
+                    return NotImplemented
+
+            setattr(type(self), operator_name, operator_func)
+
+
 if __name__ == '__main__':
     timed(split_int)(10,2)
