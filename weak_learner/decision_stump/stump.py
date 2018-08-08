@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.getcwd())
+
 import numpy as np
 from utils import ComparableMixin
 
