@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 import multiprocessing as mp
-from functools import partial
 
 import sys, os
 sys.path.append(os.getcwd())
@@ -176,7 +175,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 60_000
+    m = 6_000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
