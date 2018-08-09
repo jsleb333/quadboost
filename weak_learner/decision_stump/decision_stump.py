@@ -71,14 +71,22 @@ class MulticlassDecisionStump(Cloner):
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
         n_examples = X.shape[0]
-        X = X.reshape((n_examples, -1))
         Y_pred = np.zeros((n_examples, n_classes))
+        for i, partition in enumerate(self.partition_generator(X)):
+            Y_pred[i] = self.confidence_rates[partition]
+        return Y_pred
+
+    def partition_generator(self, X):
+        """
+        Partition examples into 2 sets denoted by 0 and 1 in an lazy iterator fashion.
+        """
+        n_examples = X.shape[0]
+        X = X.reshape((n_examples, -1))
         for i, x in enumerate(X):
             if x[self.feature] < self.stump:
-                Y_pred[i] = self.confidence_rates[0]
+                yield 0
             else:
-                Y_pred[i] = self.confidence_rates[1]
-        return Y_pred
+                yield 1
 
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
