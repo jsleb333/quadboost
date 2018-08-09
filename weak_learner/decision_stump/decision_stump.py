@@ -132,15 +132,15 @@ class StumpFinder:
         moments[1,1] = np.sum(self.first_moments, axis=0)
         moments[2,1] = np.sum(self.second_moments, axis=0)
 
-        risk = self.compute_risk(moments)
-        best_stump = Stump(risk, moments)
+        risks = self.compute_risks(moments) # Shape (n_partitions, n_features)
+        best_stump = Stump(risks, moments)
 
         for i, row in enumerate(X_idx[:-1]):
             self.update_moments(moments, row)
             possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
 
             if possible_stumps.any():
-                risk = self.compute_risk(moments[:,:,possible_stumps,:])
+                risk = self.compute_risks(moments[:,:,possible_stumps,:])
                 best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
 
         best_stump.compute_stump_value(X)
@@ -154,15 +154,18 @@ class StumpFinder:
         moments[:,0] += moments_update
         moments[:,1] -= moments_update
 
-    def compute_risk(self, moments):
+    def compute_risks(self, moments):
+        """
+        Computes the risks for each partitions for every features.
+        """
         moments[np.isclose(moments,0)] = 0
         with np.errstate(divide='ignore', invalid='ignore'):
             # We could use
             # np.divide(moments[1]**2, moments[0], where=~np.isclose(moments[0]))
             # However, the buffer size is not big enough for several examples and the resulting division is not done correctly
             normalized_m1 = np.nan_to_num(moments[1]**2/moments[0])
-        risk = np.sum(np.sum(moments[2] - normalized_m1, axis=2), axis=0)
-        return risk
+        risks = np.sum(moments[2] - normalized_m1, axis=2) # Shape (n_partitions, n_features)
+        return risks
 
 
 @timed
