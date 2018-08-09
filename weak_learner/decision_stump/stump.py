@@ -36,7 +36,8 @@ class Stump(ComparableMixin, cmp_attr='risk'):
             self.moment_1 = moments[1,:,self.feature,:].copy()
             self.stump_idx = stump_idx
 
-    def compute_confidence_rates(self):
+    @property
+    def confidence_rates(self):
         return np.divide(self.moment_1, self.moment_0, where=self.moment_0!=0)
 
     def compute_stump_value(self, sorted_X):

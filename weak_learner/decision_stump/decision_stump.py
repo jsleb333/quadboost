@@ -44,7 +44,7 @@ class MulticlassDecisionStump(Cloner):
         stump = self.parallel_find_stump(sorted_X, sorted_X_idx, Y, W, n_jobs)
 
         self.feature = stump.feature
-        self.confidence_rates = stump.compute_confidence_rates()
+        self.confidence_rates = stump.confidence_rates
         self.stump = stump.stump
 
         return self
