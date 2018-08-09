@@ -28,9 +28,8 @@ class MulticlassDecisionTree(Cloner):
 
 
 class Tree:
-    def __init__(self, root_stump, parent=None):
+    def __init__(self, root_stump):
         self.stump = root_stump
-        self.parent = parent
         self.left_child = None
         self.right_child = None
 
