@@ -4,12 +4,12 @@ sys.path.append(os.getcwd())
 import numpy as np
 from utils import ComparableMixin
 
-class Stump(ComparableMixin):
+class Stump(ComparableMixin, cmp_attr='risk'):
     """
     Stump is a simple class that stores the variables used by the MulticlassDecisionStump algorithm. It provides a method 'update' that changes the values only if the new stump is better than the previous one. It also provides a method 'compute_confidence_rates' for the stored stump.
     """
     def __init__(self, risk, moments):
-        super().__init__(cmp_attr='risk')
+        super().__init__()
         self.feature = risk.argmin()
         self.risk = risk[self.feature]
         self.stump_idx = 0
@@ -40,3 +40,13 @@ class Stump(ComparableMixin):
         else:
             self.stump = feat_val(self.stump_idx) - 1
         return self.stump
+
+
+def main():
+    s1 = Stump(np.zeros((4)), np.zeros((4,4,4,4)))
+    s2 = Stump(np.zeros((4)), np.zeros((4,4,4,4)))
+    print(s1 < s2, s2 < s1)
+
+
+if __name__ == '__main__':
+    main()
