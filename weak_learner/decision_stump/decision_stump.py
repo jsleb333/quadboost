@@ -46,6 +46,8 @@ class MulticlassDecisionStump(Cloner):
         self.feature = stump.feature
         self.confidence_rates = stump.confidence_rates
         self.stump = stump.stump
+        self.risks = stump.risks
+        self.risk = stump.risk
 
         return self
 
