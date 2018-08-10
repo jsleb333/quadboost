@@ -84,8 +84,7 @@ class MulticlassDecisionStump(Cloner):
         Partition examples into 2 sets denoted by 0 and 1 in an lazy iterator fashion.
         """
         n_examples = X.shape[0]
-        X = X.reshape((n_examples, -1))
-        for i, x in enumerate(X):
+        for x in X.reshape((n_examples, -1)):
             yield int(x[self.feature] > self.stump)
 
     def evaluate(self, X, Y):
