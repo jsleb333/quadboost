@@ -46,6 +46,7 @@ class MulticlassDecisionStump(Cloner):
         self.feature = stump.feature
         self.confidence_rates = stump.confidence_rates
         self.stump = stump.stump
+        self.stump_idx = stump.stump_idx
         self.risks = stump.risks
         self.risk = stump.risk
 
@@ -85,10 +86,7 @@ class MulticlassDecisionStump(Cloner):
         n_examples = X.shape[0]
         X = X.reshape((n_examples, -1))
         for i, x in enumerate(X):
-            if x[self.feature] < self.stump:
-                yield 0
-            else:
-                yield 1
+            yield int(x[self.feature] > self.stump)
 
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
