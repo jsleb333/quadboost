@@ -10,7 +10,7 @@ from utils import *
 
 
 class MulticlassDecisionTree(Cloner):
-    def __init__(self, max_n_leafs, encoder=None):
+    def __init__(self, max_n_leafs=4, encoder=None):
         super().__init__()
         self.max_n_leafs = max_n_leafs
         self.encoder = encoder
@@ -19,6 +19,33 @@ class MulticlassDecisionTree(Cloner):
     def fit(self, X, Y, W=None, n_jobs=1, sorted_X=None, sorted_X_idx=None):
         root = MulticlassDecisionStump(self.encoder).fit(X, Y, W, n_jobs, sorted_X, sorted_X_idx)
         self.tree = Tree(root)
+
+        left_args, right_args = self.partition_examples(sorted_X, sorted_X_idx, root)
+
+    def partition_examples(self, sorted_X, sorted_X_idx, stump):
+        n_examples, n_features = sorted_X.shape
+        n_examples_left, n_examples_right = stump.stump_idx, n_examples - stump.stump_idx
+
+        sorted_X_idx_left = np.zeros((n_examples_left, n_features))
+        sorted_X_idx_right = np.zeros((n_examples_right, n_features))
+
+        sorted_X_left = np.zeros((n_examples_left, n_features))
+        sorted_X_right = np.zeros((n_examples_right, n_features))
+
+        idx_left, idx_right = -np.ones(n_features, dtype=int), -np.ones(n_features, dtype=int)
+        for xs_idx, xs in zip(sorted_X_idx, sorted_X):
+            partition = sorted_X[xs_idx, stump.feature] < stump.stump
+            idx_left += ~partition
+            idx_right += partition
+
+            print(stump.stump)
+            sorted_X_idx_left[idx_left, range(n_features)][~partition] = xs_idx[~partition]
+            sorted_X_idx_right[idx_right, range(n_features)][partition] = xs_idx[partition]
+
+            sorted_X_left[idx_left, range(n_features)][~partition] = xs[~partition]
+            sorted_X_right[idx_right, range(n_features)][partition] = xs[partition]
+
+        return (sorted_X_left, sorted_X_idx_left), (sorted_X_right, sorted_X_idx_right)
 
     def predict(self, X):
         pass
@@ -44,5 +71,25 @@ class Tree:
             return len(self.right_child) + len(self.left_child)
 
 
+@timed
+def main():
+    mnist = MNISTDataset.load()
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
+
+    encoder = OneHotEncoder(Ytr)
+
+    m = 1_0
+    X = Xtr[:m].reshape((m,-1))
+    Y = Ytr[:m]
+    # X, Y = Xtr, Ytr
+    wl = MulticlassDecisionTree(encoder=encoder)
+    sorted_X, sorted_X_idx = MulticlassDecisionStump.sort_data(X)
+    wl.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    # print('WL train acc:', wl.evaluate(X, Y))
+    # print('WL test acc:', wl.evaluate(Xts, Yts))
+
+
 if __name__ == '__main__':
-    pass
+    from mnist_dataset import MNISTDataset
+    from label_encoder import OneHotEncoder
+    main()
