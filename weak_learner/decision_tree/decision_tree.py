@@ -17,10 +17,28 @@ class MulticlassDecisionTree(Cloner):
         self.tree = None
 
     def fit(self, X, Y, W=None, n_jobs=1, sorted_X=None, sorted_X_idx=None):
-        root = MulticlassDecisionStump(self.encoder).fit(X, Y, W, n_jobs, sorted_X, sorted_X_idx)
+        if self.encoder is not None:
+            Y, W = self.encoder.encode_labels(Y)
+
+        root = MulticlassDecisionStump().fit(X, Y, W, n_jobs, sorted_X, sorted_X_idx)
         self.tree = Tree(root)
 
         left_args, right_args = self.partition_examples(X, sorted_X_idx, root)
+
+        left_leaf = Leaf(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *left_args), root, 'left')
+        right_leaf = Leaf(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *right_args), root, 'right')
+        potential_split = [left_leaf, right_leaf]
+
+        n_leafs = 2
+        while n_leafs < self.max_n_leafs:
+            best_split = self.choose_best_split(potential_split)
+            self.append_split(best_split)
+
+    def choose_best_split(self, potential_split):
+        pass
+
+    def append_split(self, split):
+        pass
 
     def partition_examples(self, X, sorted_X_idx, stump):
         n_examples, n_features = sorted_X_idx.shape
@@ -71,6 +89,13 @@ class Tree:
             return len(self.right_child) + len(self.left_child)
 
 
+class Leaf:
+    def __init__(self, stump, parent, side):
+        self.stump = stump
+        self.parent = parent
+        self.side = side
+
+
 @timed
 def main():
     mnist = MNISTDataset.load()
@@ -79,7 +104,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
 
     m = 10
-    X = Xtr[:m].reshape((m,-1))
+    X = Xtr[:m,20:30].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionTree(encoder=encoder)
