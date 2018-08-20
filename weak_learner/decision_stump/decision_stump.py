@@ -121,13 +121,13 @@ class StumpFinder:
 
     def find_stump(self, stumps_queue, sub_idx=(None,)):
         """
-        Algorithm to the best stump within the sub array of X specfied by the bounds 'sub_idx'.
+        Algorithm to the best stump within the sub array of X specified by the bounds 'sub_idx'.
         """
         X = self.sorted_X[:,slice(*sub_idx)]
         X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
 
-        n_examples, n_classes = self.zeroth_moments.shape
-        _, n_features = X.shape
+        _, n_classes = self.zeroth_moments.shape
+        n_examples, n_features = X.shape
         n_partitions = 2
         n_moments = 3
 
@@ -135,9 +135,9 @@ class StumpFinder:
 
         # At first, all examples are in partition 1
         # Moments are not normalized so they can be computed cumulatively
-        moments[0,1] = np.sum(self.zeroth_moments, axis=0)
-        moments[1,1] = np.sum(self.first_moments, axis=0)
-        moments[2,1] = np.sum(self.second_moments, axis=0)
+        moments[0,1] = np.sum(self.zeroth_moments[X_idx[:,0]], axis=0)
+        moments[1,1] = np.sum(self.first_moments[X_idx[:,0]], axis=0)
+        moments[2,1] = np.sum(self.second_moments[X_idx[:,0]], axis=0)
 
         risks = self.compute_risks(moments) # Shape (n_partitions, n_features)
         best_stump = Stump(risks, moments)
@@ -156,8 +156,8 @@ class StumpFinder:
 
     def update_moments(self, moments, row_idx):
         moments_update = np.array([self.zeroth_moments[row_idx],
-                                      self.first_moments[row_idx],
-                                      self.second_moments[row_idx]])
+                                   self.first_moments[row_idx],
+                                   self.second_moments[row_idx]])
         moments[:,0] += moments_update
         moments[:,1] -= moments_update
 
