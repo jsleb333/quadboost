@@ -29,21 +29,18 @@ class MulticlassDecisionTree(Cloner):
         sorted_X_idx_left = np.zeros((n_examples_left, n_features), dtype=int)
         sorted_X_idx_right = np.zeros((n_examples_right, n_features), dtype=int)
 
-        X_partition = np.array([p for p in stump.partition_generator(X)], dtype=int) # Partition of the examples X (X_partition[i] == 0 if examples i is left, else 1)
+        X_partition = np.array([p for p in stump.partition_generator(X)], dtype=bool) # Partition of the examples X (X_partition[i] == 0 if examples i is left, else 1)
+        range_n_features = np.arange(n_features)
 
         idx_left, idx_right = np.zeros(n_features, dtype=int), np.zeros(n_features, dtype=int)
         for xs_idx in sorted_X_idx: # For each row of indices, decide if the index should go left of right
-            partition = X_partition[xs_idx]
+            mask = X_partition[xs_idx]
 
-            sorted_X_idx_left[idx_left, range(n_features)][1-partition] = xs_idx[1-partition] # The first getitem selects the entry to update, the second applies a mask
-            sorted_X_idx_right[idx_right, range(n_features)][partition] = xs_idx[partition]
+            sorted_X_idx_left[idx_left[~mask], range_n_features[~mask]] = xs_idx[~mask]
+            sorted_X_idx_right[idx_right[mask], range_n_features[mask]] = xs_idx[mask]
 
-            # Increment indices
-            idx_left += 1-partition
-            idx_right += partition
-            # Handle out of bound indices
-            idx_left %= n_examples_left
-            idx_right %= n_examples_right
+            idx_left += ~mask
+            idx_right += mask
 
         sorted_X_left = X[sorted_X_idx_left, range(n_features)]
         sorted_X_right = X[sorted_X_idx_right, range(n_features)]
