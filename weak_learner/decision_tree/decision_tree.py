@@ -20,30 +20,33 @@ class MulticlassDecisionTree(Cloner):
         root = MulticlassDecisionStump(self.encoder).fit(X, Y, W, n_jobs, sorted_X, sorted_X_idx)
         self.tree = Tree(root)
 
-        left_args, right_args = self.partition_examples(sorted_X, sorted_X_idx, root)
+        left_args, right_args = self.partition_examples(X, sorted_X_idx, root)
 
-    def partition_examples(self, sorted_X, sorted_X_idx, stump):
-        n_examples, n_features = sorted_X.shape
+    def partition_examples(self, X, sorted_X_idx, stump):
+        n_examples, n_features = sorted_X_idx.shape
         n_examples_left, n_examples_right = stump.stump_idx, n_examples - stump.stump_idx
 
-        sorted_X_idx_left = np.zeros((n_examples_left, n_features))
-        sorted_X_idx_right = np.zeros((n_examples_right, n_features))
+        sorted_X_idx_left = np.zeros((n_examples_left, n_features), dtype=int)
+        sorted_X_idx_right = np.zeros((n_examples_right, n_features), dtype=int)
 
-        sorted_X_left = np.zeros((n_examples_left, n_features))
-        sorted_X_right = np.zeros((n_examples_right, n_features))
+        X_partition = np.array([p for p in stump.partition_generator(X)], dtype=int) # Partition of the examples X (X_partition[i] == 0 if examples i is left, else 1)
 
-        idx_left, idx_right = -np.ones(n_features, dtype=int), -np.ones(n_features, dtype=int)
-        for xs_idx, xs in zip(sorted_X_idx, sorted_X):
-            partition = sorted_X[xs_idx, stump.feature] < stump.stump
-            idx_left += ~partition
-            idx_right += partition
+        idx_left, idx_right = np.zeros(n_features, dtype=int), np.zeros(n_features, dtype=int)
+        for xs_idx in sorted_X_idx: # For each row of indices, decide if the index should go left of right
+            partition = X_partition[xs_idx]
 
-            print(stump.stump)
-            sorted_X_idx_left[idx_left, range(n_features)][~partition] = xs_idx[~partition]
+            sorted_X_idx_left[idx_left, range(n_features)][1-partition] = xs_idx[1-partition] # The first getitem selects the entry to update, the second applies a mask
             sorted_X_idx_right[idx_right, range(n_features)][partition] = xs_idx[partition]
 
-            sorted_X_left[idx_left, range(n_features)][~partition] = xs[~partition]
-            sorted_X_right[idx_right, range(n_features)][partition] = xs[partition]
+            # Increment indices
+            idx_left += 1-partition
+            idx_right += partition
+            # Handle out of bound indices
+            idx_left %= n_examples_left
+            idx_right %= n_examples_right
+
+        sorted_X_left = X[sorted_X_idx_left, range(n_features)]
+        sorted_X_right = X[sorted_X_idx_right, range(n_features)]
 
         return (sorted_X_left, sorted_X_idx_left), (sorted_X_right, sorted_X_idx_right)
 
@@ -78,7 +81,7 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 1_0
+    m = 10
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
