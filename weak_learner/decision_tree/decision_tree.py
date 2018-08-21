@@ -31,13 +31,13 @@ class MulticlassDecisionTree(Cloner):
 
         n_leafs = 2
         while n_leafs < self.max_n_leafs:
-            best_split = self.choose_best_split(potential_split)
-            self.append_split(best_split)
+            best_split = self._choose_best_split(potential_split)
+            self._append_split(best_split)
 
-    def choose_best_split(self, potential_split):
+    def _choose_best_split(self, potential_split):
         pass
 
-    def append_split(self, split):
+    def _append_split(self, split):
         pass
 
     def partition_examples(self, X, sorted_X_idx, stump):
