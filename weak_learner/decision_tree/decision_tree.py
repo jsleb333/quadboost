@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
+import heapq as hq
 
 import sys, os
 sys.path.append(os.getcwd())
@@ -13,6 +14,7 @@ class MulticlassDecisionTree(Cloner):
     def __init__(self, max_n_leafs=4, encoder=None):
         super().__init__()
         self.max_n_leafs = max_n_leafs
+        self.n_leafs = 2
         self.encoder = encoder
         self.tree = None
 
@@ -22,23 +24,35 @@ class MulticlassDecisionTree(Cloner):
 
         root = MulticlassDecisionStump().fit(X, Y, W, n_jobs, sorted_X, sorted_X_idx)
         self.tree = Tree(root)
+        split = Leaf(root, self.tree, None, sorted_X_idx)
+        parent = self.tree
 
-        left_args, right_args = self.partition_examples(X, sorted_X_idx, root)
+        potential_split = []
+        while self.n_leafs < self.max_n_leafs:
+            self.n_leafs += 1
 
-        left_leaf = Leaf(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *left_args), root, 'left')
-        right_leaf = Leaf(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *right_args), root, 'right')
-        potential_split = [left_leaf, right_leaf]
+            left_args, right_args = self.partition_examples(X, split.sorted_X_idx, split.stump)
 
-        n_leafs = 2
-        while n_leafs < self.max_n_leafs:
-            best_split = self._choose_best_split(potential_split)
-            self._append_split(best_split)
+            left_leaf = Leaf(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *left_args), parent, 'left', left_args[1])
+            right_leaf = Leaf(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *right_args), parent, 'right', right_args[1])
 
-    def _choose_best_split(self, potential_split):
-        pass
+            potential_split.extend([left_leaf, right_leaf])
+
+            split_idx, split = max(enumerate(potential_split), key=lambda pair: pair[1])
+            del potential_split[split_idx]
+            parent = self._append_split(split)
+
+            for i in enumerate(self.tree):
+                print(i)
 
     def _append_split(self, split):
-        pass
+        child = Tree(split.stump)
+        if split.side == 'left':
+            split.parent.left_child = child
+        elif split.side =='right':
+            split.parent.right_child = child
+
+        return child
 
     def partition_examples(self, X, sorted_X_idx, stump):
         n_examples, n_features = sorted_X_idx.shape
@@ -71,6 +85,9 @@ class MulticlassDecisionTree(Cloner):
     def evaluate(self, X, Y):
         pass
 
+    def __len__(self):
+        return len(self.tree)
+
 
 class Tree:
     def __init__(self, root_stump):
@@ -88,12 +105,35 @@ class Tree:
         else:
             return len(self.right_child) + len(self.left_child)
 
+    def __iter__(self):
+        if self.left_child is not None:
+            yield from self.left_child
+        yield self
+        if self.right_child is not None:
+            yield from self.right_child
 
-class Leaf:
-    def __init__(self, stump, parent, side):
+    def __str__(self):
+        return str([i for i, n in enumerate(self)])
+
+
+class Leaf(ComparableMixin, cmp_attr='risk_decrease'):
+    def __init__(self, stump, parent, side, sorted_X_idx):
+        """
+        Args:
+            stump (MulticlassDecisionStump object): Stump of the leaf.
+            parent (MultclassDesicionStump object): Parent stump of the leaf. This information is needed to know where to append the leaf in the final tree.
+            side (string, 'left' or 'right'): Side of the partition. Left corresponds to partition 0 and right to 1. This information is needed to know where to append the leaf in the final tree.
+            sorted_X_idx (Array of shape (n_examples_side, n_features)): Array of indices of sorted X for the side of the leaf.
+        """
         self.stump = stump
         self.parent = parent
         self.side = side
+        self.sorted_X_idx = sorted_X_idx
+
+    @property
+    def risk_decrease(self):
+        side = 0 if self.side == 'left' else 1
+        return self.parent.stump.risks[side] - self.stump.risk
 
 
 @timed
@@ -110,6 +150,7 @@ def main():
     wl = MulticlassDecisionTree(encoder=encoder)
     sorted_X, sorted_X_idx = MulticlassDecisionStump.sort_data(X)
     wl.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    print(len(wl))
     # print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
