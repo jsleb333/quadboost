@@ -78,7 +78,12 @@ class MulticlassDecisionTree(Cloner):
         return (sorted_X_left, sorted_X_idx_left), (sorted_X_right, sorted_X_idx_right)
 
     def predict(self, X):
-        pass
+        n_examples = X.shape[0]
+        n_partitions, n_classes = self.tree.stump.confidence_rates.shape
+        Y_pred = np.zeros((n_examples, n_partitions))
+
+        stump = self.tree.stump
+        partition = [p for p in stump.partition_generator(X)]
 
     def evaluate(self, X, Y):
         pass

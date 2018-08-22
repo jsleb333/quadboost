@@ -94,6 +94,9 @@ class MulticlassDecisionStump(Cloner):
         for x in X.reshape((n_examples, -1)):
             yield int(x[self.feature] > self.stump)
 
+    def partition(self, X):
+        return np.array([p for p in self.partition_generator(X)], dtype=int)
+
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
         if self.encoder != None:
@@ -132,6 +135,7 @@ class StumpFinder:
         self.first_moments[:] = W*Y
         self.second_moments = np.ctypeslib.as_array(mp.RawArray('d', W.size)).reshape(W.shape)
         self.second_moments[:] = self.first_moments*Y
+
         # # multiprocessing Arrays are shared between processed to alleviate pickling
         # self.X_shape = sorted_X.shape
         # self.X_idx_shape = sorted_X_idx.shape
@@ -214,7 +218,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 6_000
+    m = 6_00
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
@@ -228,6 +232,6 @@ def main():
 if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import *
-    import cProfile
-    cProfile.run('main()', sort='tottime')
-    # main()
+    # import cProfile
+    # cProfile.run('main()', sort='tottime')
+    main()
