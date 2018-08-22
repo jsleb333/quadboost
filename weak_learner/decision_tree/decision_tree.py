@@ -24,26 +24,24 @@ class MulticlassDecisionTree(Cloner):
 
         root = MulticlassDecisionStump().fit(X, Y, W, n_jobs, sorted_X, sorted_X_idx)
         self.tree = Tree(root)
-        split = Leaf(root, self.tree, None, sorted_X_idx)
+        split = Split(root, None, None, sorted_X_idx)
         parent = self.tree
 
-        potential_split = []
+        potential_splits = []
         while self.n_leafs < self.max_n_leafs:
             self.n_leafs += 1
 
             left_args, right_args = self.partition_examples(X, split.sorted_X_idx, split.stump)
 
-            left_leaf = Leaf(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *left_args), parent, 'left', left_args[1])
-            right_leaf = Leaf(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *right_args), parent, 'right', right_args[1])
+            left_split = Split(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *left_args), parent, 'left', left_args[1])
+            right_split = Split(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *right_args), parent, 'right', right_args[1])
 
-            potential_split.extend([left_leaf, right_leaf])
+            potential_splits.extend([left_split, right_split])
 
-            split_idx, split = max(enumerate(potential_split), key=lambda pair: pair[1])
-            del potential_split[split_idx]
+            split_idx, split = max(enumerate(potential_splits), key=lambda pair: pair[1])
+            del potential_splits[split_idx]
+
             parent = self._append_split(split)
-
-            for i in enumerate(self.tree):
-                print(i)
 
     def _append_split(self, split):
         child = Tree(split.stump)
@@ -106,6 +104,9 @@ class Tree:
             return len(self.right_child) + len(self.left_child)
 
     def __iter__(self):
+        """
+        Infix visit of nodes.
+        """
         if self.left_child is not None:
             yield from self.left_child
         yield self
@@ -132,14 +133,14 @@ class Tree:
         return ' '.join(visited_nodes)
 
 
-class Leaf(ComparableMixin, cmp_attr='risk_decrease'):
+class Split(ComparableMixin, cmp_attr='risk_decrease'):
     def __init__(self, stump, parent, side, sorted_X_idx):
         """
         Args:
-            stump (MulticlassDecisionStump object): Stump of the leaf.
-            parent (MultclassDesicionStump object): Parent stump of the leaf. This information is needed to know where to append the leaf in the final tree.
-            side (string, 'left' or 'right'): Side of the partition. Left corresponds to partition 0 and right to 1. This information is needed to know where to append the leaf in the final tree.
-            sorted_X_idx (Array of shape (n_examples_side, n_features)): Array of indices of sorted X for the side of the leaf.
+            stump (MulticlassDecisionStump object): Stump of the split.
+            parent (MultclassDesicionStump object): Parent stump of the split. This information is needed to know where to append the split in the final tree.
+            side (string, 'left' or 'right'): Side of the partition. Left corresponds to partition 0 and right to 1. This information is needed to know where to append the split in the final tree.
+            sorted_X_idx (Array of shape (n_examples_side, n_features)): Array of indices of sorted X for the side of the split.
         """
         self.stump = stump
         self.parent = parent
@@ -159,7 +160,7 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 10
+    m = 100
     X = Xtr[:m,20:30].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
