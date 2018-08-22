@@ -94,8 +94,8 @@ class MulticlassDecisionStump(Cloner):
         for x in X.reshape((n_examples, -1)):
             yield int(x[self.feature] > self.stump)
 
-    def partition(self, X):
-        return np.array([p for p in self.partition_generator(X)], dtype=int)
+    def partition(self, X, dtype=bool):
+        return np.array([p for p in self.partition_generator(X)], dtype=dtype)
 
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
