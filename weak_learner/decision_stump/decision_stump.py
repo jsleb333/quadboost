@@ -67,7 +67,14 @@ class MulticlassDecisionStump(Cloner):
         for process in processes: process.start()
         for process in processes: process.join()
 
-        stump = min(stumps_queue.get() for _ in processes)
+        stumps = [stumps_queue.get() for _ in processes]
+
+        # Exception handling
+        for s in stumps:
+            if issubclass(type(s), PicklableExceptionWrapper):
+                s.raise_exception()
+
+        stump = min(stumps)
 
         return stump
 
@@ -123,6 +130,7 @@ class StumpFinder:
         """
         Algorithm to the best stump within the sub array of X specified by the bounds 'sub_idx'.
         """
+        try:
         X = self.sorted_X[:,slice(*sub_idx)]
         X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
 
@@ -153,6 +161,10 @@ class StumpFinder:
         best_stump.compute_stump_value(X)
         best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
         stumps_queue.put(best_stump)
+
+        except Exception as err:
+            err = PicklableExceptionWrapper(err)
+            stumps_queue.put(err) # Script will hang as long as queue is not updated
 
     def update_moments(self, moments, row_idx):
         moments_update = np.array([self.zeroth_moments[row_idx],
