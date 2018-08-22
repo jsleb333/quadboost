@@ -113,7 +113,23 @@ class Tree:
             yield from self.right_child
 
     def __str__(self):
-        return str([i for i, n in enumerate(self)])
+        nodes_to_visit = [(0, self)]
+        visited_nodes = ['0 (root)']
+        i = 0
+        while nodes_to_visit:
+            node_no, node = nodes_to_visit.pop()
+
+            if node.left_child:
+                i += 1
+                nodes_to_visit.append((i, node.left_child))
+                visited_nodes.append(f'{i} (left of {node_no})')
+
+            if node.right_child:
+                i += 1
+                nodes_to_visit.append((i, node.right_child))
+                visited_nodes.append(f'{i} (right of {node_no})')
+
+        return ' '.join(visited_nodes)
 
 
 class Leaf(ComparableMixin, cmp_attr='risk_decrease'):
