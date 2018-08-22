@@ -57,7 +57,7 @@ class MulticlassDecisionStump(Cloner):
         Parallelizes the processes.
         """
         stump_finder = StumpFinder(sorted_X, sorted_X_idx, Y, W)
-        n_features = stump_finder.sorted_X.shape[1]
+        n_features = sorted_X.shape[1]
         stumps_queue = mp.Queue()
         processes = []
         for sub_idx in split_int(n_features, n_jobs):
@@ -119,48 +119,65 @@ class StumpFinder:
     Implements the algorithm to find the stump. It is separated from the class MulticlassDecisionStump so that it can be pickled when parallelized with 'multiprocessing' (which uses pickle).
     """
     def __init__(self, sorted_X, sorted_X_idx, Y, W):
-        self.sorted_X = sorted_X
-        self.sorted_X_idx = sorted_X_idx
 
-        self.zeroth_moments = W
-        self.first_moments = W*Y
-        self.second_moments = self.first_moments*Y
+        # multiprocessing Arrays are shared between processed to alleviate pickling
+        self.sorted_X = np.ctypeslib.as_array(mp.RawArray('d', sorted_X.size)).reshape(sorted_X.shape)
+        self.sorted_X[:] = sorted_X
+        self.sorted_X_idx = np.ctypeslib.as_array(mp.RawArray('i', sorted_X_idx.size)).reshape(sorted_X_idx.shape)
+        self.sorted_X_idx[:] = sorted_X_idx
+
+        self.zeroth_moments = np.ctypeslib.as_array(mp.RawArray('d', W.size)).reshape(W.shape)
+        self.zeroth_moments[:] = W
+        self.first_moments = np.ctypeslib.as_array(mp.RawArray('d', W.size)).reshape(W.shape)
+        self.first_moments[:] = W*Y
+        self.second_moments = np.ctypeslib.as_array(mp.RawArray('d', W.size)).reshape(W.shape)
+        self.second_moments[:] = self.first_moments*Y
+        # # multiprocessing Arrays are shared between processed to alleviate pickling
+        # self.X_shape = sorted_X.shape
+        # self.X_idx_shape = sorted_X_idx.shape
+        # self.moments_shape = W.shape
+        # self.sorted_X = mp.Array('d', sorted_X.reshape(-1))
+        # self.sorted_X_idx = mp.Array('i', sorted_X_idx.reshape(-1))
+
+        # self.zeroth_moments = mp.Array('d', W.reshape(-1))
+        # self.first_moments = mp.Array('d', (W*Y).reshape(-1))
+        # self.second_moments = mp.Array('d', (W*Y*Y).reshape(-1))
 
     def find_stump(self, stumps_queue, sub_idx=(None,)):
         """
         Algorithm to the best stump within the sub array of X specified by the bounds 'sub_idx'.
         """
         try:
-        X = self.sorted_X[:,slice(*sub_idx)]
-        X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
+            X = self.sorted_X[:,slice(*sub_idx)]
+            X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
 
-        _, n_classes = self.zeroth_moments.shape
-        n_examples, n_features = X.shape
-        n_partitions = 2
-        n_moments = 3
+            _, n_classes = self.zeroth_moments.shape
+            n_examples, n_features = X.shape
+            n_partitions = 2
+            n_moments = 3
 
-        moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
+            moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
 
-        # At first, all examples are in partition 1
-        # Moments are not normalized so they can be computed cumulatively
-        moments[0,1] = np.sum(self.zeroth_moments[X_idx[:,0]], axis=0)
-        moments[1,1] = np.sum(self.first_moments[X_idx[:,0]], axis=0)
-        moments[2,1] = np.sum(self.second_moments[X_idx[:,0]], axis=0)
+            # At first, all examples are in partition 1
+            # Moments are not normalized so they can be computed cumulatively
+            moments[0,1] = np.sum(self.zeroth_moments[X_idx[:,0]], axis=0)
+            moments[1,1] = np.sum(self.first_moments[X_idx[:,0]], axis=0)
+            moments[2,1] = np.sum(self.second_moments[X_idx[:,0]], axis=0)
 
-        risks = self.compute_risks(moments) # Shape (n_partitions, n_features)
-        best_stump = Stump(risks, moments)
+            risks = self.compute_risks(moments) # Shape (n_partitions, n_features)
+            best_stump = Stump(risks, moments)
 
-        for i, row in enumerate(X_idx[:-1]):
-            self.update_moments(moments, row)
-            possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
+            for i, row in enumerate(X_idx[:-1]):
+                self.update_moments(moments, row)
+                possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
 
-            if possible_stumps.any():
-                risk = self.compute_risks(moments[:,:,possible_stumps,:])
-                best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
+                if possible_stumps.any():
+                    risk = self.compute_risks(moments[:,:,possible_stumps,:])
+                    best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
 
-        best_stump.compute_stump_value(X)
-        best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
-        stumps_queue.put(best_stump)
+            best_stump.compute_stump_value(X)
+            best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
+            stumps_queue.put(best_stump)
 
         except Exception as err:
             err = PicklableExceptionWrapper(err)
@@ -203,7 +220,7 @@ def main():
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
     sorted_X, sorted_X_idx = wl.sort_data(X)
-    wl.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    wl.fit(X, Y, n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
@@ -211,6 +228,6 @@ def main():
 if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import *
-    # import cProfile
-    # cProfile.run('main()', sort='tottime')
-    main()
+    import cProfile
+    cProfile.run('main()', sort='tottime')
+    # main()
