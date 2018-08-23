@@ -91,7 +91,8 @@ class MulticlassDecisionTree(Cloner):
 
     def percolate(self, x):
         node = self.tree
-        partition = node.stump.partition(x.reshape(1,-1), int)
+        x = x.reshape(1,-1)
+        partition = node.stump.partition(x, int)
         while True:
             if partition == 0:
                 if node.left_child is None:
@@ -104,7 +105,7 @@ class MulticlassDecisionTree(Cloner):
                 else:
                     node = node.right_child
 
-                partition = node.stump.partition(x.reshape(1,-1), int)
+            partition = node.stump.partition(x, int)
 
         return node.stump.confidence_rates[partition]
 
