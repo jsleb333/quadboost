@@ -247,7 +247,7 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = MulticlassDecisionTree(max_n_leafs=4)
+    weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks

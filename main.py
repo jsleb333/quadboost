@@ -9,7 +9,7 @@ import logging
 
 @timed
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_jobs=1, max_n_leafs=4, max_round=400, patience=10, resume=0):
+def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_jobs=1, max_n_leaves=4, max_round=400, patience=10, resume=0):
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
@@ -30,7 +30,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_job
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr[:m])))
         kwargs['n_jobs'] = n_jobs
     elif wl == 'dt' or 'decision-tree':
-        weak_learner = MulticlassDecisionTree(max_n_leafs=max_n_leafs)
+        weak_learner = MulticlassDecisionTree(max_n_leaves=max_n_leaves)
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr[:m])))
         kwargs['n_jobs'] = n_jobs
     elif wl == 'ridge':
