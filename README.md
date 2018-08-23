@@ -27,6 +27,7 @@ This project relies on the following `Python` libraries:
 - numpy
 - matplotlib
 - scikit-image (optional, used in `mnist_ideals/ideal_preprocessing.py`)
+- tblib (optional, used in `utils.py`)
 
 ## Implementation description
 

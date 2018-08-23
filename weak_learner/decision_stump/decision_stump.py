@@ -44,8 +44,11 @@ class MulticlassDecisionStump(Cloner):
         stump = self.parallel_find_stump(sorted_X, sorted_X_idx, Y, W, n_jobs)
 
         self.feature = stump.feature
-        self.confidence_rates = stump.compute_confidence_rates()
+        self.confidence_rates = stump.confidence_rates
         self.stump = stump.stump
+        self.stump_idx = stump.stump_idx
+        self.risks = stump.risks
+        self.risk = stump.risk
 
         return self
 
@@ -54,7 +57,7 @@ class MulticlassDecisionStump(Cloner):
         Parallelizes the processes.
         """
         stump_finder = StumpFinder(sorted_X, sorted_X_idx, Y, W)
-        n_features = stump_finder.sorted_X.shape[1]
+        n_features = sorted_X.shape[1]
         stumps_queue = mp.Queue()
         processes = []
         for sub_idx in split_int(n_features, n_jobs):
@@ -64,21 +67,35 @@ class MulticlassDecisionStump(Cloner):
         for process in processes: process.start()
         for process in processes: process.join()
 
-        stump = min(stumps_queue.get() for _ in processes)
+        stumps = [stumps_queue.get() for _ in processes]
+
+        # Exception handling
+        for s in stumps:
+            if issubclass(type(s), PicklableExceptionWrapper):
+                s.raise_exception()
+
+        stump = min(stumps)
 
         return stump
 
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
         n_examples = X.shape[0]
-        X = X.reshape((n_examples, -1))
         Y_pred = np.zeros((n_examples, n_classes))
-        for i, x in enumerate(X):
-            if x[self.feature] < self.stump:
-                Y_pred[i] = self.confidence_rates[0]
-            else:
-                Y_pred[i] = self.confidence_rates[1]
+        for i, partition in enumerate(self.partition_generator(X)):
+            Y_pred[i] = self.confidence_rates[partition]
         return Y_pred
+
+    def partition_generator(self, X):
+        """
+        Partition examples into 2 sets denoted by 0 and 1 in an lazy iterator fashion.
+        """
+        n_examples = X.shape[0]
+        for x in X.reshape((n_examples, -1)):
+            yield int(x[self.feature] > self.stump)
+
+    def partition(self, X, dtype=bool):
+        return np.array([p for p in self.partition_generator(X)], dtype=dtype)
 
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
@@ -105,64 +122,90 @@ class StumpFinder:
     Implements the algorithm to find the stump. It is separated from the class MulticlassDecisionStump so that it can be pickled when parallelized with 'multiprocessing' (which uses pickle).
     """
     def __init__(self, sorted_X, sorted_X_idx, Y, W):
-        self.sorted_X = sorted_X
-        self.sorted_X_idx = sorted_X_idx
 
-        self.zeroth_moments = W
-        self.first_moments = W*Y
-        self.second_moments = self.first_moments*Y
+        # multiprocessing Arrays are shared between processed to alleviate pickling
+        self.sorted_X = np.ctypeslib.as_array(mp.RawArray('d', sorted_X.size)).reshape(sorted_X.shape)
+        self.sorted_X[:] = sorted_X
+        self.sorted_X_idx = np.ctypeslib.as_array(mp.RawArray('i', sorted_X_idx.size)).reshape(sorted_X_idx.shape)
+        self.sorted_X_idx[:] = sorted_X_idx
+
+        self.zeroth_moments = np.ctypeslib.as_array(mp.RawArray('d', W.size)).reshape(W.shape)
+        self.zeroth_moments[:] = W
+        self.first_moments = np.ctypeslib.as_array(mp.RawArray('d', W.size)).reshape(W.shape)
+        self.first_moments[:] = W*Y
+        self.second_moments = np.ctypeslib.as_array(mp.RawArray('d', W.size)).reshape(W.shape)
+        self.second_moments[:] = self.first_moments*Y
+
+        # # multiprocessing Arrays are shared between processed to alleviate pickling
+        # self.X_shape = sorted_X.shape
+        # self.X_idx_shape = sorted_X_idx.shape
+        # self.moments_shape = W.shape
+        # self.sorted_X = mp.Array('d', sorted_X.reshape(-1))
+        # self.sorted_X_idx = mp.Array('i', sorted_X_idx.reshape(-1))
+
+        # self.zeroth_moments = mp.Array('d', W.reshape(-1))
+        # self.first_moments = mp.Array('d', (W*Y).reshape(-1))
+        # self.second_moments = mp.Array('d', (W*Y*Y).reshape(-1))
 
     def find_stump(self, stumps_queue, sub_idx=(None,)):
         """
-        Algorithm to the best stump within the sub array of X specfied by the bounds 'sub_idx'.
+        Algorithm to the best stump within the sub array of X specified by the bounds 'sub_idx'.
         """
-        X = self.sorted_X[:,slice(*sub_idx)]
-        X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
+        try:
+            X = self.sorted_X[:,slice(*sub_idx)]
+            X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
 
-        n_examples, n_classes = self.zeroth_moments.shape
-        _, n_features = X.shape
-        n_partitions = 2
-        n_moments = 3
+            _, n_classes = self.zeroth_moments.shape
+            n_examples, n_features = X.shape
+            n_partitions = 2
+            n_moments = 3
 
-        moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
+            moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
 
-        # At first, all examples are in partition 1
-        # Moments are not normalized so they can be computed cumulatively
-        moments[0,1] = np.sum(self.zeroth_moments, axis=0)
-        moments[1,1] = np.sum(self.first_moments, axis=0)
-        moments[2,1] = np.sum(self.second_moments, axis=0)
+            # At first, all examples are in partition 1
+            # Moments are not normalized so they can be computed cumulatively
+            moments[0,1] = np.sum(self.zeroth_moments[X_idx[:,0]], axis=0)
+            moments[1,1] = np.sum(self.first_moments[X_idx[:,0]], axis=0)
+            moments[2,1] = np.sum(self.second_moments[X_idx[:,0]], axis=0)
 
-        risk = self.compute_risk(moments)
-        best_stump = Stump(risk, moments)
+            risks = self.compute_risks(moments) # Shape (n_partitions, n_features)
+            best_stump = Stump(risks, moments)
 
-        for i, row in enumerate(X_idx[:-1]):
-            self.update_moments(moments, row)
-            possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
+            for i, row in enumerate(X_idx[:-1]):
+                self.update_moments(moments, row)
+                possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
 
-            if possible_stumps.any():
-                risk = self.compute_risk(moments[:,:,possible_stumps,:])
-                best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
+                if possible_stumps.any():
+                    risk = self.compute_risks(moments[:,:,possible_stumps,:])
+                    best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
 
-        best_stump.compute_stump_value(X)
-        best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
-        stumps_queue.put(best_stump)
+            best_stump.compute_stump_value(X)
+            best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
+            stumps_queue.put(best_stump)
+
+        except Exception as err:
+            err = PicklableExceptionWrapper(err)
+            stumps_queue.put(err) # Script will hang as long as queue is not updated
 
     def update_moments(self, moments, row_idx):
         moments_update = np.array([self.zeroth_moments[row_idx],
-                                      self.first_moments[row_idx],
-                                      self.second_moments[row_idx]])
+                                   self.first_moments[row_idx],
+                                   self.second_moments[row_idx]])
         moments[:,0] += moments_update
         moments[:,1] -= moments_update
 
-    def compute_risk(self, moments):
+    def compute_risks(self, moments):
+        """
+        Computes the risks for each partitions for every features.
+        """
         moments[np.isclose(moments,0)] = 0
         with np.errstate(divide='ignore', invalid='ignore'):
             # We could use
             # np.divide(moments[1]**2, moments[0], where=~np.isclose(moments[0]))
             # However, the buffer size is not big enough for several examples and the resulting division is not done correctly
             normalized_m1 = np.nan_to_num(moments[1]**2/moments[0])
-        risk = np.sum(np.sum(moments[2] - normalized_m1, axis=2), axis=0)
-        return risk
+        risks = np.sum(moments[2] - normalized_m1, axis=2) # Shape (n_partitions, n_features)
+        return risks
 
 
 @timed
@@ -175,13 +218,13 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 6_000
+    m = 6_00
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
     sorted_X, sorted_X_idx = wl.sort_data(X)
-    wl.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    wl.fit(X, Y, n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 

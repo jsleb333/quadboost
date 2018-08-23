@@ -1,4 +1,4 @@
-import os
+import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 import functools
@@ -7,6 +7,23 @@ from time import time
 from datetime import datetime as dt
 import argparse
 import inspect
+try:
+    import tblib.pickling_support
+    tblib.pickling_support.install()
+except ModuleNotFoundError:
+    pass
+    
+
+class PicklableExceptionWrapper:
+    """
+    Wraps an Exception object to make it picklable so that the traceback follows. Useful for multiprocessing when an exception is raised in a subprocess.
+    """
+    def __init__(self, exception):
+        self.exception = exception
+        *_, self.traceback = sys.exc_info()
+    
+    def raise_exception(self):
+        raise self.exception.with_traceback(self.traceback)
 
 
 def parse(func):
