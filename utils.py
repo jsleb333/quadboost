@@ -7,12 +7,8 @@ from time import time
 from datetime import datetime as dt
 import argparse
 import inspect
-try:
-    import tblib.pickling_support
-    tblib.pickling_support.install()
-except ModuleNotFoundError:
-    pass
-    
+import warnings
+
 
 class PicklableExceptionWrapper:
     """
@@ -20,10 +16,22 @@ class PicklableExceptionWrapper:
     """
     def __init__(self, exception):
         self.exception = exception
-        *_, self.traceback = sys.exc_info()
-    
+        full_exception = sys.exc_info()
+        try:
+            import tblib.pickling_support
+            tblib.pickling_support.install()
+            self.traceback = full_exception[2]
+        except ModuleNotFoundError:
+            warnings.warn('Traceback of original error could not be carried from subprocess. If you want the full traceback, you should consider install the tblib module. A print of it follows.')
+            import traceback
+            traceback.print_exception(*full_exception)
+            self.traceback = None
+
     def raise_exception(self):
-        raise self.exception.with_traceback(self.traceback)
+        if self.traceback:
+            raise self.exception.with_traceback(self.traceback)
+        else:
+            raise self.exception
 
 
 def parse(func):
