@@ -6,7 +6,7 @@ import sys, os
 sys.path.append(os.getcwd())
 
 from weak_learner import Cloner
-from utils import split_int, timed, ComparableMixin, PicklableExceptionWrapper
+from utils import split_int, timed, ComparableMixin, PicklableExceptionWrapper, safe_queue_to_list
 
 
 class MulticlassDecisionStump(Cloner):
@@ -67,17 +67,7 @@ class MulticlassDecisionStump(Cloner):
 
         for process in processes: process.start()
         for process in processes: process.join()
-
-        stumps = [stumps_queue.get() for _ in processes]
-
-        # Exception handling
-        for s in stumps:
-            if issubclass(type(s), PicklableExceptionWrapper):
-                s.raise_exception()
-
-        stump = min(stumps)
-
-        return stump
+        return min(safe_queue_to_list(stumps_queue))
 
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape

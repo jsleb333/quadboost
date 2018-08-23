@@ -34,6 +34,17 @@ class PicklableExceptionWrapper:
             raise self.exception
 
 
+def safe_queue_to_list(queue):
+    items = []
+    for _ in range(queue.qsize()):
+        item = queue.get()
+        if issubclass(type(item), PicklableExceptionWrapper):
+            item.raise_exception()
+        items.append(item)
+
+    return items
+
+
 def parse(func):
     """
     Quick and dirty way to make any main with optional keyword arguments parsable from the command line.
