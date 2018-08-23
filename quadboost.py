@@ -1,7 +1,7 @@
 import numpy as np
 import pickle as pkl
 from sklearn.metrics import accuracy_score
-from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump
+from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump, MulticlassDecisionTree
 import matplotlib.pyplot as plt
 import logging
 
@@ -247,7 +247,7 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = MulticlassDecisionStump()
+    weak_learner = MulticlassDecisionTree(max_n_leafs=4)
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
@@ -262,7 +262,7 @@ def main():
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=5, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
             n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)

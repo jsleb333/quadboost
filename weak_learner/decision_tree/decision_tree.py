@@ -22,6 +22,8 @@ class MulticlassDecisionTree(Cloner):
         if self.encoder is not None:
             Y, W = self.encoder.encode_labels(Y)
 
+        X = X.reshape(X.shape[0], -1)
+
         root = MulticlassDecisionStump().fit(X, Y, W, n_jobs, sorted_X, sorted_X_idx)
         self.tree = Tree(root)
         split = Split(root, None, None, sorted_X_idx)
@@ -42,6 +44,8 @@ class MulticlassDecisionTree(Cloner):
             del potential_splits[split_idx]
 
             parent = self._append_split(split)
+
+        return self
 
     def _append_split(self, split):
         child = Tree(split.stump)
@@ -118,6 +122,10 @@ class MulticlassDecisionTree(Cloner):
     def __len__(self):
         return len(self.tree)
 
+    @staticmethod
+    def sort_data(X):
+        return MulticlassDecisionStump.sort_data(X)
+
 
 class Tree:
     def __init__(self, root_stump):
@@ -137,11 +145,11 @@ class Tree:
 
     def __iter__(self):
         """
-        Infix visit of nodes.
+        Prefix visit of nodes.
         """
+        yield self
         if self.left_child is not None:
             yield from self.left_child
-        yield self
         if self.right_child is not None:
             yield from self.right_child
 
@@ -192,24 +200,15 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 4
+    m = 1_000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
     dt = MulticlassDecisionTree(max_n_leafs=4, encoder=encoder)
-    sorted_X, sorted_X_idx = MulticlassDecisionStump.sort_data(X)
+    sorted_X, sorted_X_idx = dt.sort_data(X)
     dt.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', dt.evaluate(X, Y))
-
-    for n in dt.tree:
-        print(n.stump.stump, n.stump.feature)
-        print(n.stump.confidence_rates)
-    print(dt.predict(X))
-    # print('WL test acc:', dt.evaluate(Xts, Yts))
-
-    ds = MulticlassDecisionStump(encoder=encoder)
-    ds.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
-    print('WL train acc:', ds.evaluate(X, Y))
+    print('WL test acc:', dt.evaluate(Xts, Yts))
 
 
 if __name__ == '__main__':
