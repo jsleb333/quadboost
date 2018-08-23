@@ -7,18 +7,44 @@ sys.path.append(os.getcwd())
 
 from weak_learner import Cloner
 from weak_learner import MulticlassDecisionStump
-from utils import *
+from utils import timed, ComparableMixin
 
 
 class MulticlassDecisionTree(Cloner):
-    def __init__(self, max_n_leafs=4, encoder=None):
+    """
+    Decision tree classifier with innate multiclass algorithm. Each node is a MulticlassDecisionStump. The tree is grown by promoting the leaf with the best risk reduction to a node with two leaves.
+    It assigns a confidence rates (scalar) for each class for each leaf.
+    Parallelization is implemented for the MulticlassDecisionStump.
+    """
+    def __init__(self, max_n_leaves=4, encoder=None):
+        """
+        Args:
+            max_n_leaves (int, optional): Maximum number of leaves the tree can have. The smallest tree have 2 leaves and is identical to a MulticlassDecisionStump.
+            encoder (LabelEncoder object, optional, default=None): Encoder to encode labels. If None, no encoding will be made before fitting.
+        """
         super().__init__()
-        self.max_n_leafs = max_n_leafs
-        self.n_leafs = 2
+        self.max_n_leaves = max_n_leaves
+        self.n_leaves = 2
         self.encoder = encoder
         self.tree = None
 
     def fit(self, X, Y, W=None, n_jobs=1, sorted_X=None, sorted_X_idx=None):
+        """
+        Fits the tree to the data.
+
+        The algorithm fits a first stump (the root), which splits the data in 2 leaves (partition). For each leaves of the tree, we compute the decrease in quadratic risk promoting a leaf into a stump would yield, then we append to the tree the one with the greatest reduction. The 2 hence created leaves are added to the pool of potential split and the process is repeated until the maximum number of leaves is reached.
+
+        Args:
+            X (Array of shape (n_examples, ...)): Examples
+            Y (Array of shape (n_examples,) or (n_examples, n_classes)): Labels for the examples. If an encoder was provided at construction, Y should be a vector to be encoded.
+            W (Array of shape (n_examples, n_classes)): Weights of each examples according to their class. Should be None if Y is not encoded.
+            n_jobs (int, optional, default=1): Number of processes to execute in parallel to find the stumps.
+            sorted_X (Array of shape (n_examples, ...), optional, default=None): Sorted examples along axis 0. If None, 'X' will be sorted, else it will not.
+            sorted_X_idx (Array of shape (n_examples, ...), optional, default=None): Indices of the sorted examples along axis 0 (corresponds to argsort). If None, 'X' will be argsorted, else it will not.
+
+        Returns self
+
+        """
         if self.encoder is not None:
             Y, W = self.encoder.encode_labels(Y)
 
@@ -30,10 +56,10 @@ class MulticlassDecisionTree(Cloner):
         parent = self.tree
 
         potential_splits = []
-        while self.n_leafs < self.max_n_leafs:
-            self.n_leafs += 1
+        while self.n_leaves < self.max_n_leaves:
+            self.n_leaves += 1
 
-            left_args, right_args = self.partition_examples(X, split.sorted_X_idx, split.stump)
+            left_args, right_args = self._partition_examples(X, split.sorted_X_idx, split.stump)
 
             left_split = Split(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *left_args), parent, 'left', left_args[1])
             right_split = Split(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *right_args), parent, 'right', right_args[1])
@@ -56,7 +82,10 @@ class MulticlassDecisionTree(Cloner):
 
         return child
 
-    def partition_examples(self, X, sorted_X_idx, stump):
+    def _partition_examples(self, X, sorted_X_idx, stump):
+        """
+        Partition examples into 2 groups (left and right leaves of the node). This is done in O(n_examples * n_features).
+        """
         n_examples, n_features = sorted_X_idx.shape
         n_examples_left, n_examples_right = stump.stump_idx, n_examples - stump.stump_idx
 
@@ -90,10 +119,14 @@ class MulticlassDecisionTree(Cloner):
         partition = node.stump.partition(X)
 
         for i, x in enumerate(X):
-            Y_pred[i] = self.percolate(x)
+            node, partition = self.percolate(x)
+            Y_pred[i] = node.stump.confidence_rates[partition]
         return Y_pred
 
     def percolate(self, x):
+        """
+        Percolate x along the tree, returning the final node and the partition/leaf of x.
+        """
         node = self.tree
         x = x.reshape(1,-1)
         partition = node.stump.partition(x, int)
@@ -111,7 +144,7 @@ class MulticlassDecisionTree(Cloner):
 
             partition = node.stump.partition(x, int)
 
-        return node.stump.confidence_rates[partition]
+        return node, partition
 
     def evaluate(self, X, Y):
         Y_pred = self.predict(X)
@@ -128,12 +161,21 @@ class MulticlassDecisionTree(Cloner):
 
 
 class Tree:
-    def __init__(self, root_stump):
-        self.stump = root_stump
+    """
+    Simple binary tree data structure to hold the stumps making up the tree. Defines some utilitary functions to handle the data.
+    """
+    def __init__(self, stump):
+        """
+        The data is the stump, while the child (left or right) are themselves Tree instances. If they are None, it means they are leaves.
+        """
+        self.stump = stump
         self.left_child = None
         self.right_child = None
 
     def __len__(self):
+        """
+        Returns the number of leaves of the tree.
+        """
         if self.left_child is None and self.right_child is None:
             return 2
         elif self.left_child is not None and self.right_child is None:
@@ -173,7 +215,12 @@ class Tree:
         return ' '.join(visited_nodes)
 
 
-class Split(ComparableMixin, cmp_attr='risk_decrease'):
+class Split(ComparableMixin, cmp_attr='risk_reduction'):
+    """
+    Basic class acting as a data holding and ordering structure. Maintains information necessary to append the stump to its correct place in the tree and to compute the risk for its leaves.
+
+    The ComparableMixin parent of the class allows to quickly find the best split among many.
+    """
     def __init__(self, stump, parent, side, sorted_X_idx):
         """
         Args:
@@ -188,7 +235,7 @@ class Split(ComparableMixin, cmp_attr='risk_decrease'):
         self.sorted_X_idx = sorted_X_idx
 
     @property
-    def risk_decrease(self):
+    def risk_reduction(self):
         side = 0 if self.side == 'left' else 1
         return self.parent.stump.risks[side] - self.stump.risk
 
@@ -204,7 +251,7 @@ def main():
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
-    dt = MulticlassDecisionTree(max_n_leafs=4, encoder=encoder)
+    dt = MulticlassDecisionTree(max_n_leaves=4, encoder=encoder)
     sorted_X, sorted_X_idx = dt.sort_data(X)
     dt.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', dt.evaluate(X, Y))
