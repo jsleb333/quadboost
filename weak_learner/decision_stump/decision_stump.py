@@ -18,7 +18,8 @@ class MulticlassDecisionStump(Cloner):
     """
     def __init__(self, encoder=None):
         """
-        encoder (LabelEncoder object, optional, default=None): Encoder to encode labels. If None, no encoding will be made before fitting.
+        Args:
+            encoder (LabelEncoder object, optional, default=None): Encoder to encode labels. If None, no encoding will be made before fitting.
         """
         self.encoder = encoder
 
@@ -26,12 +27,13 @@ class MulticlassDecisionStump(Cloner):
         """
         Fits the model by finding the best decision stump using the algorithm implemented in the StumpFinder class.
 
-        X (Array of shape (n_examples, ...)): Examples
-        Y (Array of shape (n_examples,) or (n_examples, n_classes)): Labels for the examples. If an encoder was provided at construction, Y should be a vector to be encoded.
-        W (Array of shape (n_examples, n_classes)): Weights of each examples according to their class. Should be None if Y is not encoded.
-        n_jobs (int, optional, default=1): Number of processes to execute in parallel to find the stump.
-        sorted_X (Array of shape (n_examples, ...), optional, default=None): Sorted examples along axis 0. If None, 'X' will be sorted, else it will not.
-        sorted_X_idx (Array of shape (n_examples, ...), optional, default=None): Indices of the sorted examples along axis 0 (corresponds to argsort). If None, 'X' will be argsorted, else it will not.
+        Args:
+            X (Array of shape (n_examples, ...)): Examples
+            Y (Array of shape (n_examples,) or (n_examples, n_classes)): Labels for the examples. If an encoder was provided at construction, Y should be a vector to be encoded.
+            W (Array of shape (n_examples, n_classes)): Weights of each examples according to their class. Should be None if Y is not encoded.
+            n_jobs (int, optional, default=1): Number of processes to execute in parallel to find the stump.
+            sorted_X (Array of shape (n_examples, ...), optional, default=None): Sorted examples along axis 0. If None, 'X' will be sorted, else it will not.
+            sorted_X_idx (Array of shape (n_examples, ...), optional, default=None): Indices of the sorted examples along axis 0 (corresponds to argsort). If None, 'X' will be argsorted, else it will not.
 
         Returns self
         """
@@ -60,7 +62,7 @@ class MulticlassDecisionStump(Cloner):
         stumps_queue = mp.Queue()
         processes = []
         for sub_idx in split_int(n_features, n_jobs):
-            process = mp.Process(target=stump_finder.find_stump, args=(stumps_queue, sub_idx))
+            process = mp.Process(target=stump_finder.safe_find_stump, args=(stumps_queue, sub_idx))
             processes.append(process)
 
         for process in processes: process.start()
@@ -147,45 +149,52 @@ class StumpFinder:
         # self.first_moments = mp.Array('d', (W*Y).reshape(-1))
         # self.second_moments = mp.Array('d', (W*Y*Y).reshape(-1))
 
+    def safe_find_stump(self, stumps_queue, sub_idx=(None,)):
+        """
+        Handles exception raised in a subprocess so the script will not hang indefinitely.
+
+        This is basically a decorator for find_stump, but parallelizing requires pickling, and we cannot pickle decorator.
+        """
+        try:
+            self.find_stump(stumps_queue, sub_idx=(None,))
+        except Exception as err:
+            err = PicklableExceptionWrapper(err)
+            stumps_queue.put(err) # Script will hang as long as queue is not updated
+
     def find_stump(self, stumps_queue, sub_idx=(None,)):
         """
         Algorithm to the best stump within the sub array of X specified by the bounds 'sub_idx'.
         """
-        try:
-            X = self.sorted_X[:,slice(*sub_idx)]
-            X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
+        X = self.sorted_X[:,slice(*sub_idx)]
+        X_idx = self.sorted_X_idx[:,slice(*sub_idx)]
 
-            _, n_classes = self.zeroth_moments.shape
-            n_examples, n_features = X.shape
-            n_partitions = 2
-            n_moments = 3
+        _, n_classes = self.zeroth_moments.shape
+        n_examples, n_features = X.shape
+        n_partitions = 2
+        n_moments = 3
 
-            moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
+        moments = np.zeros((n_moments, n_partitions, n_features, n_classes))
 
-            # At first, all examples are in partition 1
-            # Moments are not normalized so they can be computed cumulatively
-            moments[0,1] = np.sum(self.zeroth_moments[X_idx[:,0]], axis=0)
-            moments[1,1] = np.sum(self.first_moments[X_idx[:,0]], axis=0)
-            moments[2,1] = np.sum(self.second_moments[X_idx[:,0]], axis=0)
+        # At first, all examples are in partition 1
+        # Moments are not normalized so they can be computed cumulatively
+        moments[0,1] = np.sum(self.zeroth_moments[X_idx[:,0]], axis=0)
+        moments[1,1] = np.sum(self.first_moments[X_idx[:,0]], axis=0)
+        moments[2,1] = np.sum(self.second_moments[X_idx[:,0]], axis=0)
 
-            risks = self.compute_risks(moments) # Shape (n_partitions, n_features)
-            best_stump = Stump(risks, moments)
+        risks = self.compute_risks(moments) # Shape (n_partitions, n_features)
+        best_stump = Stump(risks, moments)
 
-            for i, row in enumerate(X_idx[:-1]):
-                self.update_moments(moments, row)
-                possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
+        for i, row in enumerate(X_idx[:-1]):
+            self.update_moments(moments, row)
+            possible_stumps = ~np.isclose(X[i+1] - X[i], 0)
 
-                if possible_stumps.any():
-                    risk = self.compute_risks(moments[:,:,possible_stumps,:])
-                    best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
+            if possible_stumps.any():
+                risk = self.compute_risks(moments[:,:,possible_stumps,:])
+                best_stump.update(risk, moments, possible_stumps, stump_idx=i+1)
 
-            best_stump.compute_stump_value(X)
-            best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
-            stumps_queue.put(best_stump)
-
-        except Exception as err:
-            err = PicklableExceptionWrapper(err)
-            stumps_queue.put(err) # Script will hang as long as queue is not updated
+        best_stump.compute_stump_value(X)
+        best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
+        stumps_queue.put(best_stump)
 
     def update_moments(self, moments, row_idx):
         moments_update = np.array([self.zeroth_moments[row_idx],
