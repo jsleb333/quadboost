@@ -2,47 +2,10 @@ import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 import functools
-import multiprocessing as mp
 from time import time
 from datetime import datetime as dt
 import argparse
 import inspect
-import warnings
-
-
-class PicklableExceptionWrapper:
-    """
-    Wraps an Exception object to make it picklable so that the traceback follows. Useful for multiprocessing when an exception is raised in a subprocess.
-    """
-    def __init__(self, exception):
-        self.exception = exception
-        full_exception = sys.exc_info()
-        try:
-            import tblib.pickling_support
-            tblib.pickling_support.install()
-            self.traceback = full_exception[2]
-        except ModuleNotFoundError:
-            warnings.warn('Traceback of original error could not be carried from subprocess. If you want the full traceback, you should consider install the tblib module. A print of it follows.')
-            import traceback
-            traceback.print_exception(*full_exception)
-            self.traceback = None
-
-    def raise_exception(self):
-        if self.traceback:
-            raise self.exception.with_traceback(self.traceback)
-        else:
-            raise self.exception
-
-
-def safe_queue_to_list(queue):
-    items = []
-    for _ in range(queue.qsize()):
-        item = queue.get()
-        if issubclass(type(item), PicklableExceptionWrapper):
-            item.raise_exception()
-        items.append(item)
-
-    return items
 
 
 def parse(func):
@@ -124,12 +87,6 @@ def split_int(n, k):
         yield (idx0, idx1)
 
 
-def parallelize(func, func_args, n_jobs):
-    with mp.Pool(n_jobs) as pool:
-        parallel_return = pool.map(func, func_args)
-    return parallel_return
-
-
 def timed(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -145,27 +102,6 @@ def timed(func):
         print(f'\nExecution {func_name}completed in {time()-t:.2f} seconds on {dt.now().strftime(time_format)}.\n')
         return func_return
     return wrapper
-
-
-class ComparableMixin:
-    """
-    Mixin class that delegates the rich comparison operators to the specified attribute.
-
-    Note: Uses __init_subclass__ as a work around for a bug with the 'Queue' class of 'multiprocessing' when parallelizing.
-    """
-    def __init_subclass__(cls, *, cmp_attr):
-        def get_cmp_attr(self): return getattr(self, cmp_attr)
-        cls.cmp_attr = property(get_cmp_attr)
-
-        for operator_name in ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']:
-            def operator_func(self, other, operator_name=operator_name):
-                other_attr = other.cmp_attr if hasattr(other, 'cmp_attr') else other
-                try:
-                    return getattr(self.cmp_attr, operator_name)(other_attr)
-                except TypeError:
-                    return NotImplemented
-
-            setattr(cls, operator_name, operator_func)
 
 
 if __name__ == '__main__':

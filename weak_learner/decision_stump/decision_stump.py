@@ -6,7 +6,8 @@ import sys, os
 sys.path.append(os.getcwd())
 
 from weak_learner import Cloner
-from utils import split_int, timed, ComparableMixin, PicklableExceptionWrapper, safe_queue_to_list
+from utils import split_int, timed, ComparableMixin
+from utils.multiprocessing_utils import PicklableExceptionWrapper, SafeQueue
 
 
 class MulticlassDecisionStump(Cloner):
@@ -59,7 +60,7 @@ class MulticlassDecisionStump(Cloner):
         """
         stump_finder = StumpFinder(sorted_X, sorted_X_idx, Y, W)
         n_features = sorted_X.shape[1]
-        stumps_queue = mp.Queue()
+        stumps_queue = SafeQueue()
         processes = []
         for sub_idx in split_int(n_features, n_jobs):
             process = mp.Process(target=stump_finder.safe_find_stump, args=(stumps_queue, sub_idx))
@@ -67,7 +68,7 @@ class MulticlassDecisionStump(Cloner):
 
         for process in processes: process.start()
         for process in processes: process.join()
-        return min(safe_queue_to_list(stumps_queue))
+        return min(stump for stump in stumps_queue)
 
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
@@ -145,11 +146,8 @@ class StumpFinder:
 
         This is basically a decorator for find_stump, but parallelizing requires pickling, and we cannot pickle decorator.
         """
-        try:
+        with stumps_queue: # Context manager handles exceptions
             self.find_stump(stumps_queue, sub_idx=(None,))
-        except Exception as err:
-            err = PicklableExceptionWrapper(err)
-            stumps_queue.put(err) # Script will hang as long as queue is not updated
 
     def find_stump(self, stumps_queue, sub_idx=(None,)):
         """
@@ -268,7 +266,7 @@ def main():
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
     sorted_X, sorted_X_idx = wl.sort_data(X)
-    wl.fit(X, Y, n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    wl.fit(X, Y, n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 
