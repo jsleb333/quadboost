@@ -59,7 +59,7 @@ class MulticlassDecisionTree(Cloner):
         sorted_X_idx_left = np.zeros((n_examples_left, n_features), dtype=int)
         sorted_X_idx_right = np.zeros((n_examples_right, n_features), dtype=int)
 
-        X_partition = np.array([p for p in stump.partition_generator(X)], dtype=bool) # Partition of the examples X (X_partition[i] == 0 if examples i is left, else 1)
+        X_partition = stump.partition(X) # Partition of the examples X (X_partition[i] == 0 if examples i is left, else 1)
         range_n_features = np.arange(n_features)
 
         idx_left, idx_right = np.zeros(n_features, dtype=int), np.zeros(n_features, dtype=int)
@@ -80,13 +80,39 @@ class MulticlassDecisionTree(Cloner):
     def predict(self, X):
         n_examples = X.shape[0]
         n_partitions, n_classes = self.tree.stump.confidence_rates.shape
-        Y_pred = np.zeros((n_examples, n_partitions))
+        Y_pred = np.zeros((n_examples, n_classes))
 
-        stump = self.tree.stump
-        partition = [p for p in stump.partition_generator(X)]
+        node = self.tree
+        partition = node.stump.partition(X)
+
+        for i, x in enumerate(X):
+            Y_pred[i] = self.percolate(x)
+        return Y_pred
+
+    def percolate(self, x):
+        node = self.tree
+        partition = node.stump.partition(x.reshape(1,-1), int)
+        while True:
+            if partition == 0:
+                if node.left_child is None:
+                    break
+                else:
+                    node = node.left_child
+            if partition == 1:
+                if node.right_child is None:
+                    break
+                else:
+                    node = node.right_child
+
+                partition = node.stump.partition(x.reshape(1,-1), int)
+
+        return node.stump.confidence_rates[partition]
 
     def evaluate(self, X, Y):
-        pass
+        Y_pred = self.predict(X)
+        if self.encoder != None:
+            Y_pred = self.encoder.decode_labels(Y_pred)
+        return accuracy_score(y_true=Y, y_pred=Y_pred)
 
     def __len__(self):
         return len(self.tree)
@@ -165,16 +191,24 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 100
-    X = Xtr[:m,20:30].reshape((m,-1))
+    m = 4
+    X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
-    wl = MulticlassDecisionTree(encoder=encoder)
+    dt = MulticlassDecisionTree(max_n_leafs=4, encoder=encoder)
     sorted_X, sorted_X_idx = MulticlassDecisionStump.sort_data(X)
-    wl.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
-    print(len(wl))
-    # print('WL train acc:', wl.evaluate(X, Y))
-    # print('WL test acc:', wl.evaluate(Xts, Yts))
+    dt.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    print('WL train acc:', dt.evaluate(X, Y))
+
+    for n in dt.tree:
+        print(n.stump.stump, n.stump.feature)
+        print(n.stump.confidence_rates)
+    print(dt.predict(X))
+    # print('WL test acc:', dt.evaluate(Xts, Yts))
+
+    ds = MulticlassDecisionStump(encoder=encoder)
+    ds.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    print('WL train acc:', ds.evaluate(X, Y))
 
 
 if __name__ == '__main__':
