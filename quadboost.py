@@ -90,13 +90,16 @@ class QuadBoost:
             # Boosting algorithm
             for boosting_round in boost_manager:
 
-                residue = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
+                residue, weak_predictor, weak_predictor_weight = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
 
                 boosting_round.train_acc = self.evaluate(X, Y)
                 if X_val is not None and Y_val is not None:
                     boosting_round.valid_acc = self.evaluate(X_val, Y_val)
-                if hasattr(self.weak_predictors[-1], 'risk'):
-                    boosting_round.risk = self.weak_predictors[-1].risk
+                if hasattr(weak_predictor, 'risk'):
+                    boosting_round.risk = weak_predictor.risk
+
+                self.weak_predictors_weights.append(weak_predictor_weight)
+                self.weak_predictors.append(weak_predictor)
 
         return self
 
@@ -119,10 +122,7 @@ class QuadBoost:
         weak_predictor_weight = self._compute_weak_predictor_weight(weights, residue, weak_prediction)
         residue -= weak_predictor_weight * weak_prediction
 
-        self.weak_predictors_weights.append(weak_predictor_weight)
-        self.weak_predictors.append(weak_predictor)
-
-        return residue
+        return residue, weak_predictor, weak_predictor_weight
 
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         raise NotImplementedError
@@ -135,9 +135,7 @@ class QuadBoost:
 
         Returns self.
         """
-        try:
-            self.weak_predictors
-        except AttributeError:
+        if not hasattr(self.weak_predictors):
             logging.error("Can't resume fit if no previous fitting made. Use 'fit' instead.")
             return self
 
