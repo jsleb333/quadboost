@@ -59,16 +59,22 @@ class MulticlassDecisionStump(Cloner):
         Parallelizes the processes.
         """
         stump_finder = StumpFinder(sorted_X, sorted_X_idx, Y, W)
-        n_features = sorted_X.shape[1]
-        stumps_queue = SafeQueue()
-        processes = []
-        for sub_idx in split_int(n_features, n_jobs):
-            process = mp.Process(target=stump_finder.safe_find_stump, args=(stumps_queue, sub_idx))
-            processes.append(process)
 
-        for process in processes: process.start()
-        for process in processes: process.join()
-        return min(stump for stump in stumps_queue)
+        if n_jobs > 1: # Need parallelization
+            n_features = sorted_X.shape[1]
+            stumps_queue = SafeQueue()
+            processes = []
+            for sub_idx in split_int(n_features, n_jobs):
+                process = mp.Process(target=stump_finder.safe_find_stump, args=(stumps_queue, sub_idx))
+                processes.append(process)
+
+            for process in processes: process.start()
+            for process in processes: process.join()
+            return min(stump for stump in stumps_queue)
+        else: # No parallelization
+            stump = []
+            StumpFinder(sorted_X, sorted_X_idx, Y, W).find_stump(stump)
+            return stump[0]
 
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
@@ -182,7 +188,7 @@ class StumpFinder:
 
         best_stump.compute_stump_value(X)
         best_stump.feature += sub_idx[0] if sub_idx[0] is not None else 0
-        stumps_queue.put(best_stump)
+        stumps_queue.append(best_stump)
 
     def update_moments(self, moments, row_idx):
         moments_update = np.array([self.zeroth_moments[row_idx],
