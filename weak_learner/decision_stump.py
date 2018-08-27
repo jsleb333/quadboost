@@ -140,7 +140,7 @@ class StumpFinder:
         This is basically a decorator for find_stump, but parallelizing requires pickling, and we cannot pickle decorator.
         """
         with stumps_queue: # Context manager handles exceptions
-            self.find_stump(stumps_queue, sub_idx=(None,))
+            self.find_stump(stumps_queue, sub_idx)
 
     def find_stump(self, stumps_queue, sub_idx=(None,)):
         """
