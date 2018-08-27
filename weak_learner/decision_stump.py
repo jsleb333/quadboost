@@ -7,7 +7,7 @@ sys.path.append(os.getcwd())
 
 from weak_learner import Cloner
 from utils import split_int, timed, ComparableMixin
-from utils.multiprocessing_utils import PicklableExceptionWrapper, SafeQueue
+from utils.multiprocessing_utils import PicklableExceptionWrapper, SafeQueue, parallel_processes
 
 
 class MulticlassDecisionStump(Cloner):
@@ -43,38 +43,25 @@ class MulticlassDecisionStump(Cloner):
         if sorted_X is None or sorted_X_idx is None:
             sorted_X, sorted_X_idx = self.sort_data(X)
 
-        stump = self.parallel_find_stump(sorted_X, sorted_X_idx, Y, W, n_jobs)
+        stump = self.find_stump(sorted_X, sorted_X_idx, Y, W, n_jobs)
 
-        self.feature = stump.feature
-        self.confidence_rates = stump.confidence_rates
-        self.stump = stump.stump
-        self.stump_idx = stump.stump_idx
-        self.risks = stump.risks
-        self.risk = stump.risk
+        for attr in ['feature', 'confidence_rates', 'stump', 'stump_idx', 'risks', 'risk']:
+            setattr(self, attr, getattr(stump, attr))
 
         return self
 
-    def parallel_find_stump(self, sorted_X, sorted_X_idx, Y, W, n_jobs):
-        """
-        Parallelizes the processes.
-        """
+    def find_stump(self, sorted_X, sorted_X_idx, Y, W, n_jobs):
         stump_finder = StumpFinder(sorted_X, sorted_X_idx, Y, W)
+        stumps_queue = SafeQueue()
 
         if n_jobs > 1: # Need parallelization
             n_features = sorted_X.shape[1]
-            stumps_queue = SafeQueue()
-            processes = []
-            for sub_idx in split_int(n_features, n_jobs):
-                process = mp.Process(target=stump_finder.safe_find_stump, args=(stumps_queue, sub_idx))
-                processes.append(process)
-
-            for process in processes: process.start()
-            for process in processes: process.join()
-            return min(stump for stump in stumps_queue)
+            args_iter = ((stumps_queue, sub_idx) for sub_idx in split_int(n_features, n_jobs))
+            parallel_processes(stump_finder.safe_find_stump, args_iter)
         else: # No parallelization
-            stump = []
-            StumpFinder(sorted_X, sorted_X_idx, Y, W).find_stump(stump)
-            return stump[0]
+            stump_finder.find_stump(stumps_queue)
+        
+        return min(stump for stump in stumps_queue)
 
     def predict(self, X):
         n_partitions, n_classes = self.confidence_rates.shape
@@ -272,7 +259,7 @@ def main():
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
     sorted_X, sorted_X_idx = wl.sort_data(X)
-    wl.fit(X, Y, n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    wl.fit(X, Y, n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 

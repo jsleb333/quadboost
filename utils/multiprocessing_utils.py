@@ -71,6 +71,18 @@ def parallelize(func, func_args, n_jobs):
     return parallel_return
 
 
+def parallel_processes(func_target, func_args_iter):
+    processes = []
+    for args in func_args_iter:
+        process = mp.Process(target=func_target, args=args)
+        processes.append(process)
+
+    for process in processes: process.start()
+    for process in processes: process.join()
+    
+    return processes
+
+
 def dummy_parallel(queue, i):
     queue.append(i)
 
