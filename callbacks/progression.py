@@ -1,4 +1,4 @@
-import time as t
+import time
 import sys, os
 sys.path.append(os.getcwd())
 
@@ -13,7 +13,7 @@ class Progression(Callback):
     It omits 'Valid acc' if none was used in the algorithm.
     """
     def on_step_begin(self):
-        self.start_time = t.time()
+        self.start_time = time.time()
 
     def on_step_end(self):
         # Round number
@@ -34,7 +34,7 @@ class Progression(Callback):
             output.append(f'Risk: {self.manager.step.risk:.3f}')
 
         # Time
-        self.end_time = t.time()
+        self.end_time = time.time()
         output.append(f'Time {self.end_time-self.start_time:.2f}s')
 
         sys.stdout.write(' | '.join(output) + '\n')
