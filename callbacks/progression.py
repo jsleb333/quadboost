@@ -12,7 +12,7 @@ class Progression(Callback):
 
     It omits 'Valid acc' if none was used in the algorithm.
     """
-    def on_iteration_begin(self):
+    def on_step_begin(self):
         self.start_time = t.time()
 
     def on_step_end(self):
@@ -36,7 +36,6 @@ class Progression(Callback):
         # Time
         self.end_time = t.time()
         output.append(f'Time {self.end_time-self.start_time:.2f}s')
-        self.start_time = self.end_time
 
         sys.stdout.write(' | '.join(output) + '\n')
         sys.stdout.flush()
