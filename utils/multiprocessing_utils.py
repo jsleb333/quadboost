@@ -28,6 +28,9 @@ class PicklableExceptionWrapper:
 
 
 class SafeQueue(Queue):
+    """
+    multiprocessing Queue wrapper that mimicks a Python list and that is safe if an exception occurs within a subprocess.
+    """
     def __init__(self):
         ctx = mp.context._default_context.get_context()
         super().__init__(maxsize=0, ctx=ctx)
@@ -37,23 +40,53 @@ class SafeQueue(Queue):
 
     def __exit__(self, *full_exception):
         if full_exception[0] is not None:
-            self.put(PicklableExceptionWrapper(*full_exception))
+            self.append(PicklableExceptionWrapper(*full_exception))
 
     def __iter__(self):
         for _ in range(len(self)):
-            yield self.get()
-
-    def get(self, *args, **kwargs):
-        item = super().get(*args, **kwargs)
-        if issubclass(type(item), PicklableExceptionWrapper):
-            item.raise_exception()
-        return item
+            yield self.pop()
+    
+    def pop(self, block=True, timeout=None):
+        """
+        Returns last item from queue safely.
+        """
+        if len(self) > 0:
+            item = self.get(block, timeout)
+            if issubclass(type(item), PicklableExceptionWrapper):
+                item.raise_exception()
+            return item
+        else:
+            raise RuntimeError('Cannot pop from empty queue.')
 
     def __len__(self):
         return self.qsize()
+    
+    def append(self, item):
+        self.put(item)
 
 
 def parallelize(func, func_args, n_jobs):
     with mp.Pool(n_jobs) as pool:
         parallel_return = pool.map(func, func_args)
     return parallel_return
+
+
+def dummy_parallel(queue, i):
+    queue.append(i)
+
+
+if __name__ == '__main__':
+    import time
+
+    n_processes = 2
+    queue = SafeQueue()
+    processes = []
+    for i in range(n_processes):
+        process = mp.Process(target=dummy_parallel, args=(queue, i))
+        processes.append(process)
+
+    for process in processes: process.start()
+    for process in processes: process.join()
+    
+    for i in range(n_processes+1):
+        print(queue.pop())
