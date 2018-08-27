@@ -5,12 +5,11 @@ import sys, os
 print(os.getcwd())
 sys.path.append(os.getcwd())
 
-from weak_learner import cloner
+from weak_learner import Cloner
 from utils import *
 
 
-@cloner
-class MulticlassDecisionStump:
+class MulticlassDecisionStump(Cloner):
     def __init__(self, encoder=None):
         self.encoder = encoder
 
@@ -35,7 +34,6 @@ class MulticlassDecisionStump:
 
         return self
 
-    @timed
     def find_stump(self, sorted_X, sorted_X_idx, Y, W):
         n_examples, n_classes = Y.shape
         _, n_features = sorted_X.shape
@@ -127,7 +125,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 10_000
+    m = 1_000
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
@@ -140,5 +138,6 @@ def main():
 if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import *
-    import cProfile
-    cProfile.run('main()', sort='tottime')
+    # import cProfile
+    # cProfile.run('main()', sort='tottime')
+    main()
