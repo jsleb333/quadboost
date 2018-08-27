@@ -1,6 +1,6 @@
 try:
-    from utils import *
+    from misc import *
     from comparable_mixin import ComparableMixin
 except ModuleNotFoundError:
-    from utils.utils import *
+    from utils.misc import *
     from utils.comparable_mixin import ComparableMixin
