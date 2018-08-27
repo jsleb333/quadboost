@@ -147,6 +147,20 @@ class MulticlassDecisionTree(WeakLearnerBase):
 
     def __len__(self):
         return len(self.tree)
+    
+    @property
+    def risk(self):
+        return self._risk(self.tree)
+    
+    def _risk(self, node):
+        if node.left_child is None and node.right_child is None:
+            return node.stump.risk
+        elif node.left_child is not None and node.right_child is None:
+            return self._risk(node.left_child) + node.stump.risks[1]
+        elif node.right_child is not None and node.left_child is None:
+            return self._risk(node.right_child) + node.stump.risks[0]
+        else:
+            return self._risk(node.right_child) + self._risk(node.left_child)
 
     @staticmethod
     def sort_data(X):
@@ -244,11 +258,12 @@ def main():
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
-    dt = MulticlassDecisionTree(max_n_leaves=4, encoder=encoder)
+    dt = MulticlassDecisionTree(max_n_leaves=2, encoder=encoder)
     sorted_X, sorted_X_idx = dt.sort_data(X)
     dt.fit(X, Y, n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', dt.evaluate(X, Y))
     print('WL test acc:', dt.evaluate(Xts, Yts))
+    print(dt.risk)
 
 
 if __name__ == '__main__':
