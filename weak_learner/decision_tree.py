@@ -247,13 +247,13 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 1_000
+    m = 1_0
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
     dt = MulticlassDecisionTree(max_n_leaves=4, encoder=encoder)
     sorted_X, sorted_X_idx = dt.sort_data(X)
-    dt.fit(X, Y, n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    dt.fit(X, Y, n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', dt.evaluate(X, Y))
     print('WL test acc:', dt.evaluate(Xts, Yts))
 
