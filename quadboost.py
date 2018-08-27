@@ -95,6 +95,8 @@ class QuadBoost:
                 boosting_round.train_acc = self.evaluate(X, Y)
                 if X_val is not None and Y_val is not None:
                     boosting_round.valid_acc = self.evaluate(X_val, Y_val)
+                if hasattr(self.weak_predictors[-1], 'risk'):
+                    boosting_round.risk = self.weak_predictors[-1].risk
 
         return self
 
@@ -227,6 +229,7 @@ class BoostingRound(Step):
         super().__init__(step_number=round_number)
         self.train_acc = None
         self.valid_acc = None
+        self.risk = None
 
 
 @timed
@@ -235,7 +238,7 @@ def main():
     # mnist = MNISTDataset.load('haar_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 1_000
+    m = 1_0
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -247,7 +250,8 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = MulticlassDecisionTree(max_n_leaves=4)
+    # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
+    weak_learner = MulticlassDecisionStump
     sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
@@ -265,7 +269,7 @@ def main():
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
-            n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     ### Or resume fitting a model
     # qb = QuadBoostMHCR.load('results/test2.ckpt')
     # qb.resume_fit(Xtr[:m], Ytr[:m],

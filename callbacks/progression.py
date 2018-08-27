@@ -28,6 +28,10 @@ class Progression(Callback):
         # Valid accuracy
         if self.manager.step.valid_acc is not None:
             output.append(f'Valid acc: {self.manager.step.valid_acc:.2f}')
+        
+        # Risk
+        if self.manager.step.risk is not None:
+            output.append(f'Risk: {self.manager.step.risk:.3f}')
 
         # Time
         self.end_time = t.time()
