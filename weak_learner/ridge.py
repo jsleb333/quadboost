@@ -1,19 +1,18 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
-from weak_learner import Cloner
+from weak_learner import WeakLearnerBase
 from utils import *
 
 
-class WLRidge(Cloner, Ridge):
+class WLRidge(WeakLearnerBase, Ridge):
     """
     Confidence rated Ridge classification based on a Ridge regression.
     Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
     def __init__(self, alpha=1, encoder=None, fit_intercept=False, **kwargs):
-        super().__init__(alpha=alpha, fit_intercept=fit_intercept, **kwargs)
-        self.encoder = encoder
+        super().__init__(alpha=alpha, fit_intercept=fit_intercept, encoder=encoder, **kwargs)
     
     def fit(self, X, Y, W=None, **kwargs):
         """
@@ -30,22 +29,15 @@ class WLRidge(Cloner, Ridge):
         X = X.reshape((X.shape[0], -1))
         return super().predict(X, **kwargs)
 
-    def evaluate(self, X, Y):
-        Y_pred = self.predict(X)
-        if self.encoder != None:
-            Y_pred = self.encoder.decode_labels(Y_pred)
-        return accuracy_score(y_true=Y, y_pred=Y_pred)
 
-
-class WLThresholdedRidge(Cloner, Ridge):
+class WLThresholdedRidge(WeakLearnerBase, Ridge):
     """
     Ridge classification based on a ternary vote (1, 0, -1) of a Ridge regression based on a threshold. For a threshold of 0, it is equivalent to take the sign of the prediction.
     Inherits from Ridge of the scikit-learn package.
     In this implementation, the method 'fit' does not support encoding weights of the QuadBoost algorithm.
     """
     def __init__(self, alpha=1, encoder=None, threshold=0.5, fit_intercept=False, **kwargs):
-        super().__init__(alpha=alpha, fit_intercept=fit_intercept, **kwargs)
-        self.encoder = encoder
+        super().__init__(alpha=alpha, fit_intercept=fit_intercept, encoder=encoder, **kwargs)
         self.threshold = threshold
 
     def fit(self, X, Y, W=None, **kwargs):
@@ -65,12 +57,6 @@ class WLThresholdedRidge(Cloner, Ridge):
         Y = np.where(Y < -self.threshold, -1, Y)
         return Y
 
-    def evaluate(self, X, Y):
-        Y_pred = self.predict(X)
-        if self.encoder != None:
-            Y_pred = self.encoder.decode_labels(Y_pred)
-        return accuracy_score(y_true=Y, y_pred=Y_pred)
-
 
 @timed
 def main():
@@ -79,8 +65,8 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    # wl = WLThresholdedRidge(encoder=encoder)
-    wl = WLRidge(encoder=encoder)
+    wl = WLThresholdedRidge(encoder=encoder)
+    # wl = WLRidge(encoder=encoder)
     wl.fit(Xtr, Ytr)
     print(wl.evaluate(Xts, Yts))
 

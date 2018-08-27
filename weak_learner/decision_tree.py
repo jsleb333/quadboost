@@ -5,12 +5,12 @@ import heapq as hq
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import Cloner
+from weak_learner import WeakLearnerBase
 from weak_learner import MulticlassDecisionStump
 from utils import timed, ComparableMixin
 
 
-class MulticlassDecisionTree(Cloner):
+class MulticlassDecisionTree(WeakLearnerBase):
     """
     Decision tree classifier with innate multiclass algorithm. Each node is a MulticlassDecisionStump. The tree is grown by promoting the leaf with the best risk reduction to a node with two leaves.
     It assigns a confidence rates (scalar) for each class for each leaf.
@@ -22,10 +22,9 @@ class MulticlassDecisionTree(Cloner):
             max_n_leaves (int, optional): Maximum number of leaves the tree can have. The smallest tree have 2 leaves and is identical to a MulticlassDecisionStump.
             encoder (LabelEncoder object, optional, default=None): Encoder to encode labels. If None, no encoding will be made before fitting.
         """
-        super().__init__()
+        super().__init__(encoder=encoder)
         self.max_n_leaves = max_n_leaves
         self.n_leaves = 2
-        self.encoder = encoder
         self.tree = None
 
     def fit(self, X, Y, W=None, n_jobs=1, sorted_X=None, sorted_X_idx=None):
@@ -145,12 +144,6 @@ class MulticlassDecisionTree(Cloner):
             partition = node.stump.partition(x, int)
 
         return node, partition
-
-    def evaluate(self, X, Y):
-        Y_pred = self.predict(X)
-        if self.encoder != None:
-            Y_pred = self.encoder.decode_labels(Y_pred)
-        return accuracy_score(y_true=Y, y_pred=Y_pred)
 
     def __len__(self):
         return len(self.tree)

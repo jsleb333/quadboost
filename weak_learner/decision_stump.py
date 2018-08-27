@@ -5,25 +5,18 @@ import multiprocessing as mp
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import Cloner
+from weak_learner import WeakLearnerBase
 from utils import split_int, timed, ComparableMixin
 from utils.multiprocessing_utils import PicklableExceptionWrapper, SafeQueue, parallel_processes
 
 
-class MulticlassDecisionStump(Cloner):
+class MulticlassDecisionStump(WeakLearnerBase):
     """
     Decision stump classifier with innate multiclass algorithm.
     It finds a stump to partition examples into 2 parts which minimizes the quadratic multiclass risk.
     It assigns a confidence rates (scalar) for each class for each partition.
     Parallelization is implemented for the 'fit' method.
     """
-    def __init__(self, encoder=None):
-        """
-        Args:
-            encoder (LabelEncoder object, optional, default=None): Encoder to encode labels. If None, no encoding will be made before fitting.
-        """
-        self.encoder = encoder
-
     def fit(self, X, Y, W=None, n_jobs=1, sorted_X=None, sorted_X_idx=None):
         """
         Fits the model by finding the best decision stump using the algorithm implemented in the StumpFinder class.
@@ -81,12 +74,6 @@ class MulticlassDecisionStump(Cloner):
 
     def partition(self, X, dtype=bool):
         return np.array([p for p in self.partition_generator(X)], dtype=dtype)
-
-    def evaluate(self, X, Y):
-        Y_pred = self.predict(X)
-        if self.encoder != None:
-            Y_pred = self.encoder.decode_labels(Y_pred)
-        return accuracy_score(y_true=Y, y_pred=Y_pred)
 
     @staticmethod
     def sort_data(X):
@@ -259,7 +246,7 @@ def main():
     # X, Y = Xtr, Ytr
     wl = MulticlassDecisionStump(encoder=encoder)
     sorted_X, sorted_X_idx = wl.sort_data(X)
-    wl.fit(X, Y, n_jobs=2, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+    wl.fit(X, Y, n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', wl.evaluate(X, Y))
     # print('WL test acc:', wl.evaluate(Xts, Yts))
 

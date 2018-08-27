@@ -1,16 +1,16 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVR
-from weak_learner import Cloner
+from weak_learner import WeakLearnerBase
 from utils import *
 
 
-class MultidimSVR(Cloner):
+class MultidimSVR(WeakLearnerBase):
     """
     Implements a non-coupled multidimensional output SVM regressor based on the LinearSVR of sci-kit learn. This is highly non-efficient for large dataset. 
     """
     def __init__(self, *args, encoder=None, **kwargs):
-        self.encoder = encoder
+        super().__init__(encoder=encoder)
         self.predictors = []
         self.svm = lambda: LinearSVR(*args, **kwargs)
     
@@ -18,6 +18,7 @@ class MultidimSVR(Cloner):
         X = X.reshape((X.shape[0], -1))
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
+        print(self.encoder)
         for i, y in enumerate(Y.T):
             print('Fitting dim ' + str(i) + ' of Y...')
             self.predictors.append(self.svm().fit(X, y, **kwargs))
@@ -31,12 +32,6 @@ class MultidimSVR(Cloner):
         for i, predictor in enumerate(self.predictors):
             Y[:,i] = predictor.predict(X, **kwargs)
         return Y
-
-    def evaluate(self, X, Y):
-        Y_pred = self.predict(X)
-        if self.encoder != None:
-            Y_pred = self.encoder.decode_labels(Y_pred)
-        return accuracy_score(y_true=Y, y_pred=Y_pred)
 
 
 @timed
