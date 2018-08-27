@@ -56,7 +56,7 @@ class SafeQueue(Queue):
                 item.raise_exception()
             return item
         else:
-            raise RuntimeError('Cannot pop from empty queue.')
+            raise IndexError('pop from empty queue.')
 
     def __len__(self):
         return self.qsize()
