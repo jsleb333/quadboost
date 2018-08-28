@@ -93,7 +93,7 @@ class PeriodicSaveCallback(SaveCallback):
         return saved
 
 
-class PickleSave(SaveCallback):
+class PickleSaveMixin(SaveCallback):
     """
     Implements a saving protocol in Pickle
     """
@@ -107,7 +107,7 @@ class PickleSave(SaveCallback):
             pkl.dump(obj, file, protocol=self.protocol)
 
 
-class CSVSave(SaveCallback):
+class CSVSaveMixin(SaveCallback):
     """
     Implements a saving protocol in CSV
     """
