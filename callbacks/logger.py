@@ -1,10 +1,10 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import PeriodicSaveCallback, CSVSave
+from callbacks import PeriodicSaveCallback, CSVSaveMixin
 
 
-class CSVLogger(PeriodicSaveCallback, CSVSave):
+class CSVLogger(PeriodicSaveCallback, CSVSaveMixin):
     """
     This class will save a complete log of the 'step' object of the IteratorManager into a CSV. For more flexibility, define your own 'Step' class.
     """

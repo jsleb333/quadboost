@@ -1,10 +1,10 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import PeriodicSaveCallback, PickleSave
+from callbacks import PeriodicSaveCallback, PickleSaveMixin
 
 
-class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
+class ModelCheckpoint(PeriodicSaveCallback, PickleSaveMixin):
     """
     This class will make a checkpoint of the whole QuadBoost object in a Pickle, which can be loaded later.
     """
@@ -22,7 +22,7 @@ class ModelCheckpoint(PeriodicSaveCallback, PickleSave):
             save_checkpoint_every_period (Boolean, optional): If True, a checkpoint will be saved every periods.
             overwrite_old_save (Boolean, optional): If True, each time a checkpoint is made, the old checkpoint will be erased, even if the filename is different. To keep all models, set this parameter to False.
 
-        See PeriodicSaveCallback and PickleSave documentation for other arguments.
+        See PeriodicSaveCallback and PickleSaveMixin documentation for other arguments.
 
         By default, all files will be overwritten at each save. However, one can insert a '{round}' substring in the specified 'filename' that will be formatted with the round number before being saved to differenciate the files.
         """
