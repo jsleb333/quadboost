@@ -1,8 +1,32 @@
-import os
+import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
-from functools import wraps
-from multiprocessing import Pool
+import functools
+from time import time
+from datetime import datetime as dt
+import argparse
+import inspect
+
+
+def parse(func):
+    """
+    Quick and dirty way to make any main with optional keyword arguments parsable from the command line.
+    """
+    @functools.wraps(func)
+    def wrapper(**kwargs):
+        # Get default kwargs
+        signature_kwargs = {k:v.default for k, v in inspect.signature(func).parameters.items()}
+        # Update default values with values of caller
+        signature_kwargs.update(kwargs)
+        # Parse kwargs
+        parser = argparse.ArgumentParser()
+        for key, value in signature_kwargs.items():
+            parser.add_argument(f'--{key}', dest=key, default=value, type=type(value))
+        kwargs = vars(parser.parse_args())
+        # Returns the original func with new kwargs
+        return func(**kwargs)
+    return wrapper
+
 
 def to_one_hot(Y):
     labels = set(Y)
@@ -63,60 +87,22 @@ def split_int(n, k):
         yield (idx0, idx1)
 
 
-def haar_projection(images):
-    """
-    Recursively computes the Haar projection of an array of 2D images.
-    Currently only supports images size that are powers of 2.
-    """
-    projected_images = images.astype(dtype=float)
-    m, N, _ = images.shape
-    while N > 1:
-        projector = haar_projector(N)
-        np.matmul(np.matmul(projector, projected_images[:,:N,:N]), projector.T, out=projected_images[:,:N,:N])
-        N = N//2
-    return projected_images
-
-
-def haar_projector(N):
-    """
-    Generates the Haar projector of size N (N must be a power of 2).
-    """
-    projection = np.zeros((N,N))
-    for i in range(N//2):
-        projection[i,2*i] = 1
-        projection[i,2*i+1] = 1
-
-        projection[i+N//2,2*i] = 1
-        projection[i+N//2,2*i+1] = -1
-    projection /= 2
-
-    return projection
-
-
-def parallelize(func, func_args, n_jobs):
-    with Pool(n_jobs) as pool:
-        parallel_return = pool.map(func, func_args)
-    return parallel_return
-
-
 def timed(func):
-    @wraps(func)
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        from time import time
         t = time()
+        time_format = '%Y-%m-%d %Hh%Mm%Ss'
+        func_name = "of '" + func.__name__ + "' " if func.__name__ != 'main' else ''
+        print(f'Execution {func_name}started on {dt.now().strftime(time_format)}.\n')
         try:
             func_return = func(*args, **kwargs)
         except:
-            print(f'\nExecution terminated after {time()-t:.2f} seconds.\n')
+            print(f'\nExecution terminated after {time()-t:.2f} seconds on {dt.now().strftime(time_format)}.\n')
             raise
-        func_name = "of '" + func.__name__ + "' " if func.__name__ != 'main' else ''
-        print(f'\nExecution {func_name}completed in {time()-t:.2f} seconds.\n')
+        print(f'\nExecution {func_name}completed in {time()-t:.2f} seconds on {dt.now().strftime(time_format)}.\n')
         return func_return
     return wrapper
 
 
-from mnist_dataset import MNISTDataset
-from label_encoder import OneHotEncoder
 if __name__ == '__main__':
-    from weak_learner.decision_stump_parallelized import main
-    main()
+    timed(split_int)(10,2)

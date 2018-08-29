@@ -7,3 +7,10 @@ cloner/
 
 test.py
 test/
+results/
+
+Makefile
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/
+build/
