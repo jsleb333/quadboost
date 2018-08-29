@@ -9,3 +9,8 @@ test.py
 test/
 
 results/
+build/
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+Makefile
