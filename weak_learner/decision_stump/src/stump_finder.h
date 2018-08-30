@@ -3,7 +3,6 @@
 #ifndef STUMP_FINDER_H_
 #define STUMP_FINDER_H_
 
-#include <vector>
 #include "xtensor/xarray.hpp"
 #include "stump.h"
 
@@ -14,18 +13,20 @@ class StumpFinder
 {
 public:
     // Constructor
-    StumpFinder(const xt::xarray<unsigned int>& sorted_X_idx,
-                const xt::xarray<double>& sorted_X,
-                const xt::xarray<double>& Y,
-                const xt::xarray<double>& W);
+    StumpFinder() {}
 
     // Public methods
-    const decision_stump::Stump& find_stump(std::vector<decision_stump::Stump>& stumps_queue);
+    const decision_stump::Stump& find_stump(const xt::xarray<size_t>& sorted_X_idx,
+                                            const xt::xarray<double>& sorted_X,
+                                            const xt::xarray<double>& Y,
+                                            const xt::xarray<double>& W);
 
 private:
     // Utilitary methods
-    void _update_moments(xt::xarray<double>& moments, xt::xarray<int>& row_idx);
+    void _update_moments(xt::xarray<double>& moments, xt::xarray<size_t>& row_idx);
+
     const xt::xarray<double>& _compute_risks(const xt::xarray<double>& moments) const;
+
 };
 
 } // End namespace
