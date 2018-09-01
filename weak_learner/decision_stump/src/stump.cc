@@ -29,7 +29,7 @@ Stump::Stump(const xt::xarray<double> &risks, const xt::xarray<double> &moments)
  * Accessors
  *************/
 const xt::xarray<double> Stump::get_confidence_rates() const
-{   
+{
     auto safe_divisions = xt::not_equal(moments_0_, xt::zeros_like(moments_0_));
     return xt::where(safe_divisions, moments_0_ / moments_1_, moments_0_);
 }
@@ -50,9 +50,9 @@ void Stump::compute_stump_value(xt::xarray<double>& sorted_X)
 }
 
 void Stump::update(xt::xarray<double>& risks,
-            xt::xarray<double>& moments,
-            xt::xarray<size_t>& possible_stumps,
-            size_t stump_idx)
+                   xt::xarray<double>& moments,
+                   xt::xarray<size_t>& possible_stumps,
+                   size_t stump_idx)
 {
     auto risk = xt::sum(risks, {0});
     size_t sparse_feature_idx = xt::argmin(risk)(0);
