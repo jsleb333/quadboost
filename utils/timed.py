@@ -43,7 +43,6 @@ class timed:
                 def foo():
                     print('foo!')
                 foo()
-
             Result:
                 Execution of 'foo' started on 2018-09-10 20h25m06s.
 
@@ -51,14 +50,12 @@ class timed:
 
                 Execution of 'foo' completed in 0.00 seconds on 2018-09-10 20h25m06s.
 
-
         Example 2:
             Source code:
                 @timed(datetime_format='%Hh%Mm%Ss', display_func_name=False, main_color='WHITE')
                 def bar():
                     print('bar!')
                     raise RuntimeError
-                
                 bar()
             Result:
                 Execution started on 20h25m06s.
@@ -171,5 +168,4 @@ if __name__ == '__main__':
     def bar():
         print('bar!')
         raise RuntimeError
-    
     bar()
