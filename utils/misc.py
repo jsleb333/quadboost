@@ -2,8 +2,11 @@ import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 import functools
+<<<<<<< HEAD
 from time import time, sleep
 from datetime import datetime as dt
+=======
+>>>>>>> dev
 import argparse
 import inspect
 from collections import defaultdict
@@ -88,6 +91,7 @@ def split_int(n, k):
         yield (idx0, idx1)
 
 
+<<<<<<< HEAD
 # def timed(func):
 #     @functools.wraps(func)
 #     def wrapper(*args, **kwargs):
@@ -202,6 +206,8 @@ class timed:
             + Style.RESET_ALL)
 
 
+=======
+>>>>>>> dev
 if __name__ == '__main__':
     @timed()
     def test(t=.1):
