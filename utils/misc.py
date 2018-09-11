@@ -2,8 +2,6 @@ import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 import functools
-from time import time
-from datetime import datetime as dt
 import argparse
 import inspect
 
@@ -85,23 +83,6 @@ def split_int(n, k):
         if i < n%k:
             idx1 += 1
         yield (idx0, idx1)
-
-
-def timed(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        t = time()
-        time_format = '%Y-%m-%d %Hh%Mm%Ss'
-        func_name = "of '" + func.__name__ + "' " if func.__name__ != 'main' else ''
-        print(f'Execution {func_name}started on {dt.now().strftime(time_format)}.\n')
-        try:
-            func_return = func(*args, **kwargs)
-        except:
-            print(f'\nExecution terminated after {time()-t:.2f} seconds on {dt.now().strftime(time_format)}.\n')
-            raise
-        print(f'\nExecution {func_name}completed in {time()-t:.2f} seconds on {dt.now().strftime(time_format)}.\n')
-        return func_return
-    return wrapper
 
 
 if __name__ == '__main__':
