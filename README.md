@@ -31,7 +31,8 @@ This project relies on the following `Python` libraries:
 - numpy
 - matplotlib
 - scikit-image (optional, used in `mnist_ideals/ideal_preprocessing.py`)
-- tblib (optional, used in `utils.py`)
+- tblib (optional, used in `utils/multiprocessing_utils.py`)
+- colorama (optional, used in `utils/timed.py`)
 
 ## Implementation description
 
@@ -40,7 +41,7 @@ A `main()` function with minimal working example is also provided.
 
 The module `weak_learner` provides some weak learners to be used with QuadBoost, such as a `MulticlassDecisionStump` and a `MulticlassDecisionTree` based on the former.
 All weak learners can be used as standalone.
-A `Cloner` parent class is provided to facilitate the implementations of other weak learners that can easily be passed to the QuadBoost algorithm.
+A `WeakLearnerBase` parent class is provided to facilitate the implementations of other weak learners that can easily be passed to the QuadBoost algorithm.
 
 The file `label_encoder.py` provides an implementation of LabelEncoder and inherited classes.
 These `LabelEncoder` can transform a set of labels into vectors encoding the classes, such as _one-hot_ encoding or _all-pairs_ encodings.
