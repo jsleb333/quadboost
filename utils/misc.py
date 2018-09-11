@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import functools
 import argparse
 import inspect
-from collections import defaultdict
 
 
 def parse(func):
@@ -87,10 +86,4 @@ def split_int(n, k):
 
 
 if __name__ == '__main__':
-    @timed()
-    def test(t=.1):
-        print('hehe')
-        sleep(t)
-
-    test()
-    test('a')
+    print([i for i in split_int(10,3)])
