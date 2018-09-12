@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 
 class timed:
     """
-    Wrapper class to time a function. The wrapper takes optional keyword arguments to customize the display.
+    Wrapper class to time a function and display it in a colorful fashion. The wrapper takes optional keyword arguments to customize the display.
     """
     def __init__(self, func=None, *, datetime_format='%Y-%m-%d %Hh%Mm%Ss',
                  display_func_name=True,
@@ -36,39 +36,38 @@ class timed:
 
         Supported colors:
             BLACK, WHITE, RED, BLUE, GREEN, CYAN, MAGENTA, YELLOW, LIGHTRED_EX, BLIGHTLUE_EX, GRLIGHTEEN_EX, CLIGHTYAN_EX, MAGELIGHTNTA_EX, YELLIGHTLOW_EX,
-        
+
         Example 1:
-            Source code:
-                @timed
-                def foo():
-                    print('foo!')
-                foo()
-            Result:
-                Execution of 'foo' started on 2018-09-10 20h25m06s.
+            >>> from utils import timed
+            >>> @timed
+            ... def foo():
+            ...     print('foo!')
+            ...
+            >>> foo()
+            Execution of 'foo' started on 2018-09-10 20h25m06s.
 
-                foo!
+            foo!
 
-                Execution of 'foo' completed in 0.00 seconds on 2018-09-10 20h25m06s.
+            Execution of 'foo' completed in 0.00 seconds on 2018-09-10 20h25m06s.
 
         Example 2:
-            Source code:
-                @timed(datetime_format='%Hh%Mm%Ss', display_func_name=False, main_color='WHITE')
-                def bar():
-                    print('bar!')
-                    raise RuntimeError
-                bar()
-            Result:
-                Execution started on 20h25m06s.
+            >>> @timed(datetime_format='%Hh%Mm%Ss', display_func_name=False, main_color='WHITE')
+            ... def bar():
+            ...     print('bar!')
+            ...     raise RuntimeError
+            ...
+            >>> bar()
+            Execution started on 20h25m06s.
 
-                bar!
+            bar!
 
-                Execution terminated after 0.00 seconds on 20h25m06s.
+            Execution terminated after 0.00 seconds on 20h25m06s.
 
-                Traceback (most recent call last):
-                File "...", line ..., in module bar()
-                ...
-                    raise RuntimeError
-                RuntimeError
+            Traceback (most recent call last):
+            File "...", line ..., in module bar()
+            ...
+                raise RuntimeError
+            RuntimeError
         """
         self.func = func
         if func is not None:
