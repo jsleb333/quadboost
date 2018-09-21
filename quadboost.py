@@ -233,10 +233,10 @@ class BoostingRound(Step):
 @timed
 def main():
     ### Data loading
-    # mnist = MNISTDataset.load('haar_mnist.pkl')
-    mnist = MNISTDataset.load()
+    # mnist = MNISTDataset.load()
+    mnist = MNISTDataset.load('haar_mnist.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 1_0
+    m = 1_00
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
