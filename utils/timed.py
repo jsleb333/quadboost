@@ -84,7 +84,7 @@ class timed:
 
     def __call__(self, *args, **kwargs):
         if self.func is None:
-            # self.func is None is time was initialized with keyword arguments. In that case, the first call to __call__ is to initialize the function to wrap.
+            # self.func is None if timed was initialized with keyword arguments. In that case, the first call to __call__ is to initialize the function to wrap.
             self.func, = args
             functools.update_wrapper(self, self.func)
             return self
