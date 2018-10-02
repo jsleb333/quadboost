@@ -41,8 +41,7 @@ class MulticlassDecisionTree(WeakLearnerBase):
             sorted_X (Array of shape (n_examples, ...), optional, default=None): Sorted examples along axis 0. If None, 'X' will be sorted, else it will not.
             sorted_X_idx (Array of shape (n_examples, ...), optional, default=None): Indices of the sorted examples along axis 0 (corresponds to argsort). If None, 'X' will be argsorted, else it will not.
 
-        Returns self
-
+        Returns self.
         """
         if self.encoder is not None:
             Y, W = self.encoder.encode_labels(Y)
@@ -250,15 +249,17 @@ class Split(ComparableMixin, cmp_attr='risk_reduction'):
 @timed
 def main():
     mnist = MNISTDataset.load()
+    mnist = MNISTDataset.load('haar_mnist.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
 
-    encoder = OneHotEncoder(Ytr)
+    # encoder = OneHotEncoder(Ytr)
+    encoder = LabelEncoder.load_encodings('ideal_mnist', convert_to_int=True)
 
-    m = 1_0
+    m = 1_00
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
-    dt = MulticlassDecisionTree(max_n_leaves=2, encoder=encoder)
+    dt = MulticlassDecisionTree(max_n_leaves=4, encoder=encoder)
     sorted_X, sorted_X_idx = dt.sort_data(X)
     dt.fit(X, Y, n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', dt.evaluate(X, Y))
@@ -268,5 +269,5 @@ def main():
 
 if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
-    from label_encoder import OneHotEncoder
+    from label_encoder import OneHotEncoder, LabelEncoder
     main()
