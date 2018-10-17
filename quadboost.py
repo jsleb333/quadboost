@@ -7,7 +7,7 @@ import logging
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
-from callbacks import IteratorManager, Step
+from callbacks import CallbacksManagerIterator, Step
 from callbacks import ModelCheckpoint, CSVLogger, Progression
 from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback, BreakOnPlateauCallback
 from utils import *
@@ -30,7 +30,7 @@ class QuadBoost:
         """
         Function that fits the model to the data.
 
-        The function is split into two parts: the first prepare the data and the callbacks, the second, done in _fit, actually executes the algorithm. The iteration and the callbacks are handled by an IteratorManager.
+        The function is split into two parts: the first prepare the data and the callbacks, the second, done in _fit, actually executes the algorithm. The iteration and the callbacks are handled by a CallbacksManagerIterator.
 
         Args:
             X (Array of shape (n_examples, ...)): Examples.
@@ -86,7 +86,7 @@ class QuadBoost:
         """
         Function used to actually fit the model. Used by 'fit, and 'resume_fit'. Should not be used otherwise.
         """
-        with IteratorManager(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
+        with CallbacksManagerIterator(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
             # Boosting algorithm
             for boosting_round in boost_manager:
 
@@ -221,7 +221,7 @@ class QuadBoostMHCR(QuadBoost):
 
 class BoostingRound(Step):
     """
-    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the IteratorManager in the QuadBoost._fit method.
+    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the CallbacksManagerIterator in the QuadBoost._fit method.
     """
     def __init__(self, round_number=0):
         super().__init__(step_number=round_number)

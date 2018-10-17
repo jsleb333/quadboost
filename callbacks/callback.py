@@ -7,7 +7,7 @@ class Callback:
     def __init__(self, manager=None):
         """
         Args:
-            manager (Reference to the IteratorManager, optional): The manager can be set in the constructor or can be set later. The manager should not let to None, since most callbacks use this reference.
+            manager (Reference to the CallbacksManagerIterator, optional): The manager can be set in the constructor or can be set later. The manager should not let to None, since most callbacks use this reference.
         """
         self.manager = manager
 
