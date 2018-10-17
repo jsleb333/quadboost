@@ -30,7 +30,7 @@ class QuadBoost:
         """
         Function that fits the model to the data.
 
-        The function is split into two parts: the first prepare the data and the callbacks, the second, done in _fit, actually executes the algorithm. The iteration and the callbacks are handled by a IteratorManager.
+        The function is split into two parts: the first prepare the data and the callbacks, the second, done in _fit, actually executes the algorithm. The iteration and the callbacks are handled by an IteratorManager.
 
         Args:
             X (Array of shape (n_examples, ...)): Examples.
