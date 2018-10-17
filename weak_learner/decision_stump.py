@@ -240,7 +240,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
-    m = 1_0
+    m = 6_0
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
@@ -248,7 +248,7 @@ def main():
     sorted_X, sorted_X_idx = wl.sort_data(X)
     wl.fit(X, Y, n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', wl.evaluate(X, Y))
-    print('WL test acc:', wl.evaluate(Xts, Yts))
+    # print('WL test acc:', wl.evaluate(Xts, Yts))
 
 
 if __name__ == '__main__':

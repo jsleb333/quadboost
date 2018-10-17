@@ -21,7 +21,7 @@ class Step:
         return str(self.step_number)
 
 
-class IteratorManager:
+class CallbacksManagerIterator:
     """
     Context manager to manage an iterator by using callbacks at 4 different moments in the iteration: 'on_iteration_begin', 'on_iteration_end', 'on_step_begin', 'on_step_end'. Additionally, it will call 'on_exception_exit' callbacks if an exception should occur during the iteration.
 
@@ -34,9 +34,9 @@ class IteratorManager:
     def __init__(self, caller=None, callbacks=None, step=None, starting_step_number=0):
         """
         Args:
-            caller (Object which creates an IteratorManager, optional): Reference to the caller object. If the callbacks do not use the attributes of the caller, it can be omitted.
+            caller (Object which creates an CallbacksManagerIterator, optional): Reference to the caller object. If the callbacks do not use the attributes of the caller, it can be omitted.
             callbacks (Iterable of Callback objects, optional): Callbacks handles functions to call at specific time in the program. Usage examples: stop the iteration or save the caller or the logs.
-            step (Object with __next__ method defined, optional): Each __next__ call of IteratorManager will return the object returned by next(step). If None, the step number will be returned.
+            step (Object with __next__ method defined, optional): Each __next__ call of CallbacksManagerIterator will return the object returned by next(step). If None, the step number will be returned.
             starting_step_number (int, optional): Number of the step to start from. Useful to resume an interrupted iteration.
         """
         self.caller = caller
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     safe = 0
     cb = [BreakOnMaxStepCallback(10)]
 
-    with IteratorManager(caller=None, callbacks=cb, starting_step_number=0) as bi:
+    with CallbacksManagerIterator(caller=None, callbacks=cb, starting_step_number=0) as bi:
         for br in bi:
             print(br)
 

@@ -41,7 +41,7 @@ class MulticlassDecisionTree(WeakLearnerBase):
             sorted_X (Array of shape (n_examples, ...), optional, default=None): Sorted examples along axis 0. If None, 'X' will be sorted, else it will not.
             sorted_X_idx (Array of shape (n_examples, ...), optional, default=None): Indices of the sorted examples along axis 0 (corresponds to argsort). If None, 'X' will be argsorted, else it will not.
 
-        Returns self.
+        Returns self
         """
         if self.encoder is not None:
             Y, W = self.encoder.encode_labels(Y)
@@ -59,17 +59,26 @@ class MulticlassDecisionTree(WeakLearnerBase):
 
             left_args, right_args = self._partition_examples(X, split.sorted_X_idx, split.stump)
 
-            left_split = Split(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *left_args), parent, 'left', left_args[1])
-            right_split = Split(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *right_args), parent, 'right', right_args[1])
+            if not self._is_pure(*left_args):
+                left_split = Split(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *left_args), parent, 'left', left_args[1])
+                potential_splits.append(left_split)
 
-            potential_splits.extend([left_split, right_split])
+            if not self._is_pure(*right_args):
+                right_split = Split(MulticlassDecisionStump().fit(X, Y, W, n_jobs, *right_args), parent, 'right', right_args[1])
+                potential_splits.append(right_split)
 
-            split_idx, split = max(enumerate(potential_splits), key=lambda pair: pair[1])
-            del potential_splits[split_idx]
+            if potential_splits:
+                split_idx, split = max(enumerate(potential_splits), key=lambda pair: pair[1])
+                del potential_splits[split_idx]
+                parent = self._append_split(split)
 
-            parent = self._append_split(split)
+            else:
+                break
 
         return self
+
+    def _is_pure(self, sorted_X, sorted_X_idx):
+        return sorted_X.size == 0
 
     def _append_split(self, split):
         child = Tree(split.stump)
@@ -146,11 +155,11 @@ class MulticlassDecisionTree(WeakLearnerBase):
 
     def __len__(self):
         return len(self.tree)
-    
+
     @property
     def risk(self):
         return self._risk(self.tree)
-    
+
     def _risk(self, node):
         if node.left_child is None and node.right_child is None:
             return node.stump.risk
@@ -249,17 +258,15 @@ class Split(ComparableMixin, cmp_attr='risk_reduction'):
 @timed
 def main():
     mnist = MNISTDataset.load()
-    mnist = MNISTDataset.load('haar_mnist.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
 
-    # encoder = OneHotEncoder(Ytr)
-    encoder = LabelEncoder.load_encodings('ideal_mnist', convert_to_int=True)
+    encoder = OneHotEncoder(Ytr)
 
-    m = 1_00
+    m = 1_0
     X = Xtr[:m].reshape((m,-1))
     Y = Ytr[:m]
     # X, Y = Xtr, Ytr
-    dt = MulticlassDecisionTree(max_n_leaves=4, encoder=encoder)
+    dt = MulticlassDecisionTree(max_n_leaves=3, encoder=encoder)
     sorted_X, sorted_X_idx = dt.sort_data(X)
     dt.fit(X, Y, n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
     print('WL train acc:', dt.evaluate(X, Y))
@@ -269,5 +276,5 @@ def main():
 
 if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
-    from label_encoder import OneHotEncoder, LabelEncoder
+    from label_encoder import OneHotEncoder
     main()

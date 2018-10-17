@@ -7,9 +7,9 @@ import logging
 
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
-from callbacks import IteratorManager, Step
+from callbacks import CallbacksManagerIterator, Step
 from callbacks import ModelCheckpoint, CSVLogger, Progression
-from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback, BreakOnPlateauCallback
+from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback, BreakOnZeroRiskCallback, BreakOnPlateauCallback
 from utils import *
 
 
@@ -30,7 +30,7 @@ class QuadBoost:
         """
         Function that fits the model to the data.
 
-        The function is split into two parts: the first prepare the data and the callbacks, the second, done in _fit, actually executes the algorithm. The iteration and the callbacks are handled by a IteratorManager.
+        The function is split into two parts: the first prepare the data and the callbacks, the second, done in _fit, actually executes the algorithm. The iteration and the callbacks are handled by a CallbacksManagerIterator.
 
         Args:
             X (Array of shape (n_examples, ...)): Examples.
@@ -86,20 +86,20 @@ class QuadBoost:
         """
         Function used to actually fit the model. Used by 'fit, and 'resume_fit'. Should not be used otherwise.
         """
-        with IteratorManager(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
+        with CallbacksManagerIterator(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
             # Boosting algorithm
             for boosting_round in boost_manager:
 
                 residue, weak_predictor, weak_predictor_weight = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
+
+                self.weak_predictors_weights.append(weak_predictor_weight)
+                self.weak_predictors.append(weak_predictor)
 
                 boosting_round.train_acc = self.evaluate(X, Y)
                 if X_val is not None and Y_val is not None:
                     boosting_round.valid_acc = self.evaluate(X_val, Y_val)
                 if hasattr(weak_predictor, 'risk'):
                     boosting_round.risk = weak_predictor.risk
-
-                self.weak_predictors_weights.append(weak_predictor_weight)
-                self.weak_predictors.append(weak_predictor)
 
         return self
 
@@ -221,7 +221,7 @@ class QuadBoostMHCR(QuadBoost):
 
 class BoostingRound(Step):
     """
-    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the IteratorManager in the QuadBoost._fit method.
+    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the CallbacksManagerIterator in the QuadBoost._fit method.
     """
     def __init__(self, round_number=0):
         super().__init__(step_number=round_number)
@@ -233,10 +233,10 @@ class BoostingRound(Step):
 @timed
 def main():
     ### Data loading
-    # mnist = MNISTDataset.load()
-    mnist = MNISTDataset.load('haar_mnist.pkl')
+    # mnist = MNISTDataset.load('haar_mnist.pkl')
+    mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    m = 1_00
+    m = 1_0
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -258,8 +258,10 @@ def main():
     filename = 'test_'
     ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
+    zero_risk = BreakOnZeroRiskCallback()
     callbacks = [ckpt,
                 logger,
+                zero_risk,
                 ]
 
     ### Fitting the model

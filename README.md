@@ -52,5 +52,5 @@ The module `data_preprocessing` provides scripts to preprocess MNIST to extract 
 Current version only implements 2D Haar wavelet transform on features.
 
 The boosting algorithm works with the help of callbacks on each step of the iteration.
-Callbacks are handled by a `IteratorManager` which appropriately calls functions on beginnig of iteration, beginning of step, end of step, end of iteration and on exception exit.
+Callbacks are handled by a `CallbacksManagerIterator` which appropriately calls functions on beginnig of iteration, beginning of step, end of step, end of iteration and on exception exit.
 Callbacks include `BreakCallbacks` which can end the iteration on various conditions, `ModelCheckpoint` and `CSVLogger` which saves the model or the logs and `Progession` which outputs formatted information on the training steps.

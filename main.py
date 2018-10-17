@@ -1,15 +1,16 @@
 from utils import parse, timed
 from datetime import datetime
 from quadboost import QuadBoostMHCR
-from callbacks import ModelCheckpoint, CSVLogger
+from callbacks import ModelCheckpoint, CSVLogger, BreakOnZeroRiskCallback
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump, MulticlassDecisionTree
 import logging
 
+
 @timed
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_jobs=1, max_n_leaves=4, max_round=400, patience=10, resume=0):
+def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=600, patience=10, resume=0):
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
@@ -41,8 +42,11 @@ def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_job
     filename = f'd={dataset}-e={encodings}-wl={wl}-'
     ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
+    zero_risk = BreakOnZeroRiskCallback()
+
     callbacks = [ckpt,
                 logger,
+                zero_risk,
                 ]
 
     ### Fitting the model
