@@ -58,3 +58,14 @@ class BreakOnPerfectTrainAccuracyCallback(BreakCallback):
             if np.isclose(self.manager.step.train_acc, 1.0):
                 logging.info('Terminating iteration due to maximum accuracy reached.')
                 raise StopIteration
+
+
+class BreakOnZeroRiskCallback(BreakCallback):
+    def __init__(self, manager=None):
+        super().__init__(manager)
+
+    def on_step_end(self):
+        if hasattr(self.manager.step, 'risk'):
+            if np.isclose(self.manager.step.risk, 0.0):
+                logging.info('Terminating iteration due to risk being zero.')
+                raise StopIteration

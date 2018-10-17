@@ -9,7 +9,7 @@ from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 from callbacks import CallbacksManagerIterator, Step
 from callbacks import ModelCheckpoint, CSVLogger, Progression
-from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback, BreakOnPlateauCallback
+from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback, BreakOnZeroRiskCallback, BreakOnPlateauCallback
 from utils import *
 
 
@@ -258,8 +258,10 @@ def main():
     filename = 'test_'
     ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
+    zero_risk = BreakOnZeroRiskCallback()
     callbacks = [ckpt,
                 logger,
+                zero_risk,
                 ]
 
     ### Fitting the model
