@@ -92,14 +92,14 @@ class QuadBoost:
 
                 residue, weak_predictor, weak_predictor_weight = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
 
+                self.weak_predictors_weights.append(weak_predictor_weight)
+                self.weak_predictors.append(weak_predictor)
+
                 boosting_round.train_acc = self.evaluate(X, Y)
                 if X_val is not None and Y_val is not None:
                     boosting_round.valid_acc = self.evaluate(X_val, Y_val)
                 if hasattr(weak_predictor, 'risk'):
                     boosting_round.risk = weak_predictor.risk
-
-                self.weak_predictors_weights.append(weak_predictor_weight)
-                self.weak_predictors.append(weak_predictor)
 
         return self
 
