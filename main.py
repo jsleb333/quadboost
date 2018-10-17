@@ -9,7 +9,7 @@ import logging
 
 @timed
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='ideal_mnist', wl='ds', n_jobs=1, max_n_leaves=4, max_round=400, patience=10, resume=0):
+def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=600, patience=10, resume=0):
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
