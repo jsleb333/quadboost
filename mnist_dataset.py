@@ -34,6 +34,7 @@ def download_mnist(filepath='data/mnist/raw/'):
         with open(filepath + filename, 'wb') as file:
             file.write(gzip.decompress(content.read()))
 
+
 def load_raw_data(filename, N):
     with open(filename, 'rb') as file:
         header_size = 4 * data_bytes_header
@@ -78,16 +79,25 @@ def visualize_mnist(X, Y):
 
 
 class MNISTDataset:
-    def __init__(self, Xtr, Ytr, Xts=None, Yts=None, side=28):
+    def __init__(self, Xtr, Ytr, Xts=None, Yts=None, shape=(28,28)):
         self.Xtr = Xtr.reshape(Xtr.shape[0],-1)
         self.Ytr = Ytr
         self.Xts = Xts.reshape(Xts.shape[0],-1)
         self.Yts = Yts
 
-        self.side_size = side
+        self.shape = shape
 
         self.scaler = StandardScaler()
         self.scaler.fit(self.Xtr)
+
+    @property
+    def shape(self):
+        if (not hasattr(self, '_shape')) and hasattr(self, 'side_size'): # Retrocompatibility
+            self._shape = (self.side_size, self.side_size)
+        return self._shape
+    @shape.setter
+    def shape(self, shape):
+        self._shape = shape
 
     @property
     def mean(self):
@@ -96,7 +106,6 @@ class MNISTDataset:
     @property
     def std(self):
         return self.scaler.scale_
-
 
     def get_train(self, center=True, reduce=False):
         return self._get_data(self.Xtr, self.Ytr, center, reduce)
@@ -116,24 +125,21 @@ class MNISTDataset:
                 X = StandardScaler(with_std=False).fit(self.Xtr).transform(X)
             elif not center and reduce:
                 X = StandardScaler(with_mean=False).fit(self.Xtr).transform(X)
-        return X.reshape((-1, self.side_size, self.side_size)), Y
+        return X.reshape((-1,) + self.shape), Y
 
     def get_train_test(self, center=True, reduce=False):
         return self.get_train(center, reduce), self.get_test(center, reduce)
-
 
     @staticmethod
     def load(filename='mnist.pkl', filepath='./data/preprocessed/'):
         with open(filepath + filename, 'rb') as file:
             return pkl.load(file)
 
-
     def save(self, filename='mnist.pkl', filepath='./data/preprocessed/'):
         os.makedirs(filepath, exist_ok=True)
         with open(filepath + filename, 'wb') as file:
             pkl.dump(self, file)
-        print('saved')
-
+        print(f'Saved to {filepath+filename}')
 
     def test(self):
         print(self.mean.shape, self.std.shape)
@@ -145,12 +151,19 @@ class MNISTDataset:
 
 if __name__ == '__main__':
 
-    download_mnist()
+    # download_mnist()
     # path_to_mnist = '/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/mnist/raw/'
-    (Xtr, Ytr), (Xts, Yts) = load_raw_mnist()
-    dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
-    dataset.save()
-    # dataset = MNISTDataset.load()
+    # (Xtr, Ytr), (Xts, Yts) = load_raw_mnist()
+    # dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
+    # dataset.save()
+    dataset = MNISTDataset.load('filtered_mnist.pkl')
+    dataset.shape = (10,24,24)
+    print(dataset.side_size, dataset.shape)
+    del dataset.side_size
+    print(hasattr(dataset, 'side_size'))
+    (Xtr, Ytr), (Xts, Yts) = dataset.get_train_test(center=False)
+    print(Xtr.shape, Xts.shape)
+    dataset.save('filtered_mnist2.pkl')
     # dataset.test()
 
     # visualize_mnist(Xtr[:5], Ytr[:5])

@@ -93,5 +93,5 @@ for m, x in enumerate(Xts):
     print(f'Test: example {m+1}/10000.', end='\r')
 print('\n')
 
-filtered_mnist = MNISTDataset(filtered_Xtr, Ytr, filtered_Xts, Yts, side=24)
+filtered_mnist = MNISTDataset(filtered_Xtr, Ytr, filtered_Xts, Yts, shape=(10,24,24))
 filtered_mnist.save('filtered_mnist.pkl')

@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     # show_im(haar_Xtr[:3], Ytr[:3])
 
-    haar_mnist = MNISTDataset(haar_Xtr, Ytr, haar_Xts, Yts, side=28+4*pad)
+    haar_mnist = MNISTDataset(haar_Xtr, Ytr, haar_Xts, Yts, shape=(28+4*pad,28+4*pad))
     filename = 'haar_mnist'
     if pad: filename += '_pad'
 

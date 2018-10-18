@@ -234,15 +234,18 @@ class BoostingRound(Step):
 def main():
     ### Data loading
     # mnist = MNISTDataset.load('haar_mnist.pkl')
-    mnist = MNISTDataset.load()
+    mnist = MNISTDataset.load('filtered_mnist.pkl')
+    # mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
+    print(Xtr.shape, Ytr.shape)
+    print(Xts.shape, Yts.shape)
     m = 1_0
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
     # encoder = LabelEncoder.load_encodings('mario')
-    encoder = LabelEncoder.load_encodings('ideal_mnist', convert_to_int=True)
-    # encoder = OneHotEncoder(Ytr)
+    # encoder = LabelEncoder.load_encodings('ideal_mnist', convert_to_int=True)
+    encoder = OneHotEncoder(Ytr)
     # encoder = AllPairsEncoder(Ytr)
 
     ### Choice of weak learner
