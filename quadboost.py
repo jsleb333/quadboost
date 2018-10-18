@@ -135,7 +135,7 @@ class QuadBoost:
 
         Returns self.
         """
-        if not hasattr(self, self.weak_predictors):
+        if not hasattr(self, 'weak_predictors'):
             logging.error("Can't resume fit if no previous fitting made. Use 'fit' instead.")
             return self
 
