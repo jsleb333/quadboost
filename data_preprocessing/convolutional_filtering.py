@@ -94,14 +94,14 @@ if __name__ == '__main__':
 
     ### Applying the filters
     print('Train dataset:')
-    filtered_Xtr = filter_mnist(Xtr[:3], filters)
-    for xs, y in zip(filtered_Xtr, Ytr):
-        titles = (f'label={y} - filter={k}' for k in range(10))
-        plot_images(xs.reshape(dataset_shape), titles, block=False)
-    plot_images(median, range(10))
-    # print('Test dataset:')
-    # filtered_Xts = filter_mnist(Xts, filters)
+    filtered_Xtr = filter_mnist(Xtr, filters)
+    # for xs, y in zip(filtered_Xtr, Ytr):
+    #     titles = (f'label={y} - filter={k}' for k in range(10))
+    #     plot_images(xs.reshape(dataset_shape), titles, block=False)
+    # plot_images(median, range(10))
+    print('Test dataset:')
+    filtered_Xts = filter_mnist(Xts, filters)
 
 
-    # filtered_mnist = MNISTDataset(filtered_Xtr, Ytr, filtered_Xts, Yts, shape=dataset_shape)
-    # filtered_mnist.save('filtered_mnist.pkl')
+    filtered_mnist = MNISTDataset(filtered_Xtr, Ytr, filtered_Xts, Yts, shape=dataset_shape)
+    filtered_mnist.save('median_filtered_centered_mnist.pkl')
