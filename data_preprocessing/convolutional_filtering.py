@@ -4,94 +4,104 @@ import skimage.transform as skit
 import sys, os
 sys.path.append(os.getcwd())
 from numpy.random import randint
+from itertools import product
 
 from mnist_dataset import MNISTDataset
 from utils import *
 from haar_preprocessing import *
 
-def plot_images(images, titles):
+
+def plot_images(images, titles=None, block=True):
 
     fig, axes = make_fig_axes(len(images))
 
+    vmax = min(np.max(np.abs(im)) for im in images)
     for im, title, ax in zip(images, titles, axes):
         # ax.imshow(im, cmap='gray_r')
-        vmax = np.max(np.abs(im))
         ax.imshow(im, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
-        ax.set_title(title)
+        if titles:
+            ax.set_title(title)
 
     plt.get_current_fig_manager().window.showMaximized()
-    plt.show()
+    plt.show(block=block)
 
-mnist = MNISTDataset.load('mnist.pkl')
-(Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-
-# Xtr = Xtr[:20]
-# Ytr = Ytr[:20]
-# Xts = Xts[:20]
-# Yts = Yts[:20]
-
-### Creating filters
-
-# Taking median of pixels
-median = []
-for i in range(10):
-    X_i = np.array([x for x, y in zip(Xtr, Ytr) if y == i])
-    median.append(np.median(X_i, axis=0))
-# plot_images(median, range(10))
 
 class Filter:
-    def __init__(self, i, j, weights):
+    def __init__(self, i, j, weights, shape=None):
         self.i, self.j = i, j
         self.weights = weights
+        self.shape = shape or weights.shape
+        self.compute_limits()
 
-
-filters = []
-filter_size = (5,5)
-for X in median:
-    for i in range(28-filter_size[0]+1):
-        for j in range(28-filter_size[1]+1):
-            filters.append(Filter(i, j, X[i:i+filter_size[0], j:j+filter_size[1]]))
-
-
-def min_max_ij(filt):
-    min_i = filt.i - filter_size[0]//2
-    min_i = min_i if min_i >= 0 else 0
-    max_i = filt.i + filter_size[0]//2
-    max_i = max_i if max_i <=28-filter_size[0] else 28-filter_size[0]
-
-    min_j = filt.i - filter_size[1]//2
-    min_j = min_j if min_j >= 0 else 0
-    max_j = filt.i + filter_size[1]//2
-    max_j = max_j if max_j <=28-filter_size[1] else 28-filter_size[1]
-
-    return (min_i, max_i), (min_j, max_j)
-
-def apply_filter(filt, x):
-    lim_i, lim_j = min_max_ij(filt)
-    max_val = -np.inf
-    for i in range(*lim_i):
-        for j in range(*lim_j):
-            val = np.sum(filt.weights * x[i:i+filter_size[0], j:j+filter_size[1]])
+    def apply(self, x):
+        max_val = -np.inf
+        for i, j in product(range(*self.lim_i), range(*self.lim_j)):
+            val = np.sum(self.weights * x[i:i+self.shape[0], j:j+self.shape[1]])
             if val > max_val:
                 max_val = val
 
-    return val
+        return val
+
+    def compute_limits(self):
+        min_i = self.i - self.shape[0]//2
+        min_i = min_i if min_i >= 0 else 0
+        max_i = self.i + self.shape[0]//2
+        max_i = max_i if max_i <=28-self.shape[0] else 28-self.shape[0]
+        self.lim_i = (min_i, max_i)
+
+        min_j = self.j - self.shape[1]//2
+        min_j = min_j if min_j >= 0 else 0
+        max_j = self.j + self.shape[1]//2
+        max_j = max_j if max_j <=28-self.shape[1] else 28-self.shape[1]
+        self.lim_j = (min_j, max_j)
 
 
-### Applying the filters
-filtered_Xtr = np.zeros((Xtr.shape[0], len(filters)))
-for m, x in enumerate(Xtr):
-    for n, filt in enumerate(filters):
-        filtered_Xtr[m, n] = apply_filter(filt, x)
-    print(f'Train: example {m+1}/60000.', end='\r')
-print('\n')
+def filter_mnist(X, filters):
+    filtered_X = np.zeros((X.shape[0], len(filters)))
+    for m, x in enumerate(X):
+        for n, filt in enumerate(filters):
+            filtered_X[m, n] = filt.apply(x)
+        print(f'Example {m+1}/{X.shape[0]}.', end='\r')
+    print('\n')
+    return filtered_X
 
-filtered_Xts = np.zeros((Xts.shape[0], len(filters)))
-for m, x in enumerate(Xts):
-    for n, filt in enumerate(filters):
-        filtered_Xts[m, n] = apply_filter(filt, x)
-    print(f'Test: example {m+1}/10000.', end='\r')
-print('\n')
+if __name__ == '__main__':
 
-filtered_mnist = MNISTDataset(filtered_Xtr, Ytr, filtered_Xts, Yts, shape=(10,24,24))
-filtered_mnist.save('filtered_mnist.pkl')
+
+    mnist = MNISTDataset.load('mnist.pkl')
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
+
+    # Xtr = Xtr[:20]
+    # Ytr = Ytr[:20]
+    # Xts = Xts[:18]
+    # Yts = Yts[:18]
+
+    ### Creating filters
+    # Taking median of pixels
+    median = []
+    for i in range(10):
+        X_i = np.array([x for x, y in zip(Xtr, Ytr) if y == i])
+        median.append(np.median(X_i, axis=0))
+
+    filters = []
+    filter_shape = (5,5)
+    for X in median:
+        for i, j in product(range(28-filter_shape[0]+1), range(28-filter_shape[1]+1)):
+            filters.append(Filter(i, j, X[i:i+filter_shape[0], j:j+filter_shape[1]]))
+
+
+    dataset_shape = (10, 28-filter_shape[0]+1, 28-filter_shape[1]+1)
+
+    ### Applying the filters
+    print('Train dataset:')
+    filtered_Xtr = filter_mnist(Xtr[:3], filters)
+    for xs, y in zip(filtered_Xtr, Ytr):
+        titles = (f'label={y} - filter={k}' for k in range(10))
+        plot_images(xs.reshape(dataset_shape), titles, block=False)
+    plot_images(median, range(10))
+    # print('Test dataset:')
+    # filtered_Xts = filter_mnist(Xts, filters)
+
+
+    # filtered_mnist = MNISTDataset(filtered_Xtr, Ytr, filtered_Xts, Yts, shape=dataset_shape)
+    # filtered_mnist.save('filtered_mnist.pkl')
