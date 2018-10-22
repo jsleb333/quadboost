@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.metrics import accuracy_score
 from sklearn.linear_model import Ridge
 from weak_learner import WeakLearnerBase
 from utils import *
@@ -13,7 +12,7 @@ class WLRidge(WeakLearnerBase, Ridge):
     """
     def __init__(self, alpha=1, encoder=None, fit_intercept=False, **kwargs):
         super().__init__(alpha=alpha, fit_intercept=fit_intercept, encoder=encoder, **kwargs)
-    
+
     def fit(self, X, Y, W=None, **kwargs):
         """
         NB: this method supports encoding weights of the QuadBoost algorithm by multiplying Y by the square root of the weights W. This should be taken into account for continous predictions.
@@ -24,7 +23,7 @@ class WLRidge(WeakLearnerBase, Ridge):
         if W is not None:
             Y *= np.sqrt(W)
         return super().fit(X, Y, **kwargs)
-    
+
     def predict(self, X, **kwargs):
         X = X.reshape((X.shape[0], -1))
         return super().predict(X, **kwargs)
@@ -48,7 +47,7 @@ class WLThresholdedRidge(WeakLearnerBase, Ridge):
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
         return super().fit(X, Y, **kwargs)
-    
+
     def predict(self, X, **kwargs):
         X = X.reshape((X.shape[0], -1))
         Y = super().predict(X, **kwargs)
@@ -74,4 +73,3 @@ if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import *
     main()
-    
