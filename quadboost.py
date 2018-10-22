@@ -98,9 +98,6 @@ class QuadBoost:
                 boosting_round.train_acc, boosting_round.risk = self.evaluate(X, Y, return_risk=True)
                 if X_val is not None and Y_val is not None:
                     boosting_round.valid_acc = self.evaluate(X_val, Y_val)
-                print(boosting_round.risk)
-                if hasattr(weak_predictor, 'risk'):
-                    boosting_round.risk = weak_predictor.risk
 
         return self
 
@@ -171,7 +168,10 @@ class QuadBoost:
         Y_pred = self.encoder.decode_labels(encoded_Y_pred)
 
         accuracy = accuracy_score(y_true=Y, y_pred=Y_pred)
-        risk = np.sum((self.encoder.encode_labels(Y) - encoded_Y_pred)**2)/X.shape[0]
+
+        encoded_Y, W = self.encoder.encode_labels(Y)
+        risk = np.sum(W * (encoded_Y - encoded_Y_pred)**2)
+
         return (accuracy, risk) if return_risk else accuracy
 
     def visualize_coef(self):
@@ -242,7 +242,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 60_000
+    m = 1_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -254,10 +254,10 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    # weak_learner = RandomFilters(n_filters=3, kernel_size=(5,5))
+    weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5))
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
-    weak_learner = MulticlassDecisionStump
-    sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
+    # weak_learner = MulticlassDecisionStump
+    # sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
     # filename = 'haar_onehot_ds_'
@@ -276,7 +276,7 @@ def main():
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
-            n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
+            # n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
             )
     ### Or resume fitting a model
     # qb = QuadBoostMHCR.load('results/test2.ckpt')
