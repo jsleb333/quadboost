@@ -60,10 +60,10 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 1_000
+    m = 60_000
     Xtr, Ytr = Xtr[:m], Ytr[:m]
 
-    wl = RandomFilters(encoder=encoder).fit(Xtr, Ytr)
+    wl = RandomFilters(n_filters=20, encoder=encoder).fit(Xtr, Ytr)
     print(wl.evaluate(Xtr, Ytr))
     print(wl.evaluate(Xts, Yts))
 
