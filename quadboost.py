@@ -1,10 +1,10 @@
 import numpy as np
 import pickle as pkl
 from sklearn.metrics import accuracy_score
-from weak_learner import *
 import matplotlib.pyplot as plt
 import logging
 
+from weak_learner import *
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 from callbacks import CallbacksManagerIterator, Step
