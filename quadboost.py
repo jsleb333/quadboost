@@ -156,6 +156,15 @@ class QuadBoost:
         return self._fit(X, Y, residue, weights, X_val, Y_val, starting_round_number, **weak_learner_fit_kwargs)
 
     def predict(self, X, decode_labels=True):
+        """
+        Returns the predicted labels of the given sample.
+
+        Args:
+            X (Array of shape(n_examples, ...)): Examples to predict.
+            decode_labels (bool, optional): By default, the predicted labels are decoded, i.e. they corresponds to labels from the fit. If set to False, however, the encoded prediction of the weak predictors will be returned. They can be decoded afterward with the help of the method 'decode_labels' of the encoder. The encode can be accessed via the 'encoder' attribute.
+
+        Returns Y_pred (Array of shape (n_examples)) or encoded_Y_pred (Array of shape (n_examples, encoding_dim))
+        """
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
 
         for wp_weight, wp in zip(self.weak_predictors_weights, self.weak_predictors):
@@ -164,15 +173,26 @@ class QuadBoost:
         return self.encoder.decode_labels(encoded_Y_pred) if decode_labels else encoded_Y_pred
 
     def evaluate(self, X, Y, return_risk=False):
+        """
+        Evaluates the accuracy of the classifier given a sample and its labels.
+
+        Args:
+            X (Array of shape(n_examples, ...)): Examples to predict.
+            Y (Array of shape (n_examples)): True labels.
+            return_risk (bool, optional): If True, additionally returns the (non normalized) risk of the examples.
+
+        Returns the accuracy (float) or a tuple of (accuracy (float), risk (float))
+        """
         encoded_Y_pred = self.predict(X, decode_labels=False)
         Y_pred = self.encoder.decode_labels(encoded_Y_pred)
 
         accuracy = accuracy_score(y_true=Y, y_pred=Y_pred)
 
-        encoded_Y, W = self.encoder.encode_labels(Y)
-        risk = np.sum(W * (encoded_Y - encoded_Y_pred)**2)
+        if return_risk:
+            encoded_Y, W = self.encoder.encode_labels(Y)
+            risk = np.sum(W * (encoded_Y - encoded_Y_pred)**2)
 
-        return (accuracy, risk) if return_risk else accuracy
+        return accuracy if not return_risk else (accuracy, risk)
 
     def visualize_coef(self):
         fig, axes = make_fig_axes(self.encoder.encoding_dim)
