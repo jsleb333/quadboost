@@ -1,7 +1,7 @@
 import numpy as np
 import pickle as pkl
 from sklearn.metrics import accuracy_score
-from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump, MulticlassDecisionTree
+from weak_learner import *
 import matplotlib.pyplot as plt
 import logging
 
@@ -234,12 +234,10 @@ class BoostingRound(Step):
 def main():
     ### Data loading
     # mnist = MNISTDataset.load('haar_mnist.pkl')
-    mnist = MNISTDataset.load('filtered_mnist.pkl')
-    # mnist = MNISTDataset.load()
+    # mnist = MNISTDataset.load('filtered_mnist.pkl')
+    mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
-    print(Xtr.shape, Ytr.shape)
-    print(Xts.shape, Yts.shape)
-    m = 1_0
+    m = 10_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -251,9 +249,10 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = MulticlassDecisionTree(max_n_leaves=4)
+    weak_learner = RandomFilters(n_filters=2, kernel_size=(5,5))
+    # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
-    sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
+    # sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
 
     ### Callbacks
     # filename = 'haar_onehot_ds_'
@@ -272,7 +271,8 @@ def main():
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
-            n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
+            # n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
+            )
     ### Or resume fitting a model
     # qb = QuadBoostMHCR.load('results/test2.ckpt')
     # qb.resume_fit(Xtr[:m], Ytr[:m],
