@@ -1,7 +1,11 @@
 import numpy as np
 from sklearn.linear_model import Ridge
+
+import sys, os
+sys.path.append(os.getcwd())
+
 from weak_learner import WeakLearnerBase
-from utils import *
+from utils import timed
 
 
 class WLRidge(WeakLearnerBase, Ridge):
@@ -22,11 +26,11 @@ class WLRidge(WeakLearnerBase, Ridge):
             Y, W = self.encoder.encode_labels(Y)
         if W is not None:
             Y *= np.sqrt(W)
-        return super().fit(X, Y, **kwargs)
+        return super(Ridge, self).fit(X, Y, **kwargs)
 
     def predict(self, X, **kwargs):
         X = X.reshape((X.shape[0], -1))
-        return super().predict(X, **kwargs)
+        return super(Ridge, self).predict(X, **kwargs)
 
 
 class WLThresholdedRidge(WeakLearnerBase, Ridge):
@@ -46,11 +50,11 @@ class WLThresholdedRidge(WeakLearnerBase, Ridge):
         X = X.reshape((X.shape[0], -1))
         if self.encoder != None:
             Y, W = self.encoder.encode_labels(Y)
-        return super().fit(X, Y, **kwargs)
+        return super(Ridge, self).fit(X, Y, **kwargs)
 
     def predict(self, X, **kwargs):
         X = X.reshape((X.shape[0], -1))
-        Y = super().predict(X, **kwargs)
+        Y = super(Ridge, self).predict(X, **kwargs)
         Y = np.where(Y >= self.threshold, 1.0, Y)
         Y = np.where(np.logical_and(Y < self.threshold, Y > -self.threshold), 0, Y)
         Y = np.where(Y < -self.threshold, -1, Y)
@@ -64,9 +68,13 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    wl = WLThresholdedRidge(encoder=encoder)
-    # wl = WLRidge(encoder=encoder)
+    m = 6_000
+    Xtr, Ytr = Xtr[:m], Ytr[:m]
+
+    # wl = WLThresholdedRidge(encoder=encoder)
+    wl = WLRidge(encoder=encoder)
     wl.fit(Xtr, Ytr)
+    print(wl.evaluate(Xtr, Ytr))
     print(wl.evaluate(Xts, Yts))
 
 if __name__ == '__main__':
