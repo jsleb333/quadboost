@@ -65,7 +65,7 @@ class BreakOnZeroRiskCallback(BreakCallback):
         super().__init__(manager)
 
     def on_step_end(self):
-        if hasattr(self.manager.step, 'risk'):
+        if hasattr(self.manager.step, 'risk') and self.manager.step.risk is not None:
             if np.isclose(self.manager.step.risk, 0.0):
                 logging.info('Terminating iteration due to risk being zero.')
                 raise StopIteration
