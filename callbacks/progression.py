@@ -21,14 +21,14 @@ class Progression(Callback):
 
         # Train accuracy
         if self.manager.step.train_acc is not None:
-            output.append(f'Train acc: {self.manager.step.train_acc:.2f}')
+            output.append(f'Train acc: {self.manager.step.train_acc:.3f}')
         else:
             output.append('Train acc: ?.???')
 
         # Valid accuracy
         if self.manager.step.valid_acc is not None:
-            output.append(f'Valid acc: {self.manager.step.valid_acc:.2f}')
-        
+            output.append(f'Valid acc: {self.manager.step.valid_acc:.3f}')
+
         # Risk
         if self.manager.step.risk is not None:
             output.append(f'Risk: {self.manager.step.risk:.3f}')
