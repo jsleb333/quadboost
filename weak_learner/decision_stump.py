@@ -53,7 +53,7 @@ class MulticlassDecisionStump(WeakLearnerBase):
             parallel_processes(stump_finder.safe_find_stump, args_iter)
         else: # No parallelization
             stump_finder.find_stump(stumps_queue)
-        
+
         return min(stump for stump in stumps_queue)
 
     def predict(self, X):
@@ -124,7 +124,7 @@ class StumpFinder:
         """
         Handles exception raised in a subprocess so the script will not hang indefinitely.
 
-        This is basically a decorator for find_stump, but parallelizing requires pickling, and we cannot pickle decorator.
+        This is basically a decorator for find_stump, but parallelizing requires pickling, and decorators cannot be pickled.
         """
         with stumps_queue: # Context manager handles exceptions
             self.find_stump(stumps_queue, sub_idx)
