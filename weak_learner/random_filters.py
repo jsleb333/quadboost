@@ -3,6 +3,7 @@ from sklearn.linear_model import Ridge
 import torch
 from torch import nn
 from torch.nn import functional as F
+import warnings
 
 import sys, os
 sys.path.append(os.getcwd())
@@ -41,7 +42,9 @@ class RandomFilters(WeakLearnerBase):
         X_tensor = torch.from_numpy(X).reshape(tensor_shape).float()
         random_feat = self.filters(X_tensor).numpy().reshape((X.shape[0], -1))
 
-        self._classifier = Ridge().fit(random_feat, Y)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore') # Ignore ill-defined matrices
+            self._classifier = Ridge().fit(random_feat, Y)
 
         return self
 
@@ -60,10 +63,10 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 60_000
+    m = 1_000
     Xtr, Ytr = Xtr[:m], Ytr[:m]
 
-    wl = RandomFilters(n_filters=20, encoder=encoder).fit(Xtr, Ytr)
+    wl = RandomFilters(n_filters=1, encoder=encoder).fit(Xtr, Ytr)
     print(wl.evaluate(Xtr, Ytr))
     print(wl.evaluate(Xts, Yts))
 
