@@ -257,6 +257,11 @@ class BoostingRound(Step):
 
 @timed
 def main():
+    import torch
+    seed = 42
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
     ### Data loading
     # mnist = MNISTDataset.load('haar_mnist.pkl')
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
@@ -274,7 +279,7 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5))
+    weak_learner = RandomFilters(n_filters=1, kernel_size=(7,7))
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
     # sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
