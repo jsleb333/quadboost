@@ -16,13 +16,14 @@ class Filters(nn.Module):
     def __init__(self, n_filters, kernel_size):
         super().__init__()
         self.conv = nn.Conv2d(1, n_filters, kernel_size)
+        self.maxpool = nn.MaxPool2d((3,3))
 
         for param in self.conv.parameters():
             nn.init.normal_(param)
             param.requires_grad = False
 
     def forward(self, x):
-        return F.relu(self.conv(x))
+        return self.maxpool(self.conv(x))
 
 
 class RandomFilters(WeakLearnerBase):
