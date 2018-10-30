@@ -41,9 +41,11 @@ class RandomFilters(WeakLearnerBase):
         self.n_filters = n_filters
         self.kernel_size = kernel_size
         if init_filters == 'random':
-            self.init_filters = lambda *args, **kwargs: None
+            self.init_filters = None # Already random by default
         elif init_filters == 'from_data':
             self.init_filters = self.pick_from_dataset
+        else:
+            raise ValueError(f"'{init_filters} is an invalid init_filters option.")
 
     def fit(self, X, Y, W=None, **kwargs):
         """
@@ -53,7 +55,7 @@ class RandomFilters(WeakLearnerBase):
         X = self._format_X(X)
 
         self.filters = Filters(self.n_filters, self.kernel_size)
-        self.init_filters(X=X)
+        if self.init_filters: self.init_filters(X=X)
 
         random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
 
@@ -106,17 +108,17 @@ def main():
     m = 1_000
     Xtr, Ytr = Xtr[:m], Ytr[:m]
 
-    init_filters='from_data'
-    print(init_filters)
-    tr_acc = []
-    val_acc = []
-    for i in range(100):
-        wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
-        tr_acc.append(wl.evaluate(Xtr, Ytr))
-        val_acc.append(wl.evaluate(Xts, Yts))
+    # init_filters='from_data'
+    # print(init_filters)
+    # tr_acc = []
+    # val_acc = []
+    # for i in range(100):
+    #     wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
+    #     tr_acc.append(wl.evaluate(Xtr, Ytr))
+    #     val_acc.append(wl.evaluate(Xts, Yts))
 
-        print(f'mean train acc: {np.mean(tr_acc):4f}. mean valid acc: {np.mean(val_acc):4f} on {i} trials.', end='\r')
-    print('\n')
+    #     print(f'mean train acc: {np.mean(tr_acc):4f}. mean valid acc: {np.mean(val_acc):4f} on {i} trials.', end='\r')
+    # print('\n')
 
     init_filters='random'
     print(init_filters)
