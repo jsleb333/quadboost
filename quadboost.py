@@ -210,7 +210,7 @@ class _QuadBoost:
 
         Returns the accuracy (float) or a tuple of (accuracy (float), risk (float))
         """
-        encoded_Y_pred = self.predict(X, decode_labels=False)
+        encoded_Y_pred = self.predict_encoded(X)
         Y_pred = self.encoder.decode_labels(encoded_Y_pred)
 
         accuracy = accuracy_score(y_true=Y, y_pred=Y_pred)
@@ -220,24 +220,6 @@ class _QuadBoost:
             risk = np.sum(W * (encoded_Y - self.f0 - encoded_Y_pred)**2)
 
         return accuracy if not return_risk else (accuracy, risk)
-
-    def visualize_coef(self):
-        fig, axes = make_fig_axes(self.encoder.encoding_dim)
-
-        for i, ax in enumerate(axes):
-            ax.imshow(self.coef_[i,:,:], cmap='gray_r')
-
-        plt.get_current_fig_manager().window.showMaximized()
-        plt.show()
-
-    @property
-    def coef_(self):
-        return self._compute_coef()
-
-    def _compute_coef(self):
-        coefs = [wp_w.reshape(-1,1)*wp.coef_ for wp_w, wp in zip(self.weak_predictors_weights, self.weak_predictors)]
-        coefs = np.sum(coefs, axis=0).reshape((self.encoder.encoding_dim,28,28))
-        return coefs
 
     @staticmethod
     def load(filename):
