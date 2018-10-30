@@ -323,7 +323,7 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5))
+    weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5), init_filters='from_data')
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
     # sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
