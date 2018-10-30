@@ -10,10 +10,11 @@ import logging
 
 @timed
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5):
+def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5, init_filters='from_data', center=False, reduce=False):
     ### Data loading
+    print(type(center), reduce)
     mnist = MNISTDataset.load(dataset+'.pkl')
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=False, reduce=False)
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=center, reduce=reduce)
 
     ### Choice of encoder
     if encodings == 'onehot':
