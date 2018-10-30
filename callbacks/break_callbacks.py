@@ -22,7 +22,7 @@ class BreakOnMaxStepCallback(BreakCallback):
 
     def on_step_begin(self):
         if self.max_step_number is not None:
-            if self.manager.step.step_number >= self.max_step_number:
+            if self.manager.step.step_number + 1 >= self.max_step_number:
                 logging.info('Terminating iteration due to maximum round number reached.')
                 raise StopIteration
 
