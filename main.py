@@ -27,17 +27,17 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
 
     ### Choice of weak learner
     kwargs = {}
-    if wl == 'ds' or 'decision-stump':
+    if wl == 'ds' or wl == 'decision-stump':
         weak_learner = MulticlassDecisionStump()
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr[:m])))
         kwargs['n_jobs'] = n_jobs
-    elif wl == 'dt' or 'decision-tree':
+    elif wl == 'dt' or wl == 'decision-tree':
         weak_learner = MulticlassDecisionTree(max_n_leaves=max_n_leaves)
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr[:m])))
         kwargs['n_jobs'] = n_jobs
     elif wl == 'ridge':
         weak_learner = WLThresholdedRidge(threshold=.5)
-    elif wl == 'rf' or 'random_filters':
+    elif wl == 'rf' or wl == 'random_filters':
         kernel_size = (kernel_size, kernel_size)
         weak_learner = RandomFilters(n_filters=n_filters, kernel_size=kernel_size)
 
