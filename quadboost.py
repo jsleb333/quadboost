@@ -233,15 +233,18 @@ class QuadBoostMH(QuadBoost):
 
 
 class QuadBoostMHCR(QuadBoost):
-    def __init__(self, confidence_rated_weak_learner, encoder=None):
+    def __init__(self, confidence_rated_weak_learner, encoder=None, dampening=1):
         """
-        confidence_rated_weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates confidence rated weak predictors to be boosted on.
-        encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
+        Args:
+            confidence_rated_weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates confidence rated weak predictors to be boosted on.
+            encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
+            dampening (float in ]0,1] ): Dampening factor to weight the weak predictors. Serves to slow the convergence of the algorithm so it can boost longer.
         """
         super().__init__(confidence_rated_weak_learner, encoder)
+        self.dampening = np.array([dampening])
 
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
-        return np.array([1])
+        return self.dampening
 
 
 class BoostingRound(Step):
@@ -267,7 +270,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 1_000
+    m = 60_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -279,7 +282,7 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = RandomFilters(n_filters=1, kernel_size=(7,7))
+    weak_learner = RandomFilters(n_filters=2, kernel_size=(5,5))
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
     # sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
@@ -287,9 +290,9 @@ def main():
     ### Callbacks
     # filename = 'haar_onehot_ds_'
     # filename = 'ideal_mnist_ds_'
-    filename = 'test_'
-    ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
-    logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
+    filename = 'test_dampening=.9'
+    ckpt = ModelCheckpoint(filename=filename+'_{round}.ckpt', dirname='./results', save_last=True)
+    logger = CSVLogger(filename=filename+'_log.csv', dirname='./results/log')
     zero_risk = BreakOnZeroRiskCallback()
     callbacks = [ckpt,
                 logger,
@@ -297,7 +300,7 @@ def main():
                 ]
 
     ### Fitting the model
-    qb = QuadBoostMHCR(weak_learner, encoder=encoder)
+    qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=.9)
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
