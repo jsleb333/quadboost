@@ -172,22 +172,32 @@ class _QuadBoost:
 
         return self._fit(X, Y, residue, weights, X_val, Y_val, starting_round_number, **weak_learner_fit_kwargs)
 
-    def predict(self, X, decode_labels=True):
+    def predict(self, X):
         """
         Returns the predicted labels of the given sample.
 
         Args:
             X (Array of shape(n_examples, ...)): Examples to predict.
-            decode_labels (bool, optional): By default, the predicted labels are decoded, i.e. they corresponds to labels from the fit. If set to False, however, the encoded prediction of the weak predictors will be returned. They can be decoded afterward with the help of the method 'decode_labels' of the encoder. The encode can be accessed via the 'encoder' attribute.
 
-        Returns Y_pred (Array of shape (n_examples)) or encoded_Y_pred (Array of shape (n_examples, encoding_dim))
+        Returns Y_pred (Array of shape (n_examples))
+        """
+        return self.encoder.decode_labels(self.predict_encoded(X))
+
+    def predict_encoded(self, X):
+        """
+        Returns the predicted encoded labels of the given sample. Can be decoded with the LabelEncoder.decode_labels() method.
+
+        Args:
+            X (Array of shape(n_examples, ...)): Examples to predict.
+
+        Returns encoded_Y_pred (Array of shape (n_examples, encoding_dim))
         """
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
 
         for wp_weight, wp in zip(self.weak_predictors_weights, self.weak_predictors):
             encoded_Y_pred += wp_weight * wp.predict(X)
-
-        return self.encoder.decode_labels(encoded_Y_pred) if decode_labels else encoded_Y_pred
+        
+        return encoded_Y_pred
 
     def evaluate(self, X, Y, return_risk=False):
         """
