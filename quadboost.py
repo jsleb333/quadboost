@@ -190,7 +190,7 @@ class QuadBoostMH(_QuadBoost):
     __doc__ = _QuadBoost.__doc__
 
     def algorithm(self, *args, **kwargs):
-        return _QuadBoostMHAlgorithm(*args, **kwargs)
+        return QuadBoostMHAlgorithm(*args, **kwargs)
 
 
 class QuadBoostMHCR(_QuadBoost):
@@ -207,7 +207,7 @@ class QuadBoostMHCR(_QuadBoost):
         self.dampening = dampening
 
     def algorithm(self, *args, **kwargs):
-        return _QuadBoostMHCRAlgorithm(*args, dampening=self.dampening, **kwargs)
+        return QuadBoostMHCRAlgorithm(*args, dampening=self.dampening, **kwargs)
 
 
 class _QuadBoostAlgorithm:
@@ -268,13 +268,13 @@ class _QuadBoostAlgorithm:
             boosting_round.valid_acc = accuracy_score(y_true=self.Y_val, y_pred=Y_val_pred)
 
 
-class _QuadBoostMHAlgorithm(_QuadBoostAlgorithm):
+class QuadBoostMHAlgorithm(_QuadBoostAlgorithm):
     def _compute_weak_predictor_weight(self, weak_prediction):
         n_examples = self.weights.shape[0]
         return np.sum(self.weights*self.residue*weak_prediction, axis=0) / (n_examples*np.mean(self.weights, axis=0))
 
 
-class _QuadBoostMHCRAlgorithm(_QuadBoostAlgorithm):
+class QuadBoostMHCRAlgorithm(_QuadBoostAlgorithm):
     def __init__(self, *args, dampening=1, **kwargs):
 
         """
