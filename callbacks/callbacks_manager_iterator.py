@@ -62,7 +62,7 @@ class CallbacksManagerIterator:
         """
         Yields an iterator where the callbacks 'on_step_begin' and 'on_step_end' are called at the right time.
         """
-        if self.callbacks.break_callbacks == []:
+        if not self.callbacks.break_callbacks:
             raise RuntimeError('Callbacks should include at least one BreakCallback, else it would result in an infinite loop.')
 
         while True:
