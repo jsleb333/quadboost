@@ -29,30 +29,71 @@ class Filters(nn.Module):
 class RandomFilters(WeakLearnerBase):
     """
     """
-    def __init__(self, encoder=None, n_filters=2, kernel_size=(5,5)):
+    def __init__(self, encoder=None, n_filters=2, kernel_size=(5,5), init_filters='random'):
+        """
+        Args:
+            encoder (LabelEncoder object, optional):
+            n_filters (int, optional):
+            kernel_size ((int, int), optional):
+            init_filters (str, either 'random' or 'from_data'):
+        """
         self.encoder = encoder
-        self.filters = Filters(n_filters, kernel_size)
+        self.n_filters = n_filters
+        self.kernel_size = kernel_size
+        if init_filters == 'random':
+            self.init_filters = lambda *args, **kwargs: None
+        elif init_filters == 'from_data':
+            self.init_filters = self.pick_from_dataset
 
     def fit(self, X, Y, W=None, **kwargs):
         """
         """
         if self.encoder is not None:
             Y, W = self.encoder.encode_labels(Y)
+        X = self._format_X(X)
 
-        X_tensor = torch.unsqueeze(torch.from_numpy(X), dim=1).float()
-        random_feat = self.filters(X_tensor).numpy().reshape((X.shape[0], -1))
+        self.filters = Filters(self.n_filters, self.kernel_size)
+        self.init_filters(X=X)
+
+        random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore') # Ignore ill-defined matrices
             self._classifier = Ridge().fit(random_feat, Y)
 
         return self
+    
+    def _format_X(self, X):
+        X = torch.from_numpy(X).float()
+        if len(X.shape) == 3:
+            X = torch.unsqueeze(X, dim=1)
+        return X
 
     def predict(self, X, **kwargs):
-        X = torch.unsqueeze(torch.from_numpy(X), dim=1).float()
+        X = self._format_X(X)
+
         random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
 
         return self._classifier.predict(random_feat)
+
+    def pick_from_dataset(self, X, **kwargs):
+        """
+        Assumes X is a torch tensor with shape (n_examples, n_channels, width, height).
+        """
+        weights = []
+        n_examples = X.shape[0]
+        i_max = X.shape[-2] - self.kernel_size[0] + 1
+        j_max = X.shape[-1] - self.kernel_size[1] + 1
+
+        for i in range(self.n_filters):
+            x = X[np.random.randint(n_examples)]
+            i = np.random.randint(i_max)
+            j = np.random.randint(j_max)
+
+            weights.append(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]])
+        
+        self.filters.conv.weight = torch.nn.Parameter(torch.unsqueeze(torch.cat(weights), dim=1))
+        self.filters.conv.weight.requires_grad = False
 
 
 @timed
@@ -65,9 +106,29 @@ def main():
     m = 1_000
     Xtr, Ytr = Xtr[:m], Ytr[:m]
 
-    wl = RandomFilters(n_filters=1, encoder=encoder).fit(Xtr, Ytr)
-    print(wl.evaluate(Xtr, Ytr))
-    print(wl.evaluate(Xts, Yts))
+    init_filters='from_data'
+    print(init_filters)
+    tr_acc = []
+    val_acc = []
+    for i in range(100):
+        wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
+        tr_acc.append(wl.evaluate(Xtr, Ytr))
+        val_acc.append(wl.evaluate(Xts, Yts))
+
+        print(f'mean train acc: {np.mean(tr_acc):4f}. mean valid acc: {np.mean(val_acc):4f} on {i} trials.', end='\r')
+    print('\n')
+
+    init_filters='random'
+    print(init_filters)
+    tr_acc = []
+    val_acc = []
+    for i in range(100):
+        wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
+        tr_acc.append(wl.evaluate(Xtr, Ytr))
+        val_acc.append(wl.evaluate(Xts, Yts))
+
+        print(f'mean train acc: {np.mean(tr_acc):4f}. mean valid acc: {np.mean(val_acc):4f} on {i} trials.', end='\r')
+    print('\n')
 
 
 if __name__ == '__main__':
