@@ -190,7 +190,7 @@ class QuadBoost:
 
         if return_risk:
             encoded_Y, W = self.encoder.encode_labels(Y)
-            risk = np.sum(W * (encoded_Y - encoded_Y_pred)**2)
+            risk = np.sum(W * (encoded_Y - self.f0 - encoded_Y_pred)**2)
 
         return accuracy if not return_risk else (accuracy, risk)
 
