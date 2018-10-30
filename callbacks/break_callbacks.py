@@ -8,9 +8,9 @@ from callbacks import Callback
 
 class BreakCallback(Callback):
     """
-    This abstract class implements a callback which purpose is to stop an iteration accordng to a condition. Hence, all subclass should raise a StopIteration exception at on_step_begin or on_step_end if a condition is not satisfied.
+    This abstract class implements a callback with purpose to stop the iteration according to a condition. Hence, all subclasses of BreakCallback should eventually raise a StopIteration exception at on_step_begin or on_step_end.
 
-    All callbacks that raise such an exception should inherit from BreakCallback, because all children of this class are called after ordinary callbacks, so that all callbacks all correctly called.
+    N.B.: All callbacks that raise such an exception should inherit from BreakCallback, or else other callbacks are not guarenteed to be called, since a StopIteration will prevent it. The CallbackList object correctly manages these BreakCallbacks by calling them only after ordinary Callbacks.
     """
     pass
 
