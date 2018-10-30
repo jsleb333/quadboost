@@ -36,8 +36,8 @@ class CallbacksManagerIterator:
         Args:
             caller (Object which creates an CallbacksManagerIterator, optional): Reference to the caller object. If the callbacks do not use the attributes of the caller, it can be omitted.
             callbacks (Iterable of Callback objects, optional): Callbacks handles functions to call at specific time in the program. Usage examples: stop the iteration or save the caller or the logs.
-            step (Object with __next__ method defined, optional): Each __next__ call of CallbacksManagerIterator will return the object returned by next(step). If None, the step number will be returned.
-            starting_step_number (int, optional): Number of the step to start from. Useful to resume an interrupted iteration.
+            step (Object with __next__ method defined, optional): Each __next__ call of CallbacksManagerIterator will return the object returned by next(step). If None, a Step object counting the number of iterations will be returned.
+            starting_step_number (int, optional): Number of the step to start from. Only used if 'step' is None. Useful to resume an interrupted iteration.
         """
         self.caller = caller
         self.callbacks = CallbackList(manager=self, callbacks=callbacks or [])
