@@ -14,10 +14,16 @@ from utils import *
 
 
 class _QuadBoost:
+    """
+    QuadBoost is a boosting algorithm based on the squared loss. Provided with a (weak) learner, the model builds upon a collection of them to be able to make strong predictions. The algorithm has strong guarantees and a quadratic convergence.
+    
+    AdaBoost is another known algorithm which rely on boosting weak learners. As opposed to QuadBoost, it uses the exponential loss. Indeed, using the squared loss provides many advantages, such as having an exact, solvable minimum at each iteration.
+    """
     def __init__(self, weak_learner, encoder=None):
         """
-        weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
-        encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
+        Args:
+            weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
+            encoder (LabelEncoder object, optional): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
         """
         self.weak_learner = weak_learner
         self.encoder = encoder
@@ -231,6 +237,8 @@ class _QuadBoost:
 
 
 class QuadBoostMH(_QuadBoost):
+    __doc__ = _QuadBoost.__doc__
+
     def __init__(self, weak_learner, encoder=None):
         """
         weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
@@ -244,6 +252,8 @@ class QuadBoostMH(_QuadBoost):
 
 
 class QuadBoostMHCR(_QuadBoost):
+    __doc__ = _QuadBoost.__doc__
+
     def __init__(self, confidence_rated_weak_learner, encoder=None):
         """
         confidence_rated_weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates confidence rated weak predictors to be boosted on.
