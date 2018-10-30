@@ -28,6 +28,9 @@ class _QuadBoost:
         self.weak_learner = weak_learner
         self.encoder = encoder
 
+    def algorithm(self, *args, **kwargs):
+        return NotImplementedError 
+
     def fit(self, X, Y, f0=None,
             max_round_number=None, patience=None, break_on_perfect_train_acc=False,
             X_val=None, Y_val=None,
@@ -82,65 +85,22 @@ class _QuadBoost:
             callbacks.append(BreakOnPlateauCallback(patience=patience))
 
         self.callbacks = callbacks
-
-        return self._fit(X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs)
-
-    def _fit(self, X, Y, residue, weights,
-             X_val=None, Y_val=None,
-             starting_round_number=0,
-             **weak_learner_fit_kwargs):
-        """
-        Function used to actually fit the model. Used by 'fit, and 'resume_fit'. Should not be used otherwise.
-        """
-        encoded_pred_train = np.zeros(residue.shape)
-        if Y_val is not None:
-            encoded_pred_val_shape = (Y_val.shape[0], residue.shape[1])
-            encoded_pred_val = np.zeros(encoded_pred_val_shape)
-
-        with CallbacksManagerIterator(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
-            # Boosting algorithm
-            for boosting_round in boost_manager:
-
-                residue, weak_predictor, weak_predictor_weight = self._boost(X, residue, weights, **weak_learner_fit_kwargs)
-
-                self.weak_predictors_weights.append(weak_predictor_weight)
-                self.weak_predictors.append(weak_predictor)
-
-                encoded_pred_train += weak_predictor_weight * weak_predictor.predict(X)
-                pred_train = self.encoder.decode_labels(encoded_pred_train)
-                boosting_round.train_acc = accuracy_score(y_true=Y, y_pred=pred_train)
-                boosting_round.risk = np.sum(weights * (residue)**2)
-
-                if X_val is not None and Y_val is not None:
-                    encoded_pred_val += weak_predictor_weight * weak_predictor.predict(X_val)
-                    pred_val = self.encoder.decode_labels(encoded_pred_val)
-                    boosting_round.valid_acc = accuracy_score(y_true=Y_val, y_pred=pred_val)
+        self._fit(X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs)
 
         return self
+    
+    def _fit(self, X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs):
 
-    def _boost(self, X, residue, weights, **kwargs):
-        """
-        Implements one round of boosting.
-        Appends the lists of weak_predictors and of weak_predictors_weights with the fitted weak learner and its computed weight.
+        encoded_Y_pred = self.predict_encoded(X)
+        encoded_Y_val_pred = self.predict_encoded(X_val) if X_val is not None else None
 
-        Args:
-            X (Array of shape (n_examples, ...)): Examples.
-            residue (Array of shape (n_examples, encoding_dim)): Residues to fit for the examples X.
-            weights (Array of shape (n_examples, encoding_dim)): Weights of the examples X for each encoding.
-            kwargs: Keyword arguments to be passed to the weak learner fit method.
+        starting_round = BoostingRound(len(self.weak_predictors))
+        boost_manager = CallbacksManagerIterator(self, self.callbacks, starting_round)
 
-        Returns the calculated residue.
-        """
-        weak_predictor = self.weak_learner().fit(X, residue, weights, **kwargs)
-        weak_prediction = weak_predictor.predict(X)
-
-        weak_predictor_weight = self._compute_weak_predictor_weight(weights, residue, weak_prediction)
-        residue -= weak_predictor_weight * weak_prediction
-
-        return residue, weak_predictor, weak_predictor_weight
-
-    def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
-        raise NotImplementedError
+        qb_algo = self.algorithm(boost_manager, self.encoder, self.weak_learner,
+                                 X, Y, residue, weights, encoded_Y_pred,
+                                 X_val, Y_val, encoded_Y_val_pred)
+        qb_algo.fit(self.weak_predictors, self.weak_predictors_weights, **weak_learner_fit_kwargs)
 
     def resume_fit(self, X, Y, X_val=None, Y_val=None, max_round_number=None, **weak_learner_fit_kwargs):
         """
@@ -164,13 +124,11 @@ class _QuadBoost:
 
         encoded_Y, weights = self.encoder.encode_labels(Y)
 
-        residue = encoded_Y - self.f0
-        for predictor, predictor_weight in zip(self.weak_predictors, self.weak_predictors_weights):
-            residue -= predictor_weight * predictor.predict(X)
+        residue = encoded_Y - self.f0 - self.predict_encoded(X)
 
-        starting_round_number = len(self.weak_predictors)
+        self._fit(X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs)
 
-        return self._fit(X, Y, residue, weights, X_val, Y_val, starting_round_number, **weak_learner_fit_kwargs)
+        return self
 
     def predict(self, X):
         """
@@ -231,23 +189,14 @@ class _QuadBoost:
 class QuadBoostMH(_QuadBoost):
     __doc__ = _QuadBoost.__doc__
 
-    def __init__(self, weak_learner, encoder=None):
-        """
-        weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
-        encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
-        """
-        super().__init__(weak_learner, encoder)
-
-    def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
-        n_examples = weights.shape[0]
-        return np.sum(weights*residue*weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
+    def algorithm(self, *args, **kwargs):
+        return _QuadBoostMHAlgorithm(*args, **kwargs)
 
 
 class QuadBoostMHCR(_QuadBoost):
     __doc__ = _QuadBoost.__doc__
 
     def __init__(self, confidence_rated_weak_learner, encoder=None, dampening=1):
-
         """
         Args:
             confidence_rated_weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates confidence rated weak predictors to be boosted on.
@@ -255,15 +204,93 @@ class QuadBoostMHCR(_QuadBoost):
             dampening (float in ]0,1] ): Dampening factor to weight the weak predictors. Serves to slow the convergence of the algorithm so it can boost longer.
         """
         super().__init__(confidence_rated_weak_learner, encoder)
-        self.dampening = np.array([dampening])
+        self.dampening = dampening
+
+    def algorithm(self, *args, **kwargs):
+        return _QuadBoostMHCRAlgorithm(*args, dampening=self.dampening, **kwargs)
+
+
+class _QuadBoostAlgorithm:
+    """
+    This is an implementation of the QuadBoost algorithm. It is intended to be used inside the QuadBoost class API and not as is.
+    """
+    def __init__(self, boost_manager, encoder, weak_learner,
+                 X, Y, residue, weights, encoded_Y_pred,
+                 X_val, Y_val, encoded_Y_val_pred):
+        self.boost_manager = boost_manager
+        self.encoder = encoder
+        self.weak_learner = weak_learner
+
+        self.X, self.Y, self.residue, self.weights = X, Y, residue, weights
+        self.X_val, self.Y_val = X_val, Y_val
+        self.encoded_Y_pred = encoded_Y_pred
+        self.encoded_Y_val_pred = encoded_Y_val_pred
+
+    def fit(self, weak_predictors, weak_predictors_weights, **weak_learner_fit_kwargs):
+        """
+        Execute the algorithm.
+        Appends the weak_predictors and weak_predictors_weights lists with the fitted weak learners.
+
+        Args:
+            weak_predictors (list): Reference to the list of weak_predictors of the model.
+            weak_predictors_weights (list): Reference to the list of weak_predictors_weights of the model.
+            **weak_learner_fit_kwargs: Keyword arguments needed to fit the weak learner.
+        
+        Returns None.
+        """
+        with self.boost_manager:
+            for boosting_round in self.boost_manager:
+
+                weak_predictor = self.weak_learner().fit(self.X, self.residue, self.weights,                                                 **weak_learner_fit_kwargs)
+                weak_prediction = weak_predictor.predict(self.X)
+
+                weak_predictor_weight = self._compute_weak_predictor_weight(weak_prediction)
+                weighted_weak_prediction = weak_predictor_weight * weak_prediction
+                self.residue -= weighted_weak_prediction
+
+                weak_predictors_weights.append(weak_predictor_weight)
+                weak_predictors.append(weak_predictor)
+
+                self._evaluate_round(boosting_round, weighted_weak_prediction, weak_predictor, weak_predictor_weight)
 
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
+        raise NotImplementedError
+    
+    def _evaluate_round(self, boosting_round, weighted_weak_prediction, weak_predictor, weak_predictor_weight):
+        self.encoded_Y_pred += weighted_weak_prediction
+        Y_pred = self.encoder.decode_labels(self.encoded_Y_pred)
+        boosting_round.train_acc = accuracy_score(y_true=self.Y, y_pred=Y_pred)
+        boosting_round.risk = np.sum(self.weights * self.residue**2)
+
+        if not (self.X_val is None or self.Y_val is None or self.encoded_Y_val_pred is None):
+            self.encoded_Y_val_pred += weak_predictor_weight * weak_predictor.predict(self.X_val)
+            Y_val_pred = self.encoder.decode_labels(self.encoded_Y_val_pred)
+            boosting_round.valid_acc = accuracy_score(y_true=self.Y_val, y_pred=Y_val_pred)
+
+
+class _QuadBoostMHAlgorithm(_QuadBoostAlgorithm):
+    def _compute_weak_predictor_weight(self, weak_prediction):
+        n_examples = self.weights.shape[0]
+        return np.sum(self.weights*self.residue*weak_prediction, axis=0) / (n_examples*np.mean(self.weights, axis=0))
+
+
+class _QuadBoostMHCRAlgorithm(_QuadBoostAlgorithm):
+    def __init__(self, *args, dampening=1, **kwargs):
+
+        """
+        Args:
+            dampening (float in ]0,1] ): Dampening factor to weight the weak predictors. Serves to slow the convergence of the algorithm so it can boost longer.
+        """
+        super().__init__(*args, **kwargs)
+        self.dampening = np.array([dampening])
+
+    def _compute_weak_predictor_weight(self, weak_prediction):
         return self.dampening
 
 
 class BoostingRound(Step):
     """
-    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the CallbacksManagerIterator in the _QuadBoost._fit method.
+    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the CallbacksManagerIterator in the _QuadBoostAlgorithm.fit method.
     """
     def __init__(self, round_number=0):
         super().__init__(step_number=round_number)
@@ -296,7 +323,7 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = RandomFilters(n_filters=2, kernel_size=(5,5))
+    weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5))
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
     # sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
@@ -321,11 +348,12 @@ def main():
             # n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
             )
     ### Or resume fitting a model
-    # qb = QuadBoostMHCR.load('results/test2.ckpt')
+    # qb = QuadBoostMHCR.load('results/test_dampening=.9_12.ckpt')
     # qb.resume_fit(Xtr[:m], Ytr[:m],
     #               X_val=Xts, Y_val=Yts,
-    #               n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx)
-
+    #               max_round_number=40,
+    #             #   n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
+    #               )
 if __name__ == '__main__':
     import logging
     logging.basicConfig(level=logging.INFO, style='{', format='[{levelname}] {message}')
