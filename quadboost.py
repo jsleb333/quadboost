@@ -13,7 +13,7 @@ from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallbac
 from utils import *
 
 
-class QuadBoost:
+class _QuadBoost:
     def __init__(self, weak_learner, encoder=None):
         """
         weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
@@ -86,7 +86,6 @@ class QuadBoost:
         """
         Function used to actually fit the model. Used by 'fit, and 'resume_fit'. Should not be used otherwise.
         """
-
         encoded_pred_train = np.zeros(residue.shape)
         if Y_val is not None:
             encoded_pred_val_shape = (Y_val.shape[0], residue.shape[1])
@@ -231,7 +230,7 @@ class QuadBoost:
         return model
 
 
-class QuadBoostMH(QuadBoost):
+class QuadBoostMH(_QuadBoost):
     def __init__(self, weak_learner, encoder=None):
         """
         weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
@@ -244,7 +243,7 @@ class QuadBoostMH(QuadBoost):
         return np.sum(weights*residue*weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
 
 
-class QuadBoostMHCR(QuadBoost):
+class QuadBoostMHCR(_QuadBoost):
     def __init__(self, confidence_rated_weak_learner, encoder=None):
         """
         confidence_rated_weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates confidence rated weak predictors to be boosted on.
@@ -258,7 +257,7 @@ class QuadBoostMHCR(QuadBoost):
 
 class BoostingRound(Step):
     """
-    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the CallbacksManagerIterator in the QuadBoost._fit method.
+    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the CallbacksManagerIterator in the _QuadBoost._fit method.
     """
     def __init__(self, round_number=0):
         super().__init__(step_number=round_number)
@@ -279,7 +278,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 1_000
+    m = 60_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -310,7 +309,7 @@ def main():
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=None,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
             # n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
