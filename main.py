@@ -39,7 +39,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
         weak_learner = WLThresholdedRidge(threshold=.5)
     elif wl == 'rf' or wl == 'random_filters':
         kernel_size = (kernel_size, kernel_size)
-        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=kernel_size)
+        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=kernel_size, init_filters=init_filters)
 
     ### Callbacks
     filename = f'd={dataset}-e={encodings}-wl={wl}-'
