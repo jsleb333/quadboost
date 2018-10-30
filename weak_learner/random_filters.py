@@ -39,8 +39,7 @@ class RandomFilters(WeakLearnerBase):
         if self.encoder is not None:
             Y, W = self.encoder.encode_labels(Y)
 
-        tensor_shape = (X.shape[0], 1, *X.shape[1:]) # Insert the number of input channels
-        X_tensor = torch.from_numpy(X).reshape(tensor_shape).float()
+        X_tensor = torch.unsqueeze(torch.from_numpy(X), dim=1).float()
         random_feat = self.filters(X_tensor).numpy().reshape((X.shape[0], -1))
 
         with warnings.catch_warnings():
@@ -50,8 +49,7 @@ class RandomFilters(WeakLearnerBase):
         return self
 
     def predict(self, X, **kwargs):
-        tensor_shape = (X.shape[0], 1, *X.shape[1:]) # Insert the number of input channels
-        X = torch.from_numpy(X).reshape(tensor_shape).float()
+        X = torch.unsqueeze(torch.from_numpy(X), dim=1).float()
         random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
 
         return self._classifier.predict(random_feat)
