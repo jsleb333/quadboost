@@ -13,11 +13,17 @@ from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallbac
 from utils import *
 
 
-class QuadBoost:
+class _QuadBoost:
+    """
+    QuadBoost is a boosting algorithm based on the squared loss. Provided with a (weak) learner, the model builds upon a collection of them to be able to make strong predictions. The algorithm has strong guarantees and a quadratic convergence.
+    
+    AdaBoost is another known algorithm which rely on boosting weak learners. As opposed to QuadBoost, it uses the exponential loss. Indeed, using the squared loss provides many advantages, such as having an exact, solvable minimum at each iteration.
+    """
     def __init__(self, weak_learner, encoder=None):
         """
-        weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
-        encoder (LabelEncoder object, optional, default=None): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
+        Args:
+            weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
+            encoder (LabelEncoder object, optional): Object that encodes the labels to provide an easier separation problem. If None, a one-hot encoding is used.
         """
         self.weak_learner = weak_learner
         self.encoder = encoder
@@ -86,6 +92,11 @@ class QuadBoost:
         """
         Function used to actually fit the model. Used by 'fit, and 'resume_fit'. Should not be used otherwise.
         """
+        encoded_pred_train = np.zeros(residue.shape)
+        if Y_val is not None:
+            encoded_pred_val_shape = (Y_val.shape[0], residue.shape[1])
+            encoded_pred_val = np.zeros(encoded_pred_val_shape)
+
         with CallbacksManagerIterator(self, self.callbacks, BoostingRound(starting_round_number)) as boost_manager:
             # Boosting algorithm
             for boosting_round in boost_manager:
@@ -95,9 +106,15 @@ class QuadBoost:
                 self.weak_predictors_weights.append(weak_predictor_weight)
                 self.weak_predictors.append(weak_predictor)
 
-                boosting_round.train_acc, boosting_round.risk = self.evaluate(X, Y, return_risk=True)
+                encoded_pred_train += weak_predictor_weight * weak_predictor.predict(X)
+                pred_train = self.encoder.decode_labels(encoded_pred_train)
+                boosting_round.train_acc = accuracy_score(y_true=Y, y_pred=pred_train)
+                boosting_round.risk = np.sum(weights * (residue)**2)
+
                 if X_val is not None and Y_val is not None:
-                    boosting_round.valid_acc = self.evaluate(X_val, Y_val)
+                    encoded_pred_val += weak_predictor_weight * weak_predictor.predict(X_val)
+                    pred_val = self.encoder.decode_labels(encoded_pred_val)
+                    boosting_round.valid_acc = accuracy_score(y_true=Y_val, y_pred=pred_val)
 
         return self
 
@@ -190,7 +207,7 @@ class QuadBoost:
 
         if return_risk:
             encoded_Y, W = self.encoder.encode_labels(Y)
-            risk = np.sum(W * (encoded_Y - encoded_Y_pred)**2)
+            risk = np.sum(W * (encoded_Y - self.f0 - encoded_Y_pred)**2)
 
         return accuracy if not return_risk else (accuracy, risk)
 
@@ -219,7 +236,9 @@ class QuadBoost:
         return model
 
 
-class QuadBoostMH(QuadBoost):
+class QuadBoostMH(_QuadBoost):
+    __doc__ = _QuadBoost.__doc__
+
     def __init__(self, weak_learner, encoder=None):
         """
         weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates weak predictors to be boosted on.
@@ -232,8 +251,11 @@ class QuadBoostMH(QuadBoost):
         return np.sum(weights*residue*weak_prediction, axis=0)/n_examples/np.mean(weights, axis=0)
 
 
-class QuadBoostMHCR(QuadBoost):
+class QuadBoostMHCR(_QuadBoost):
+    __doc__ = _QuadBoost.__doc__
+
     def __init__(self, confidence_rated_weak_learner, encoder=None, dampening=1):
+
         """
         Args:
             confidence_rated_weak_learner (Object that defines the 'fit' method and the 'predict' method): Weak learner that generates confidence rated weak predictors to be boosted on.
@@ -249,7 +271,7 @@ class QuadBoostMHCR(QuadBoost):
 
 class BoostingRound(Step):
     """
-    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the CallbacksManagerIterator in the QuadBoost._fit method.
+    Class that stores information about the current boosting round like the the round number and the training and validation accuracies. Used by the CallbacksManagerIterator in the _QuadBoost._fit method.
     """
     def __init__(self, round_number=0):
         super().__init__(step_number=round_number)
