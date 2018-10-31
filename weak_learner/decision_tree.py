@@ -5,12 +5,12 @@ import heapq as hq
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import WeakLearnerBase
+from weak_learner import _WeakLearnerBase
 from weak_learner import MulticlassDecisionStump
 from utils import timed, ComparableMixin
 
 
-class MulticlassDecisionTree(WeakLearnerBase):
+class MulticlassDecisionTree(_WeakLearnerBase):
     """
     Decision tree classifier with innate multiclass algorithm. Each node is a MulticlassDecisionStump. The tree is grown by promoting the leaf with the best risk reduction to a node with two leaves.
     It assigns a confidence rates (scalar) for each class for each leaf.

@@ -2,7 +2,7 @@ from sklearn.metrics import accuracy_score
 import inspect
 
 
-class WeakLearnerBase:
+class _WeakLearnerBase:
     """
     This class implements a abstract base weak learner that should be inherited. It makes sure all weak learner are clonable and have an encoder, as well as a predict and an evaluate methods.
     """

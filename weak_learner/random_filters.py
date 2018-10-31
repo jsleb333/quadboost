@@ -8,7 +8,7 @@ import warnings
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import WeakLearnerBase
+from weak_learner import _WeakLearnerBase
 from utils import timed
 
 
@@ -26,7 +26,7 @@ class Filters(nn.Module):
         return self.maxpool(self.conv(x))
 
 
-class RandomFilters(WeakLearnerBase):
+class RandomFilters(_WeakLearnerBase):
     """
     """
     def __init__(self, encoder=None, n_filters=2, kernel_size=(5,5), init_filters='random'):
@@ -64,7 +64,7 @@ class RandomFilters(WeakLearnerBase):
             self._classifier = Ridge().fit(random_feat, Y)
 
         return self
-    
+
     def _format_X(self, X):
         X = torch.from_numpy(X).float()
         if len(X.shape) == 3:
@@ -93,7 +93,7 @@ class RandomFilters(WeakLearnerBase):
             j = np.random.randint(j_max)
 
             weights.append(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]])
-        
+
         self.filters.conv.weight = torch.nn.Parameter(torch.unsqueeze(torch.cat(weights), dim=1))
         self.filters.conv.weight.requires_grad = False
 
