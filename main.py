@@ -14,6 +14,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=center, reduce=reduce)
+    logging.info(f'Loaded dataset: {dataset} (center: {center}, reduce: {reduce})')
 
     ### Choice of encoder
     if encodings == 'onehot':
@@ -24,6 +25,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
         encoder = LabelEncoder.load_encodings(encodings)
         if all(label.isdigit() for label in encoder.labels_encoding):
             encoder = LabelEncoder({int(label):encoding for label, encoding in encoder.labels_encoding.items()})
+    logging.info(f'Encoding: {encodings}')
 
     ### Choice of weak learner
     kwargs = {}
@@ -40,6 +42,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     elif wl == 'rf' or wl == 'random_filters':
         kernel_size = (kernel_size, kernel_size)
         weak_learner = RandomFilters(n_filters=n_filters, kernel_size=kernel_size, init_filters=init_filters)
+    logging.info(f'Weak learner: {weak_learner.__name__}')
 
     ### Callbacks
     filename = f'd={dataset}-e={encodings}-wl={wl}-'
@@ -52,8 +55,11 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
                 zero_risk,
                 ]
 
+    logging.info(f'Filename: {filename}')
+
     ### Fitting the model
     if not resume:
+        logging.info(f'Beginning fit with max_round_number={max_round_number} and patience={patience}.')
         qb = QuadBoostMHCR(weak_learner, encoder=encoder)
         qb.fit(Xtr[:m], Ytr[:m], max_round_number=max_round, patience=patience,
                X_val=Xts, Y_val=Yts,
@@ -61,6 +67,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
                **kwargs)
     ### Or resume fitting a model
     else:
+        logging.info(f'Resuming fit with max_round_number={max_round_number}.')
         qb = QuadBoostMHCR.load(f'results/{filename}{resume}.ckpt')
         qb.resume_fit(Xtr[:m], Ytr[:m],
                       X_val=Xts, Y_val=Yts,
