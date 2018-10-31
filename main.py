@@ -46,7 +46,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
         kernel_size = (kernel_size, kernel_size)
         weak_learner = RandomFilters(n_filters=n_filters, kernel_size=kernel_size, init_filters=init_filters)
         filename += f'-nf={n_filters}-ks={kernel_size}-{init_filters}'
-    logging.info(f'Weak learner: {weak_learner.__name__}')
+    logging.info(f'Weak learner: {type(weak_learner).__name__}')
 
     ### Callbacks
     ckpt = ModelCheckpoint(filename=filename+'-{round}.ckpt', dirname='./results', save_last=True)
@@ -62,7 +62,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
 
     ### Fitting the model
     if not resume:
-        logging.info(f'Beginning fit with max_round_number={max_round_number} and patience={patience}.')
+        logging.info(f'Beginning fit with max_round_number={max_round} and patience={patience}.')
         qb = QuadBoostMHCR(weak_learner, encoder=encoder)
         qb.fit(Xtr[:m], Ytr[:m], max_round_number=max_round, patience=patience,
                X_val=Xts, Y_val=Yts,
