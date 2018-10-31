@@ -27,6 +27,8 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
             encoder = LabelEncoder({int(label):encoding for label, encoding in encoder.labels_encoding.items()})
     logging.info(f'Encoding: {encodings}')
 
+    filename = f'd={dataset}-e={encodings}-wl={wl}'
+
     ### Choice of weak learner
     kwargs = {}
     if wl == 'ds' or wl == 'decision-stump':
@@ -37,17 +39,18 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
         weak_learner = MulticlassDecisionTree(max_n_leaves=max_n_leaves)
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr[:m])))
         kwargs['n_jobs'] = n_jobs
+        filename += f'{max_n_leaves}'
     elif wl == 'ridge':
         weak_learner = WLThresholdedRidge(threshold=.5)
     elif wl == 'rf' or wl == 'random_filters':
         kernel_size = (kernel_size, kernel_size)
         weak_learner = RandomFilters(n_filters=n_filters, kernel_size=kernel_size, init_filters=init_filters)
+        filename += f'-nf={n_filters}-ks={kernel_size}-{init_filters}'
     logging.info(f'Weak learner: {weak_learner.__name__}')
 
     ### Callbacks
-    filename = f'd={dataset}-e={encodings}-wl={wl}-'
-    ckpt = ModelCheckpoint(filename=filename+'{round}.ckpt', dirname='./results', save_last=True)
-    logger = CSVLogger(filename=filename+'log.csv', dirname='./results/log')
+    ckpt = ModelCheckpoint(filename=filename+'-{round}.ckpt', dirname='./results', save_last=True)
+    logger = CSVLogger(filename=filename+'-log.csv', dirname='./results/log')
     zero_risk = BreakOnZeroRiskCallback()
 
     callbacks = [ckpt,
