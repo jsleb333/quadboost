@@ -5,12 +5,12 @@ import multiprocessing as mp
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import WeakLearnerBase
+from weak_learner import _WeakLearnerBase
 from utils import split_int, timed, ComparableMixin
 from utils.multiprocessing_utils import PicklableExceptionWrapper, SafeQueue, parallel_processes
 
 
-class MulticlassDecisionStump(WeakLearnerBase):
+class MulticlassDecisionStump(_WeakLearnerBase):
     """
     Decision stump classifier with innate multiclass algorithm.
     It finds a stump to partition examples into 2 parts which minimizes the quadratic multiclass risk.

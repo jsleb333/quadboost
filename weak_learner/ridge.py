@@ -4,11 +4,11 @@ from sklearn.linear_model import Ridge
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import WeakLearnerBase
+from weak_learner import _WeakLearnerBase
 from utils import timed
 
 
-class WLRidge(WeakLearnerBase, Ridge):
+class WLRidge(_WeakLearnerBase, Ridge):
     """
     Confidence rated Ridge classification based on a Ridge regression.
     Inherits from Ridge of the scikit-learn package.
@@ -33,7 +33,7 @@ class WLRidge(WeakLearnerBase, Ridge):
         return super(Ridge, self).predict(X, **kwargs)
 
 
-class WLThresholdedRidge(WeakLearnerBase, Ridge):
+class WLThresholdedRidge(_WeakLearnerBase, Ridge):
     """
     Ridge classification based on a ternary vote (1, 0, -1) of a Ridge regression based on a threshold. For a threshold of 0, it is equivalent to take the sign of the prediction.
     Inherits from Ridge of the scikit-learn package.

@@ -41,7 +41,7 @@ A `main()` function with minimal working example is also provided.
 
 The module `weak_learner` provides some weak learners to be used with QuadBoost, such as a `MulticlassDecisionStump` and a `MulticlassDecisionTree` based on the former.
 All weak learners can be used as standalone.
-A `WeakLearnerBase` parent class is provided to facilitate the implementations of other weak learners that can easily be passed to the QuadBoost algorithm.
+A `_WeakLearnerBase` parent class is provided to facilitate the implementations of other weak learners that can easily be passed to the QuadBoost algorithm.
 
 The file `label_encoder.py` provides an implementation of LabelEncoder and inherited classes.
 These `LabelEncoder` can transform a set of labels into vectors encoding the classes, such as _one-hot_ encoding or _all-pairs_ encodings.

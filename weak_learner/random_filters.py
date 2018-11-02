@@ -8,7 +8,7 @@ import warnings
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import WeakLearnerBase
+from weak_learner import _WeakLearnerBase
 from utils import timed
 
 
@@ -26,8 +26,9 @@ class Filters(nn.Module):
         return self.maxpool(self.conv(x))
 
 
-class RandomFilters(WeakLearnerBase):
+class RandomFilters(_WeakLearnerBase):
     """
+    This weak learner is takes random filters and convolutes the dataset with them. It then applies a non-linearity on the resulting random features and makes a Ridge regression as final classifier.
     """
     def __init__(self, encoder=None, n_filters=2, kernel_size=(5,5), init_filters='random'):
         """
@@ -47,8 +48,14 @@ class RandomFilters(WeakLearnerBase):
         else:
             raise ValueError(f"'{init_filters} is an invalid init_filters option.")
 
-    def fit(self, X, Y, W=None, **kwargs):
+    def fit(self, X, Y, W=None):
         """
+        Args:
+            X (Array of shape (n_examples, ...)): Examples to fit.
+            Y (Array of shape (n_examples) or (n_examples, encoding_dim)): Labels of the examples. If an encoder is provided, Y should have shape (n_examples), otherwise it should have a shape (n_examples, encoding_dim).
+            W (Array of shape (n_examples, encoding_dim), optional): Weights of the examples for each labels.
+
+        Returns self.
         """
         if self.encoder is not None:
             Y, W = self.encoder.encode_labels(Y)
@@ -64,14 +71,20 @@ class RandomFilters(WeakLearnerBase):
             self._classifier = Ridge().fit(random_feat, Y)
 
         return self
-    
+
     def _format_X(self, X):
         X = torch.from_numpy(X).float()
         if len(X.shape) == 3:
             X = torch.unsqueeze(X, dim=1)
         return X
 
-    def predict(self, X, **kwargs):
+    def predict(self, X):
+        """
+        Predicts the label of the sample X.
+
+        Args:
+            X (Array of shape (n_examples, ...)): Examples to predict.
+        """
         X = self._format_X(X)
 
         random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
@@ -93,7 +106,7 @@ class RandomFilters(WeakLearnerBase):
             j = np.random.randint(j_max)
 
             weights.append(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]])
-        
+
         self.filters.conv.weight = torch.nn.Parameter(torch.unsqueeze(torch.cat(weights), dim=1))
         self.filters.conv.weight.requires_grad = False
 

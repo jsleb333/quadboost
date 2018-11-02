@@ -43,8 +43,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     elif wl == 'ridge':
         weak_learner = WLThresholdedRidge(threshold=.5)
     elif wl == 'rf' or wl == 'random_filters':
-        kernel_size = (kernel_size, kernel_size)
-        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=kernel_size, init_filters=init_filters)
+        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=(kernel_size, kernel_size), init_filters=init_filters)
         filename += f'-nf={n_filters}-ks={kernel_size}-{init_filters}'
     logging.info(f'Weak learner: {type(weak_learner).__name__}')
 

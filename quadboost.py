@@ -16,7 +16,7 @@ from utils import *
 class _QuadBoost:
     """
     QuadBoost is a boosting algorithm based on the squared loss. Provided with a (weak) learner, the model builds upon a collection of them to be able to make strong predictions. The algorithm has strong guarantees and a quadratic convergence.
-    
+
     AdaBoost is another known algorithm which rely on boosting weak learners. As opposed to QuadBoost, it uses the exponential loss. Indeed, using the squared loss provides many advantages, such as having an exact, solvable minimum at each iteration.
     """
     def __init__(self, weak_learner, encoder=None):
@@ -29,7 +29,7 @@ class _QuadBoost:
         self.encoder = encoder
 
     def algorithm(self, *args, **kwargs):
-        return NotImplementedError 
+        raise NotImplementedError
 
     def fit(self, X, Y, f0=None,
             max_round_number=None, patience=None, break_on_perfect_train_acc=False,
@@ -88,7 +88,7 @@ class _QuadBoost:
         self._fit(X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs)
 
         return self
-    
+
     def _fit(self, X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs):
 
         encoded_Y_pred = self.predict_encoded(X)
@@ -154,7 +154,7 @@ class _QuadBoost:
 
         for wp_weight, wp in zip(self.weak_predictors_weights, self.weak_predictors):
             encoded_Y_pred += wp_weight * wp.predict(X)
-        
+
         return encoded_Y_pred
 
     def evaluate(self, X, Y, return_risk=False):
@@ -235,7 +235,7 @@ class _QuadBoostAlgorithm:
             weak_predictors (list): Reference to the list of weak_predictors of the model.
             weak_predictors_weights (list): Reference to the list of weak_predictors_weights of the model.
             **weak_learner_fit_kwargs: Keyword arguments needed to fit the weak learner.
-        
+
         Returns None.
         """
         with self.boost_manager:
@@ -255,7 +255,7 @@ class _QuadBoostAlgorithm:
 
     def _compute_weak_predictor_weight(self, weights, residue, weak_prediction):
         raise NotImplementedError
-    
+
     def _evaluate_round(self, boosting_round, weighted_weak_prediction, weak_predictor, weak_predictor_weight):
         self.encoded_Y_pred += weighted_weak_prediction
         Y_pred = self.encoder.decode_labels(self.encoded_Y_pred)
@@ -311,7 +311,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 60_000
+    m = 6_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
