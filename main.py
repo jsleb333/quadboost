@@ -70,7 +70,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
                **kwargs)
     ### Or resume fitting a model
     else:
-        logging.info(f'Resuming fit with max_round_number={max_round_number}.')
+        logging.info(f'Resuming fit with max_round_number={max_round}.')
         qb = QuadBoostMHCR.load(f'results/{filename}{resume}.ckpt')
         qb.resume_fit(Xtr[:m], Ytr[:m],
                       X_val=Xts, Y_val=Yts,
