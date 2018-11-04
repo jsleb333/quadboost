@@ -33,10 +33,11 @@ class RandomFilters(_WeakLearnerBase):
     def __init__(self, encoder=None, n_filters=2, kernel_size=(5,5), init_filters='random'):
         """
         Args:
-            encoder (LabelEncoder object, optional):
-            n_filters (int, optional):
-            kernel_size ((int, int), optional):
-            init_filters (str, either 'random' or 'from_data'):
+            encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
+            n_filters (int, optional): Number of filters.
+            kernel_size ((int, int), optional): Size of the filters.
+            init_filters (str, either 'random' or 'from_data'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are taken as patches from the data, uniformly drawn.
+            locality (int, optional): Applies the filters locally around the place where the patch was taken from the picture. Only applies if 'init_filters' is 'from_data'. For example, locality=2 will convolute the filter only ±2 pixels translated to yield 9 values. If locality=-1, all the picture is convoluted.
         """
         self.encoder = encoder
         self.n_filters = n_filters
