@@ -73,12 +73,13 @@ class LocalConvolution(_WeakLearnerBase):
         else:
             raise ValueError(f"'{init_filters} is an invalid init_filters option.")
 
-    def fit(self, X, Y, W=None):
+    def fit(self, X, Y, W=None, **weak_learner_kwargs):
         """
         Args:
             X (Array of shape (n_examples, ...)): Examples to fit.
             Y (Array of shape (n_examples) or (n_examples, encoding_dim)): Labels of the examples. If an encoder is provided, Y should have shape (n_examples), otherwise it should have a shape (n_examples, encoding_dim).
             W (Array of shape (n_examples, encoding_dim), optional): Weights of the examples for each labels.
+            weak_learner_kwargs: Keyword arguments needed to fit the weak learner.
 
         Returns self.
         """
@@ -95,9 +96,9 @@ class LocalConvolution(_WeakLearnerBase):
             warnings.simplefilter('ignore') # Ignore ill-defined matrices
             fit_sig = inspect.signature(self.weak_learner.fit)
             if 'W' in fit_sig.parameters:
-                self.weak_learner.fit(random_feat, Y, W)
+                self.weak_learner.fit(random_feat, Y, W, **weak_learner_kwargs)
             else:
-                self.weak_learner.fit(random_feat, Y)
+                self.weak_learner.fit(random_feat, Y, **weak_learner_kwargs)
 
         return self
 
