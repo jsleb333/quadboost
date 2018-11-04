@@ -9,7 +9,7 @@ from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
 from callbacks import CallbacksManagerIterator, Step
 from callbacks import ModelCheckpoint, CSVLogger, Progression
-from callbacks import BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback, BreakOnZeroRiskCallback, BreakOnPlateauCallback
+from callbacks import *
 from utils import *
 
 
@@ -323,7 +323,8 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5), init_filters='from_data')
+    # weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5), init_filters='from_data')
+    weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, kernel_size=(5,5), init_filters='from_data', locality=5)
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
     # sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
@@ -331,7 +332,7 @@ def main():
     ### Callbacks
     # filename = 'haar_onehot_ds_'
     # filename = 'ideal_mnist_ds_'
-    filename = 'test_dampening=.9'
+    filename = 'test'
     ckpt = ModelCheckpoint(filename=filename+'_{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'_log.csv', dirname='./results/log')
     zero_risk = BreakOnZeroRiskCallback()
@@ -341,7 +342,7 @@ def main():
                 ]
 
     ### Fitting the model
-    qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=.9)
+    qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=1)
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,

@@ -4,13 +4,13 @@ from quadboost import QuadBoostMHCR
 from callbacks import ModelCheckpoint, CSVLogger, BreakOnZeroRiskCallback
 from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from mnist_dataset import MNISTDataset
-from weak_learner import WLRidge, WLThresholdedRidge, MulticlassDecisionStump, MulticlassDecisionTree, RandomFilters
+from weak_learner import *
 import logging
 
 
 @timed
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5, init_filters='from_data', center=False, reduce=False):
+def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5, init_filters='from_data', center=False, reduce=False, locality=5):
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=center, reduce=reduce)
@@ -45,6 +45,10 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     elif wl == 'rf' or wl == 'random_filters':
         weak_learner = RandomFilters(n_filters=n_filters, kernel_size=(kernel_size, kernel_size), init_filters=init_filters)
         filename += f'-nf={n_filters}-ks={kernel_size}-{init_filters}'
+    elif wl == 'lcds' or 'local-convolution_decision-stump':
+        weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(kernel_size, kernel_size), init_filters=init_filters, locality=locality)
+        filename += f'-nf={n_filters}-ks={kernel_size}-loc={locality}-{init_filters}'
+        kwargs['n_jobs'] = n_jobs
     logging.info(f'Weak learner: {type(weak_learner).__name__}')
 
     ### Callbacks
