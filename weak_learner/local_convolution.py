@@ -134,7 +134,7 @@ class LocalConvolution(_WeakLearnerBase):
             i = np.random.randint(i_max)
             j = np.random.randint(j_max)
 
-            weights = x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]]
+            weights = x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]].clone()
             conv_filter.weight = torch.nn.Parameter(torch.Tensor(torch.unsqueeze(weights, dim=1)))
             conv_filter.weight.requires_grad = False
 
@@ -148,7 +148,7 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 1_000
+    m = 10_000
     Xtr, Ytr = Xtr[:m], Ytr[:m]
 
     # init_filters = 'random'
