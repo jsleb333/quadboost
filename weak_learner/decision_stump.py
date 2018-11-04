@@ -31,7 +31,7 @@ class MulticlassDecisionStump(_WeakLearnerBase):
 
         Returns self
         """
-        if self.encoder != None:
+        if self.encoder is not None:
             Y, W = self.encoder.encode_labels(Y)
         if sorted_X is None or sorted_X_idx is None:
             sorted_X, sorted_X_idx = self.sort_data(X)

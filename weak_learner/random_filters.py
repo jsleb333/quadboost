@@ -37,11 +37,11 @@ class RandomFilters(_WeakLearnerBase):
             n_filters (int, optional): Number of filters.
             kernel_size ((int, int), optional): Size of the filters.
             init_filters (str, either 'random' or 'from_data'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are taken as patches from the data, uniformly drawn.
-            locality (int, optional): Applies the filters locally around the place where the patch was taken from the picture. Only applies if 'init_filters' is 'from_data'. For example, locality=2 will convolute the filter only ±2 pixels translated to yield 9 values. If locality=-1, all the picture is convoluted.
         """
         self.encoder = encoder
         self.n_filters = n_filters
         self.kernel_size = kernel_size
+
         if init_filters == 'random':
             self.init_filters = None # Already random by default
         elif init_filters == 'from_data':
@@ -101,7 +101,7 @@ class RandomFilters(_WeakLearnerBase):
         i_max = X.shape[-2] - self.kernel_size[0] + 1
         j_max = X.shape[-1] - self.kernel_size[1] + 1
 
-        for i in range(self.n_filters):
+        for _ in range(self.n_filters):
             x = X[np.random.randint(n_examples)]
             i = np.random.randint(i_max)
             j = np.random.randint(j_max)
@@ -122,29 +122,13 @@ def main():
     m = 1_000
     Xtr, Ytr = Xtr[:m], Ytr[:m]
 
-    # init_filters='from_data'
-    # print(init_filters)
-    # tr_acc = []
-    # val_acc = []
-    # for i in range(100):
-    #     wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
-    #     tr_acc.append(wl.evaluate(Xtr, Ytr))
-    #     val_acc.append(wl.evaluate(Xts, Yts))
-
-    #     print(f'mean train acc: {np.mean(tr_acc):4f}. mean valid acc: {np.mean(val_acc):4f} on {i} trials.', end='\r')
-    # print('\n')
-
-    init_filters='random'
-    print(init_filters)
-    tr_acc = []
-    val_acc = []
-    for i in range(100):
-        wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
-        tr_acc.append(wl.evaluate(Xtr, Ytr))
-        val_acc.append(wl.evaluate(Xts, Yts))
-
-        print(f'mean train acc: {np.mean(tr_acc):4f}. mean valid acc: {np.mean(val_acc):4f} on {i} trials.', end='\r')
-    print('\n')
+    # init_filters = 'random'
+    init_filters='from_data'
+    print('RandomFilters')
+    
+    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
+    print('Train acc', wl.evaluate(Xtr, Ytr))
+    print('Test acc', wl.evaluate(Xts, Yts))
 
 
 if __name__ == '__main__':
