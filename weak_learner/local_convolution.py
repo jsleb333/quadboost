@@ -31,9 +31,7 @@ class Filters(nn.Module):
         self.pad = nn.ZeroPad2d(locality)
 
     def forward(self, X):
-        print(X.shape)
         X = self.pad(X)
-        print(X.shape)
 
         output = []
         for conv_filter, (i, j) in zip(self.conv_filters, self.positions):
@@ -158,7 +156,6 @@ def main():
 
     wl = LocalConvolution(weak_learner=Ridge(), n_filters=10, encoder=encoder, init_filters=init_filters, locality=5).fit(Xtr, Ytr)
     # wl = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, encoder=encoder, init_filters=init_filters, locality=3).fit(Xtr, Ytr)
-    print(wl.filters.positions)
     print('Train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
