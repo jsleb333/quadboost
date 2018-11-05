@@ -92,7 +92,6 @@ class LocalConvolution(_WeakLearnerBase):
 
             self.filters = Filters(self.n_filters, self.kernel_size, self.locality)
             if self.init_filters: self.init_filters(X=X)
-            print(self.init_filters)
             random_feat = self.filters(X)
 
         with warnings.catch_warnings():
@@ -174,15 +173,4 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    # main()
-
-    import pickle as pkl
-    l = LocalConvolution(init_filters='from_data')
-    print('l', 'init_filters:', l.init_filters)
-    with open('test/test.pkl', 'wb') as file:
-        pkl.dump(l, file)
-    with open('test/test.pkl', 'rb') as file:
-        k = pkl.load(file)
-
-    k = l()
-    print('k', 'init_filters:', k.init_filters)
+    main()

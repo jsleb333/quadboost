@@ -274,7 +274,6 @@ class QuadBoostMHAlgorithm(_QuadBoostAlgorithm):
 
 class QuadBoostMHCRAlgorithm(_QuadBoostAlgorithm):
     def __init__(self, *args, dampening=1, **kwargs):
-
         """
         Args:
             dampening (float in ]0,1] ): Dampening factor to weight the weak predictors. Serves to slow the convergence of the algorithm so it can boost longer.
@@ -309,7 +308,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 1_0
+    m = 1_00
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -352,7 +351,7 @@ def main():
     qb = QuadBoostMHCR.load('results/test_3.ckpt')
     qb.resume_fit(Xtr[:m], Ytr[:m],
                   X_val=Xts, Y_val=Yts,
-                  max_round_number=40,
+                  max_round_number=10,
                 #   n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
                   )
 if __name__ == '__main__':
