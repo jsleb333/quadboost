@@ -90,7 +90,6 @@ class _QuadBoost:
         return self
 
     def _fit(self, X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs):
-
         encoded_Y_pred = self.predict_encoded(X)
         encoded_Y_val_pred = self.predict_encoded(X_val) if X_val is not None else None
 
