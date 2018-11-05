@@ -43,7 +43,9 @@ class Filters(nn.Module):
             output.append(self.maxpool(conv_filter(local_X)))
 
         output = torch.cat(output, dim=1)
-        return output.numpy().reshape((X.shape[0], -1))
+        output = output.numpy()
+
+        return output.reshape((X.shape[0], -1))
 
 
 class LocalConvolution(_WeakLearnerBase):
@@ -90,7 +92,7 @@ class LocalConvolution(_WeakLearnerBase):
 
             self.filters = Filters(self.n_filters, self.kernel_size, self.locality)
             if self.init_filters: self.init_filters(X=X)
-
+            print(self.init_filters)
             random_feat = self.filters(X)
 
         with warnings.catch_warnings():
@@ -116,8 +118,9 @@ class LocalConvolution(_WeakLearnerBase):
         Args:
             X (Array of shape (n_examples, ...)): Examples to predict.
         """
-        X = self._format_X(X)
-        random_feat = self.filters(X)
+        with torch.no_grad():
+            X = self._format_X(X)
+            random_feat = self.filters(X)
 
         return self.weak_learner.predict(random_feat)
 
@@ -171,4 +174,15 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    main()
+    # main()
+
+    import pickle as pkl
+    l = LocalConvolution(init_filters='from_data')
+    print('l', 'init_filters:', l.init_filters)
+    with open('test/test.pkl', 'wb') as file:
+        pkl.dump(l, file)
+    with open('test/test.pkl', 'rb') as file:
+        k = pkl.load(file)
+
+    k = l()
+    print('k', 'init_filters:', k.init_filters)
