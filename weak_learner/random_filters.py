@@ -58,14 +58,15 @@ class RandomFilters(_WeakLearnerBase):
 
         Returns self.
         """
-        if self.encoder is not None:
-            Y, W = self.encoder.encode_labels(Y)
-        X = self._format_X(X)
+        with torch.no_grad():
+            if self.encoder is not None:
+                Y, W = self.encoder.encode_labels(Y)
+            X = self._format_X(X)
 
-        self.filters = Filters(self.n_filters, self.kernel_size)
-        if self.init_filters: self.init_filters(X=X)
+            self.filters = Filters(self.n_filters, self.kernel_size)
+            if self.init_filters: self.init_filters(X=X)
 
-        random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
+            random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore') # Ignore ill-defined matrices
@@ -125,7 +126,7 @@ def main():
     # init_filters = 'random'
     init_filters='from_data'
     print('RandomFilters')
-    
+
     wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
     print('Train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
