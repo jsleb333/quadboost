@@ -37,12 +37,12 @@ class RandomFilters(_WeakLearnerBase):
             n_filters (int, optional): Number of filters.
             kernel_size ((int, int), optional): Size of the filters.
             init_filters (str, either 'random' or 'from_data'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are taken as patches from the data, uniformly drawn.
-            filter_normalization (str or None, either 'c', 'r' or 'cr'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduces (i.e. of euclidean norm 1) and if 'cr', they will be both.
+            filter_normalization (str or None, either 'c', 'r', 'n', 'cr' or 'cn'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduced (i.e. of unit standard deviation), if 'n' they will be normalized (i.e. of unit euclidean norm) and 'cr' and 'cn' are combinations. If 'n' combined with 'r', the 'r' flag prevails.
         """
         self.encoder = encoder
         self.n_filters = n_filters
         self.kernel_size = kernel_size
-        self.filter_normalization = filter_normalization
+        self.filter_normalization = filter_normalization or ''
 
         if init_filters == 'random':
             self.init_filters = None # Already random by default
@@ -110,13 +110,14 @@ class RandomFilters(_WeakLearnerBase):
             i = np.random.randint(i_max)
             j = np.random.randint(j_max)
 
-            weight = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]])
-            if filter_normalization:
-                if 'c' in filter_normalization:
-                    weight -= torch.sum(weight)
-                if 'r' in filter_normalization:
-                    weight /= torch.norm(weight, p=2)
-            print(weight, torch.sum(weight))
+            weight = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]], requires_grad=False)
+            if 'c' in filter_normalization:
+                weight -= torch.mean(weight)
+            if 'n' in filter_normalization:
+                weight /= torch.norm(weight, p=2)
+            if 'r' in filter_normalization:
+                weight /= torch.std(weight)
+            print(torch.sum(weight), torch.norm(weight, p=2), torch.std(weight))
 
             weights.append(weight)
 
@@ -138,7 +139,7 @@ def main():
     init_filters='from_data'
     print('RandomFilters')
     
-    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters, filter_normalization=None).fit(Xtr, Ytr)
+    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters, filter_normalization='cn').fit(Xtr, Ytr)
     print('Train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
