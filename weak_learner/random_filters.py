@@ -117,7 +117,6 @@ class RandomFilters(_WeakLearnerBase):
                 weight /= torch.norm(weight, p=2)
             if 'r' in filter_normalization:
                 weight /= torch.std(weight)
-            print(torch.sum(weight), torch.norm(weight, p=2), torch.std(weight))
 
             weights.append(weight)
 
