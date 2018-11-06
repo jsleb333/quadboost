@@ -11,9 +11,16 @@ class _WeakLearnerBase:
         This constructor class makes any weak learners clonable by setting the __call__ function as a constructor using the initialization parameters.
         This class, to be inherited, acts like a decorator around the constructor, but without the inconveniences of decorators (with pickling).
         """
-        def clone(self): return cls(*args, **kwargs)
+        def clone(self):
+            return cls(*self.init_args, **self.init_kwargs)
         cls.__call__ = clone
-        return super().__new__(cls)
+
+        new_weak_learner = super().__new__(cls)
+
+        new_weak_learner.init_args = args
+        new_weak_learner.init_kwargs = kwargs
+
+        return new_weak_learner
 
     def __init__(self, *args, encoder=None, **kwargs):
         self.encoder = encoder

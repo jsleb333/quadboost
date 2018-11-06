@@ -90,7 +90,6 @@ class _QuadBoost:
         return self
 
     def _fit(self, X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs):
-
         encoded_Y_pred = self.predict_encoded(X)
         encoded_Y_val_pred = self.predict_encoded(X_val) if X_val is not None else None
 
@@ -123,7 +122,6 @@ class _QuadBoost:
                 self.callbacks.append(BreakOnMaxStepCallback(max_round_number))
 
         encoded_Y, weights = self.encoder.encode_labels(Y)
-
         residue = encoded_Y - self.f0 - self.predict_encoded(X)
 
         self._fit(X, Y, residue, weights, X_val, Y_val, **weak_learner_fit_kwargs)
@@ -276,7 +274,6 @@ class QuadBoostMHAlgorithm(_QuadBoostAlgorithm):
 
 class QuadBoostMHCRAlgorithm(_QuadBoostAlgorithm):
     def __init__(self, *args, dampening=1, **kwargs):
-
         """
         Args:
             dampening (float in ]0,1] ): Dampening factor to weight the weak predictors. Serves to slow the convergence of the algorithm so it can boost longer.
@@ -311,7 +308,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 10_000
+    m = 1_00
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -343,18 +340,20 @@ def main():
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=1)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=None, patience=10,
+    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
             # n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
             )
+    print(qb.evaluate(Xtr[:m],Ytr[:m]))
+    print(qb.predict(Xtr[:m]), Ytr[:m])
     ### Or resume fitting a model
-    # qb = QuadBoostMHCR.load('results/test_dampening=.9_12.ckpt')
-    # qb.resume_fit(Xtr[:m], Ytr[:m],
-    #               X_val=Xts, Y_val=Yts,
-    #               max_round_number=40,
-    #             #   n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
-    #               )
+    qb = QuadBoostMHCR.load('results/test_3.ckpt')
+    qb.resume_fit(Xtr[:m], Ytr[:m],
+                  X_val=Xts, Y_val=Yts,
+                  max_round_number=10,
+                #   n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
+                  )
 if __name__ == '__main__':
     import logging
     logging.basicConfig(level=logging.INFO, style='{', format='[{levelname}] {message}')

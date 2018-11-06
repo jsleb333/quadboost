@@ -21,7 +21,7 @@ class Filters(nn.Module):
         in_ch, out_ch = 1, 1
 
         self.conv_filters = [nn.Conv2d(in_ch, out_ch, kernel_size) for _ in range(n_filters)]
-        
+
         for conv_filter in self.conv_filters:
             for param in conv_filter.parameters():
                 nn.init.normal_(param)
@@ -43,7 +43,9 @@ class Filters(nn.Module):
             output.append(self.maxpool(conv_filter(local_X)))
 
         output = torch.cat(output, dim=1)
-        return output.numpy().reshape((X.shape[0], -1))
+        output = output.numpy()
+
+        return output.reshape((X.shape[0], -1))
 
 
 class LocalConvolution(_WeakLearnerBase):
@@ -83,14 +85,14 @@ class LocalConvolution(_WeakLearnerBase):
 
         Returns self.
         """
-        if self.encoder is not None:
-            Y, W = self.encoder.encode_labels(Y)
-        X = self._format_X(X)
+        with torch.no_grad():
+            if self.encoder is not None:
+                Y, W = self.encoder.encode_labels(Y)
+            X = self._format_X(X)
 
-        self.filters = Filters(self.n_filters, self.kernel_size, self.locality)
-        if self.init_filters: self.init_filters(X=X)
-
-        random_feat = self.filters(X)
+            self.filters = Filters(self.n_filters, self.kernel_size, self.locality)
+            if self.init_filters: self.init_filters(X=X)
+            random_feat = self.filters(X)
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore') # Ignore ill-defined matrices
@@ -115,8 +117,9 @@ class LocalConvolution(_WeakLearnerBase):
         Args:
             X (Array of shape (n_examples, ...)): Examples to predict.
         """
-        X = self._format_X(X)
-        random_feat = self.filters(X)
+        with torch.no_grad():
+            X = self._format_X(X)
+            random_feat = self.filters(X)
 
         return self.weak_learner.predict(random_feat)
 
@@ -134,8 +137,8 @@ class LocalConvolution(_WeakLearnerBase):
             i = np.random.randint(i_max)
             j = np.random.randint(j_max)
 
-            weights = x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]].clone()
-            conv_filter.weight = torch.nn.Parameter(torch.Tensor(torch.unsqueeze(weights, dim=1)))
+            weights = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]], requires_grad=False)
+            conv_filter.weight = torch.nn.Parameter(torch.unsqueeze(weights, dim=1))
             conv_filter.weight.requires_grad = False
 
             self.filters.positions.append((i,j))
@@ -148,15 +151,15 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 10_000
+    m = 60_000
     Xtr, Ytr = Xtr[:m], Ytr[:m]
 
     # init_filters = 'random'
     init_filters='from_data'
     print('LocalConvolution')
 
-    wl = LocalConvolution(weak_learner=Ridge(), n_filters=10, encoder=encoder, init_filters=init_filters, locality=5).fit(Xtr, Ytr)
-    # wl = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, encoder=encoder, init_filters=init_filters, locality=3).fit(Xtr, Ytr)
+    # wl = LocalConvolution(weak_learner=Ridge(), n_filters=10, encoder=encoder, init_filters=init_filters, locality=5).fit(Xtr, Ytr)
+    wl = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, encoder=encoder, init_filters=init_filters, locality=3).fit(Xtr, Ytr)
     print('Train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
