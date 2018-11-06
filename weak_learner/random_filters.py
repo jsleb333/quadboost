@@ -30,17 +30,19 @@ class RandomFilters(_WeakLearnerBase):
     """
     This weak learner is takes random filters and convolutes the dataset with them. It then applies a non-linearity on the resulting random features and makes a Ridge regression as final classifier.
     """
-    def __init__(self, encoder=None, n_filters=2, kernel_size=(5,5), init_filters='random'):
+    def __init__(self, encoder=None, n_filters=2, kernel_size=(5,5), init_filters='random', filter_normalization=None):
         """
         Args:
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
             n_filters (int, optional): Number of filters.
             kernel_size ((int, int), optional): Size of the filters.
             init_filters (str, either 'random' or 'from_data'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are taken as patches from the data, uniformly drawn.
+            filter_normalization (str or None, either 'c', 'r' or 'cr'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduces (i.e. of euclidean norm 1) and if 'cr', they will be both.
         """
         self.encoder = encoder
         self.n_filters = n_filters
         self.kernel_size = kernel_size
+        self.filter_normalization = filter_normalization
 
         if init_filters == 'random':
             self.init_filters = None # Already random by default
@@ -63,7 +65,7 @@ class RandomFilters(_WeakLearnerBase):
         X = self._format_X(X)
 
         self.filters = Filters(self.n_filters, self.kernel_size)
-        if self.init_filters: self.init_filters(X=X)
+        if self.init_filters: self.init_filters(X=X, filter_normalization=self.filter_normalization)
 
         random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
 
@@ -92,7 +94,7 @@ class RandomFilters(_WeakLearnerBase):
 
         return self._classifier.predict(random_feat)
 
-    def pick_from_dataset(self, X, **kwargs):
+    def pick_from_dataset(self, X, filter_normalization=None, **kwargs):
         """
         Assumes X is a torch tensor with shape (n_examples, n_channels, width, height).
         """
@@ -106,7 +108,15 @@ class RandomFilters(_WeakLearnerBase):
             i = np.random.randint(i_max)
             j = np.random.randint(j_max)
 
-            weights.append(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]])
+            weight = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]])
+            if filter_normalization:
+                if 'c' in filter_normalization:
+                    weight -= torch.sum(weight)
+                if 'r' in filter_normalization:
+                    weight /= torch.norm(weight, p=2)
+            print(weight, torch.sum(weight))
+
+            weights.append(weight)
 
         self.filters.conv.weight = torch.nn.Parameter(torch.unsqueeze(torch.cat(weights), dim=1))
         self.filters.conv.weight.requires_grad = False
@@ -126,7 +136,7 @@ def main():
     init_filters='from_data'
     print('RandomFilters')
     
-    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
+    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters, filter_normalization=None).fit(Xtr, Ytr)
     print('Train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
