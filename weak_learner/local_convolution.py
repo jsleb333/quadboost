@@ -14,51 +14,49 @@ from utils import timed
 
 
 class Filters(nn.Module):
-    def __init__(self, n_filters, kernel_size, locality=0):
+    def __init__(self, kernel_size=(5,5), maxpool=3):
         super().__init__()
         self.kernel_size = kernel_size
-        self.locality = locality
         in_ch, out_ch = 1, 1
 
-        self.conv_filters = [nn.Conv2d(in_ch, out_ch, kernel_size) for _ in range(n_filters)]
+        self.conv = nn.Conv2d(in_ch, out_ch, kernel_size)
 
-        for conv_filter in self.conv_filters:
-            for param in conv_filter.parameters():
-                nn.init.normal_(param)
-                param.requires_grad = False
+        for param in conv_filter.parameters():
+            nn.init.normal_(param)
+            param.requires_grad = False
 
-        self.maxpool = nn.MaxPool2d((locality, locality))
-        self.pad = nn.ZeroPad2d(locality)
+        self.maxpool = nn.MaxPool2d((maxpool, maxpool))
 
     def forward(self, X):
-        padded_X = self.pad(X)
+        return self.maxpool(self.conv(X)).reshape((X.shape[0], 1, -1))
 
-        output = []
-        for conv_filter, (i, j) in zip(self.conv_filters, self.positions):
-            i_min = i
-            j_min = j
-            i_max = i + self.kernel_size[0] + 2*self.locality
-            j_max = j + self.kernel_size[1] + 2*self.locality
-            local_X = padded_X[:,:,i_min:i_max, j_min:j_max]
-            output.append(self.maxpool(conv_filter(local_X)))
 
-        output = torch.cat(output, dim=1).numpy()
+        # output = []
+        # for conv_filter, (i, j) in zip(self.conv_filters, self.positions):
+        #     i_min = i
+        #     j_min = j
+        #     i_max = i + self.kernel_size[0] + 2*self.locality
+        #     j_max = j + self.kernel_size[1] + 2*self.locality
+        #     local_X = padded_X[:,:,i_min:i_max, j_min:j_max]
+        #     output.append(self.maxpool(conv_filter(local_X)))
 
-        return output.reshape((X.shape[0], -1))
+        # output = torch.cat(output, dim=1).numpy()
+
+        # return output.reshape((X.shape[0], -1))
 
 
 class LocalConvolution(_WeakLearnerBase):
     """
     This weak learner is takes random filters and convolutes locally the dataset with them. It then applies a non-linearity on the resulting random features and fits a weak_learner on these new random features as final classifier.
     """
-    def __init__(self, encoder=None, weak_learner=Ridge, n_filters=2, kernel_size=(5,5), init_filters='random', locality=0):
+    def __init__(self, encoder=None, weak_learner=Ridge, n_filters=2, kernel_size=(5,5), init_filters='from_data', locality=0):
         """
         Args:
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
             weak_learner (Class that defines the 'fit' and 'predict' methods or object instance that inherits from _WeakLearnerBase, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
             n_filters (int, optional): Number of filters.
             kernel_size ((int, int), optional): Size of the filters.
-            init_filters (str, either 'random' or 'from_data'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are taken as patches from the data, uniformly drawn.
+            init_filters (str, only 'from_data' for now): Choice of initialization of the filters weights. If 'from_data', the weights are taken as patches from the data, uniformly drawn.
             locality (int, optional): Applies the filters locally around the place where the patch was taken from the picture. Only applies if 'init_filters' is 'from_data'. For example, locality=2 will convolute the filter only ±2 pixels translated to yield 9 values.
         """
         self.encoder = encoder
@@ -89,9 +87,10 @@ class LocalConvolution(_WeakLearnerBase):
                 Y, W = self.encoder.encode_labels(Y)
             X = self._format_X(X)
 
-            self.filters = Filters(self.n_filters, self.kernel_size, self.locality)
-            if self.init_filters: self.init_filters(X=X)
-            random_feat = self.filters(X)
+            self.filters = [Filter(self.kernel_size) for _ in range(self.n_filters)]
+
+
+            random_feat = self._apply_filter(X)
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore') # Ignore ill-defined matrices
@@ -111,6 +110,14 @@ class LocalConvolution(_WeakLearnerBase):
             X = torch.unsqueeze(X, dim=1)
         return X
 
+    def _apply_filter(self, X):
+        random_feat = []
+        for filt in self.filters:
+            random_feat.append(filt(X))
+            self.init_filter(X=X, conv_filter=filt)
+
+        return torch.cat(random_feat, dim=1).numpy().reshape((X.shape[0], -1))
+
     def predict(self, X):
         """
         Predicts the label of the sample X.
@@ -124,7 +131,7 @@ class LocalConvolution(_WeakLearnerBase):
 
         return self.weak_learner.predict(random_feat)
 
-    def pick_from_dataset(self, X, **kwargs):
+    def pick_from_dataset(self, X, conv_filter, **kwargs):
         """
         Assumes X is a torch tensor with shape (n_examples, n_channels, width, height).
         """
@@ -132,7 +139,15 @@ class LocalConvolution(_WeakLearnerBase):
         i_max = X.shape[-2] - self.kernel_size[0] + 1
         j_max = X.shape[-1] - self.kernel_size[1] + 1
 
-        self.filters.positions = []
+        x = X[np.random.randint(n_examples)]
+        i = np.random.randint(i_max)
+        j = np.random.randint(j_max)
+
+        weights = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]], requires_grad=False)
+        conv_filter.weight = torch.nn.Parameter(torch.unsqueeze(weights, dim=1))
+        conv_filter.weight.requires_grad = False
+
+        self.positions.append
         for conv_filter in self.filters.conv_filters:
             x = X[np.random.randint(n_examples)]
             i = np.random.randint(i_max)
