@@ -10,7 +10,7 @@ import logging
 
 @timed
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5, init_filters='from_data', center=False, reduce=False, locality=5):
+def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5, init_filters='from_data', center=False, reduce=False, locality=5, fn=''):
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=center, reduce=reduce)
@@ -43,8 +43,10 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     elif wl == 'ridge':
         weak_learner = WLThresholdedRidge(threshold=.5)
     elif wl == 'rf' or wl == 'random_filters':
-        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=(kernel_size, kernel_size), init_filters=init_filters)
+        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=(kernel_size, kernel_size), init_filters=init_filters, filter_normalization=fn)
         filename += f'-nf={n_filters}-ks={kernel_size}-{init_filters}'
+        if fn:
+            filename += f'_{fn}'
     elif wl == 'lcds' or 'local-convolution_decision-stump':
         weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(kernel_size, kernel_size), init_filters=init_filters, locality=locality)
         filename += f'-nf={n_filters}-ks={kernel_size}-loc={locality}-{init_filters}'
