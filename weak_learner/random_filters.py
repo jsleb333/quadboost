@@ -121,13 +121,13 @@ def main():
     encoder = OneHotEncoder(Ytr)
 
     m = 1_000
-    Xtr, Ytr = Xtr[:m], Ytr[:m]
 
     # init_filters = 'random'
     init_filters='from_data'
     print('RandomFilters')
 
-    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
+    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr[:m], Ytr[:m])
+    print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
     print('Train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 

@@ -308,7 +308,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 1_00
+    m = 1_000
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -343,15 +343,13 @@ def main():
     qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
-            # n_jobs=4, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
+            # n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
             )
-    print(qb.evaluate(Xtr[:m],Ytr[:m]))
-    print(qb.predict(Xtr[:m]), Ytr[:m])
     ### Or resume fitting a model
     qb = QuadBoostMHCR.load('results/test_3.ckpt')
     qb.resume_fit(Xtr[:m], Ytr[:m],
                   X_val=Xts, Y_val=Yts,
-                  max_round_number=10,
+                  max_round_number=5,
                 #   n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
                   )
 if __name__ == '__main__':

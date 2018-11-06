@@ -31,7 +31,7 @@ class Filters(nn.Module):
         self.pad = nn.ZeroPad2d(locality)
 
     def forward(self, X):
-        X = self.pad(X)
+        padded_X = self.pad(X)
 
         output = []
         for conv_filter, (i, j) in zip(self.conv_filters, self.positions):
@@ -39,11 +39,10 @@ class Filters(nn.Module):
             j_min = j
             i_max = i + self.kernel_size[0] + 2*self.locality
             j_max = j + self.kernel_size[1] + 2*self.locality
-            local_X = X[:,:,i_min:i_max, j_min:j_max]
+            local_X = padded_X[:,:,i_min:i_max, j_min:j_max]
             output.append(self.maxpool(conv_filter(local_X)))
 
-        output = torch.cat(output, dim=1)
-        output = output.numpy()
+        output = torch.cat(output, dim=1).numpy()
 
         return output.reshape((X.shape[0], -1))
 
@@ -52,18 +51,18 @@ class LocalConvolution(_WeakLearnerBase):
     """
     This weak learner is takes random filters and convolutes locally the dataset with them. It then applies a non-linearity on the resulting random features and fits a weak_learner on these new random features as final classifier.
     """
-    def __init__(self, encoder=None, weak_learner=Ridge(), n_filters=2, kernel_size=(5,5), init_filters='random', locality=0):
+    def __init__(self, encoder=None, weak_learner=Ridge, n_filters=2, kernel_size=(5,5), init_filters='random', locality=0):
         """
         Args:
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
-            weak_learner (Object that defines the 'fit' and 'predict' methods, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
+            weak_learner (Class that defines the 'fit' and 'predict' methods or object instance that inherits from _WeakLearnerBase, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
             n_filters (int, optional): Number of filters.
             kernel_size ((int, int), optional): Size of the filters.
             init_filters (str, either 'random' or 'from_data'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are taken as patches from the data, uniformly drawn.
             locality (int, optional): Applies the filters locally around the place where the patch was taken from the picture. Only applies if 'init_filters' is 'from_data'. For example, locality=2 will convolute the filter only ±2 pixels translated to yield 9 values.
         """
         self.encoder = encoder
-        self.weak_learner = weak_learner
+        self.weak_learner = weak_learner()
         self.n_filters = n_filters
         self.kernel_size = kernel_size
         self.locality = locality
@@ -98,9 +97,11 @@ class LocalConvolution(_WeakLearnerBase):
             warnings.simplefilter('ignore') # Ignore ill-defined matrices
             fit_sig = inspect.signature(self.weak_learner.fit)
             if 'W' in fit_sig.parameters:
-                self.weak_learner.fit(random_feat, Y, W, **weak_learner_kwargs)
+                self.weak_learner.fit(random_feat, Y=Y, W=W, **weak_learner_kwargs)
             else:
                 self.weak_learner.fit(random_feat, Y, **weak_learner_kwargs)
+
+        del random_feat
 
         return self
 
@@ -143,6 +144,8 @@ class LocalConvolution(_WeakLearnerBase):
 
             self.filters.positions.append((i,j))
 
+            del weights
+
 
 @timed
 def main():
@@ -151,15 +154,15 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 60_000
-    Xtr, Ytr = Xtr[:m], Ytr[:m]
+    m = 1_000
 
     # init_filters = 'random'
     init_filters='from_data'
     print('LocalConvolution')
 
-    # wl = LocalConvolution(weak_learner=Ridge(), n_filters=10, encoder=encoder, init_filters=init_filters, locality=5).fit(Xtr, Ytr)
-    wl = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, encoder=encoder, init_filters=init_filters, locality=3).fit(Xtr, Ytr)
+    # wl = LocalConvolution(weak_learner=Ridge, n_filters=10, encoder=encoder, init_filters=init_filters, locality=5).fit(Xtr[:m], Ytr[:m])
+    wl = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, encoder=encoder, init_filters=init_filters, locality=3).fit(Xtr[:m], Ytr[:m])
+    print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
     print('Train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
@@ -168,6 +171,7 @@ if __name__ == '__main__':
     from mnist_dataset import MNISTDataset
     from label_encoder import OneHotEncoder
     from weak_learner import MulticlassDecisionStump
+
 
     seed = 42
     torch.manual_seed(seed)
