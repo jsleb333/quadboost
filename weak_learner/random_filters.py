@@ -137,13 +137,8 @@ def main():
     # init_filters = 'random'
     init_filters='from_data'
     print('RandomFilters')
-<<<<<<< HEAD
     
     wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters, filter_normalization=None).fit(Xtr, Ytr)
-=======
-
-    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters).fit(Xtr, Ytr)
->>>>>>> 3ebfde32af3c7c903d42f446bb87f98a4b2e254a
     print('Train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
