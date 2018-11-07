@@ -47,7 +47,7 @@ class RandomFilters(_WeakLearnerBase):
         if init_filters == 'random':
             self.init_filters = None # Already random by default
         elif init_filters == 'from_data':
-            self.init_filters = self.pick_from_dataset
+            self.init_filters = self.init_from_images
         else:
             raise ValueError(f"'{init_filters} is an invalid init_filters option.")
 
@@ -96,21 +96,13 @@ class RandomFilters(_WeakLearnerBase):
 
         return self._classifier.predict(random_feat)
 
-    def pick_from_dataset(self, X, filter_normalization=None, **kwargs):
+    def init_from_images(self, X, filter_normalization='', **kwargs):
         """
         Assumes X is a torch tensor with shape (n_examples, n_channels, width, height).
         """
         weights = []
-        n_examples = X.shape[0]
-        i_max = X.shape[-2] - self.kernel_size[0] + 1
-        j_max = X.shape[-1] - self.kernel_size[1] + 1
-
         for _ in range(self.n_filters):
-            x = X[np.random.randint(n_examples)]
-            i = np.random.randint(i_max)
-            j = np.random.randint(j_max)
-
-            weight = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]], requires_grad=False)
+            weight = self._draw_from_images(X)
             if 'c' in filter_normalization:
                 weight -= torch.mean(weight)
             if 'n' in filter_normalization:
@@ -122,6 +114,19 @@ class RandomFilters(_WeakLearnerBase):
 
         self.filters.conv.weight = torch.nn.Parameter(torch.unsqueeze(torch.cat(weights), dim=1))
         self.filters.conv.weight.requires_grad = False
+
+    def _draw_from_images(self, X):
+        n_examples = X.shape[0]
+        i_max = X.shape[-2] - self.kernel_size[0]
+        j_max = X.shape[-1] - self.kernel_size[1]
+
+        x = X[np.random.randint(n_examples)]
+        i = np.random.randint(i_max)
+        j = np.random.randint(j_max)
+
+        weights = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]], requires_grad=False)
+
+        return weights
 
 
 @timed
@@ -137,8 +142,9 @@ def main():
     init_filters='from_data'
     print('RandomFilters')
 
-    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters, filter_normalization='cn').fit(Xtr[:m], Ytr[:m])
-    print('Train acc', wl.evaluate(Xtr, Ytr))
+    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters, filter_normalization='c').fit(Xtr[:m], Ytr[:m])
+    print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
+    print('All train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
 
