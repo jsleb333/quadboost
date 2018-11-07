@@ -13,7 +13,7 @@ from weak_learner import _WeakLearnerBase
 from utils import timed
 
 
-class Filters(nn.Module):
+class Filter(nn.Module):
     def __init__(self, kernel_size=(5,5), maxpool=3):
         super().__init__()
         self.kernel_size = kernel_size
@@ -21,28 +21,16 @@ class Filters(nn.Module):
 
         self.conv = nn.Conv2d(in_ch, out_ch, kernel_size)
 
-        for param in conv_filter.parameters():
-            nn.init.normal_(param)
+        for param in self.conv.parameters():
+            nn.init.constant_(param, 0)
             param.requires_grad = False
 
         self.maxpool = nn.MaxPool2d((maxpool, maxpool))
 
     def forward(self, X):
-        return self.maxpool(self.conv(X)).reshape((X.shape[0], 1, -1))
-
-
-        # output = []
-        # for conv_filter, (i, j) in zip(self.conv_filters, self.positions):
-        #     i_min = i
-        #     j_min = j
-        #     i_max = i + self.kernel_size[0] + 2*self.locality
-        #     j_max = j + self.kernel_size[1] + 2*self.locality
-        #     local_X = padded_X[:,:,i_min:i_max, j_min:j_max]
-        #     output.append(self.maxpool(conv_filter(local_X)))
-
-        # output = torch.cat(output, dim=1).numpy()
-
-        # return output.reshape((X.shape[0], -1))
+        output = self.conv(X)
+        output = self.maxpool(output)
+        return output.reshape((X.shape[0], -1))
 
 
 class LocalConvolution(_WeakLearnerBase):
@@ -65,10 +53,8 @@ class LocalConvolution(_WeakLearnerBase):
         self.kernel_size = kernel_size
         self.locality = locality
 
-        if init_filters == 'random':
-            self.init_filters = None # Already random by default
-        elif init_filters == 'from_data':
-            self.init_filters = self.pick_from_dataset
+        if init_filters == 'from_data':
+            self.init_filters = self.init_from_images
         else:
             raise ValueError(f"'{init_filters} is an invalid init_filters option.")
 
@@ -85,12 +71,12 @@ class LocalConvolution(_WeakLearnerBase):
         with torch.no_grad():
             if self.encoder is not None:
                 Y, W = self.encoder.encode_labels(Y)
-            X = self._format_X(X)
+            formatted_X = self._format_X(X)
 
             self.filters = [Filter(self.kernel_size) for _ in range(self.n_filters)]
+            self.init_filters(X=formatted_X)
 
-
-            random_feat = self._apply_filter(X)
+            random_feat = self._apply_filters(formatted_X)
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore') # Ignore ill-defined matrices
@@ -100,8 +86,6 @@ class LocalConvolution(_WeakLearnerBase):
             else:
                 self.weak_learner.fit(random_feat, Y, **weak_learner_kwargs)
 
-        del random_feat
-
         return self
 
     def _format_X(self, X):
@@ -110,13 +94,19 @@ class LocalConvolution(_WeakLearnerBase):
             X = torch.unsqueeze(X, dim=1)
         return X
 
-    def _apply_filter(self, X):
+    def _apply_filters(self, X):
+        height, width = X.shape[-2:]
         random_feat = []
         for filt in self.filters:
-            random_feat.append(filt(X))
-            self.init_filter(X=X, conv_filter=filt)
+            i, j = filt.position
+            i_min = max(i - self.locality, 0)
+            j_min = max(j - self.locality, 0)
+            i_max = min(i + self.kernel_size[0] + self.locality, height)
+            j_max = min(j + self.kernel_size[1] + self.locality, width)
+            local_X = X[:,:,i_min:i_max, j_min:j_max]
+            random_feat.append(filt(local_X))
 
-        return torch.cat(random_feat, dim=1).numpy().reshape((X.shape[0], -1))
+        return torch.cat(random_feat, dim=1).numpy()
 
     def predict(self, X):
         """
@@ -126,40 +116,34 @@ class LocalConvolution(_WeakLearnerBase):
             X (Array of shape (n_examples, ...)): Examples to predict.
         """
         with torch.no_grad():
-            X = self._format_X(X)
-            random_feat = self.filters(X)
+            formatted_X = self._format_X(X)
+            random_feat = self._apply_filters(formatted_X)
 
         return self.weak_learner.predict(random_feat)
 
-    def pick_from_dataset(self, X, conv_filter, **kwargs):
+    def init_from_images(self, X, **kwargs):
         """
         Assumes X is a torch tensor with shape (n_examples, n_channels, width, height).
         """
+        for conv_filter in self.filters:
+            weights, position = self._draw_from_images(X)
+            conv_filter.conv.weight = torch.nn.Parameter(torch.unsqueeze(weights, dim=1))
+            conv_filter.conv.weight.requires_grad = False
+            conv_filter.position = position
+
+    def _draw_from_images(self, X):
         n_examples = X.shape[0]
-        i_max = X.shape[-2] - self.kernel_size[0] + 1
-        j_max = X.shape[-1] - self.kernel_size[1] + 1
+        i_max = X.shape[-2] - self.kernel_size[0]
+        j_max = X.shape[-1] - self.kernel_size[1]
 
         x = X[np.random.randint(n_examples)]
         i = np.random.randint(i_max)
         j = np.random.randint(j_max)
+        position = (i, j)
 
         weights = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]], requires_grad=False)
-        conv_filter.weight = torch.nn.Parameter(torch.unsqueeze(weights, dim=1))
-        conv_filter.weight.requires_grad = False
 
-        self.positions.append
-        for conv_filter in self.filters.conv_filters:
-            x = X[np.random.randint(n_examples)]
-            i = np.random.randint(i_max)
-            j = np.random.randint(j_max)
-
-            weights = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]], requires_grad=False)
-            conv_filter.weight = torch.nn.Parameter(torch.unsqueeze(weights, dim=1))
-            conv_filter.weight.requires_grad = False
-
-            self.filters.positions.append((i,j))
-
-            del weights
+        return weights, position
 
 
 @timed
