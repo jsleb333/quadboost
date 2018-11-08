@@ -44,12 +44,18 @@ class RandomFilters(_WeakLearnerBase):
         self.n_filters = n_filters
         self.kernel_size = kernel_size
         self.filter_normalization = filter_normalization or ''
-        self.filter_bank = filter_bank
 
         if init_filters == 'random':
             self.init_filters = None # Already random by default
-        elif init_filters == 'from_data' or init_filters == 'from_bank':
+
+        elif init_filters == 'from_data':
             self.init_filters = self.init_from_images
+            self.filter_bank = None
+
+        elif init_filters == 'from_bank':
+            self.init_filters = self.init_from_images
+            self.filter_bank = filter_bank
+            
         else:
             raise ValueError(f"'{init_filters} is an invalid init_filters option.")
 
@@ -69,7 +75,7 @@ class RandomFilters(_WeakLearnerBase):
 
             self.filters = Filters(self.n_filters, self.kernel_size)
             if self.init_filters:
-                filter_bank = self.filter_bank or X
+                filter_bank = self.filter_bank if self.filter_bank is not None else X
                 self.init_filters(filter_bank, filter_normalization=self.filter_normalization)
 
             random_feat = self.filters(X).numpy().reshape((X.shape[0], -1))
@@ -81,7 +87,8 @@ class RandomFilters(_WeakLearnerBase):
         return self
 
     def _format_data(self, data):
-        data = torch.from_numpy(data).float()
+        if type(data) is np.ndarray:
+            data = torch.from_numpy(data).float()
         if len(data.shape) == 3:
             data = torch.unsqueeze(data, dim=1)
         return data
@@ -145,7 +152,12 @@ def main():
     init_filters='from_data'
     print('RandomFilters')
 
-    wl = RandomFilters(n_filters=3, encoder=encoder, init_filters=init_filters, filter_normalization='c').fit(Xtr[:m], Ytr[:m])
+    wl = RandomFilters(n_filters=3,
+                       encoder=encoder,
+                       init_filters=init_filters,
+                       filter_normalization='c',
+                       filter_bank=Xtr[m:2*m]
+                       ).fit(Xtr[:m], Ytr[:m])
     print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
     print('All train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))

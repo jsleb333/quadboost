@@ -299,9 +299,9 @@ class BoostingRound(Step):
 @timed
 def main():
     import torch
-    seed = 42
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    # seed = 42
+    # torch.manual_seed(seed)
+    # np.random.seed(seed)
 
     ### Data loading
     # mnist = MNISTDataset.load('haar_mnist.pkl')
@@ -309,6 +309,7 @@ def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
     m = 1_000
+    X, Y = Xtr[:m], Ytr[:m]
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -320,11 +321,12 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    # weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5), init_filters='from_data')
-    weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, kernel_size=(5,5), init_filters='from_data', locality=5)
+    filter_bank = Xtr[-3000:]
+    weak_learner = RandomFilters(n_filters=1, kernel_size=(5,5), init_filters='from_bank', filter_bank=filter_bank)
+    # weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, kernel_size=(5,5), init_filters='from_data', locality=5)
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
-    # sorted_X, sorted_X_idx = weak_learner.sort_data(Xtr[:m])
+    # sorted_X, sorted_X_idx = weak_learner.sort_data(X)
 
     ### Callbacks
     # filename = 'haar_onehot_ds_'
@@ -340,18 +342,18 @@ def main():
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=1)
-    qb.fit(Xtr[:m], Ytr[:m], max_round_number=3, patience=10,
+    qb.fit(X, Y, max_round_number=3, patience=10,
             X_val=Xts, Y_val=Yts,
             callbacks=callbacks,
             # n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
             )
     ### Or resume fitting a model
-    qb = QuadBoostMHCR.load('results/test_3.ckpt')
-    qb.resume_fit(Xtr[:m], Ytr[:m],
-                  X_val=Xts, Y_val=Yts,
-                  max_round_number=5,
-                #   n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
-                  )
+    # qb = QuadBoostMHCR.load('results/test_3.ckpt')
+    # qb.resume_fit(X, Y,
+    #               X_val=Xts, Y_val=Yts,
+    #               max_round_number=5,
+    #             #   n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
+    #               )
 if __name__ == '__main__':
     import logging
     logging.basicConfig(level=logging.INFO, style='{', format='[{levelname}] {message}')
