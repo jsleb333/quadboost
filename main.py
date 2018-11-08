@@ -1,19 +1,27 @@
-from utils import parse, timed
-from datetime import datetime
-from quadboost import QuadBoostMHCR
-from callbacks import ModelCheckpoint, CSVLogger, BreakOnZeroRiskCallback
-from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
-from mnist_dataset import MNISTDataset
-from weak_learner import *
+import torch
 import logging
+
+from quadboost import QuadBoostMHCR
+from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
+from weak_learner import *
+from callbacks import ModelCheckpoint, CSVLogger, BreakOnZeroRiskCallback
+from mnist_dataset import MNISTDataset
+from utils import parse, timed
 
 
 @timed
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5, init_filters='from_data', center=False, reduce=False, locality=5, fn=''):
+def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5, init_filters='from_data', center=False, reduce=False, locality=5, fn='', seed=0):
+    if seed:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+    
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=center, reduce=reduce)
+    if seed:
+        Xtr, Ytr = np.random.shuffle(Xtr), np.random.shuffle(Ytr)
+    Xtr, Ytr = Xtr[:m], Ytr[:m]
     logging.info(f'Loaded dataset: {dataset} (center: {center}, reduce: {reduce})')
 
     ### Choice of encoder
@@ -33,11 +41,11 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     kwargs = {}
     if wl == 'ds' or wl == 'decision-stump':
         weak_learner = MulticlassDecisionStump()
-        kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr[:m])))
+        kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr)))
         kwargs['n_jobs'] = n_jobs
     elif wl == 'dt' or wl == 'decision-tree':
         weak_learner = MulticlassDecisionTree(max_n_leaves=max_n_leaves)
-        kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr[:m])))
+        kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr)))
         kwargs['n_jobs'] = n_jobs
         filename += f'{max_n_leaves}'
     elif wl == 'ridge':
@@ -69,7 +77,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     if not resume:
         logging.info(f'Beginning fit with max_round_number={max_round} and patience={patience}.')
         qb = QuadBoostMHCR(weak_learner, encoder=encoder)
-        qb.fit(Xtr[:m], Ytr[:m], max_round_number=max_round, patience=patience,
+        qb.fit(Xtr, Ytr, max_round_number=max_round, patience=patience,
                X_val=Xts, Y_val=Yts,
                callbacks=callbacks,
                **kwargs)
@@ -77,7 +85,7 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     else:
         logging.info(f'Resuming fit with max_round_number={max_round}.')
         qb = QuadBoostMHCR.load(f'results/{filename}-{resume}.ckpt')
-        qb.resume_fit(Xtr[:m], Ytr[:m],
+        qb.resume_fit(Xtr, Ytr,
                       X_val=Xts, Y_val=Yts,
                       max_round_number=max_round,
                       **kwargs)
