@@ -299,9 +299,9 @@ class BoostingRound(Step):
 @timed
 def main():
     import torch
-    # seed = 42
-    # torch.manual_seed(seed)
-    # np.random.seed(seed)
+    seed = 42
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
     ### Data loading
     # mnist = MNISTDataset.load('haar_mnist.pkl')

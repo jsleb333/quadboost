@@ -11,7 +11,7 @@ from utils import parse, timed
 
 @timed
 @parse
-def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, max_n_leaves=4, max_round=1000, patience=1000, resume=0, n_filters=3, kernel_size=5, init_filters='from_data', center=False, reduce=False, locality=5, fn='', seed=0):
+def main(m=60_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rf', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -19,9 +19,10 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=center, reduce=reduce)
+    idx = np.arange(m)
     if seed:
-        Xtr, Ytr = np.random.shuffle(Xtr), np.random.shuffle(Ytr)
-    Xtr, Ytr = Xtr[:m], Ytr[:m]
+        np.random.shuffle(idx)
+    Xtr, Ytr = Xtr[idx], Ytr[idx]
     logging.info(f'Loaded dataset: {dataset} (center: {center}, reduce: {reduce})')
 
     ### Choice of encoder
@@ -43,21 +44,37 @@ def main(m=60_000, dataset='haar_mnist', encodings='onehot', wl='dt', n_jobs=1, 
         weak_learner = MulticlassDecisionStump()
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr)))
         kwargs['n_jobs'] = n_jobs
+        
     elif wl == 'dt' or wl == 'decision-tree':
         weak_learner = MulticlassDecisionTree(max_n_leaves=max_n_leaves)
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr)))
         kwargs['n_jobs'] = n_jobs
         filename += f'{max_n_leaves}'
+        
     elif wl == 'ridge':
         weak_learner = WLThresholdedRidge(threshold=.5)
+        
     elif wl == 'rf' or wl == 'random_filters':
-        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=(kernel_size, kernel_size), init_filters=init_filters, filter_normalization=fn)
-        filename += f'-nf={n_filters}-ks={kernel_size}-{init_filters}'
+        filename += f'-nf={n_filters}-ks={ks}-{init_filters}'
+            
+        filter_bank = None
+        if init_filters == 'from_bank':
+            if 0 < bank_ratio < 1:
+                bank_size = int(m*bank_ratio)
+                filter_bank = Xtr[:bank_size]
+                Xtr, Ytr = Xtr[bank_size:], Ytr[bank_size:]
+            else:
+                raise ValueError(f'Invalid bank_size {bank_size}.')
+            filename += f'_br={bank_ratio}'
+
         if fn:
             filename += f'_{fn}'
+
+        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, filter_normalization=fn)
+
     elif wl == 'lcds' or 'local-convolution_decision-stump':
-        weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(kernel_size, kernel_size), init_filters=init_filters, locality=locality)
-        filename += f'-nf={n_filters}-ks={kernel_size}-loc={locality}-{init_filters}'
+        weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
+        filename += f'-nf={n_filters}-ks={ks}-loc={locality}-{init_filters}'
         kwargs['n_jobs'] = n_jobs
     logging.info(f'Weak learner: {type(weak_learner).__name__}')
 
