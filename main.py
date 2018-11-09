@@ -40,12 +40,12 @@ def main(m=60_000, dataset='mnist', center=True, reduce=True, encodings='onehot'
 
     ### Choice of weak learner
     kwargs = {}
-    if wl == 'ds' or wl == 'decision-stump':
+    if wl in ['ds', 'decision-stump']:
         weak_learner = MulticlassDecisionStump()
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr)))
         kwargs['n_jobs'] = n_jobs
         
-    elif wl == 'dt' or wl == 'decision-tree':
+    elif wl in ['dt', 'decision-tree']:
         weak_learner = MulticlassDecisionTree(max_n_leaves=max_n_leaves)
         kwargs = dict(zip(('sorted_X', 'sorted_X_idx'), weak_learner.sort_data(Xtr)))
         kwargs['n_jobs'] = n_jobs
@@ -54,7 +54,7 @@ def main(m=60_000, dataset='mnist', center=True, reduce=True, encodings='onehot'
     elif wl == 'ridge':
         weak_learner = WLThresholdedRidge(threshold=.5)
         
-    elif wl == 'rf' or wl == 'random_filters':
+    elif wl in ['rf', 'random_filters']:
         filename += f'-nf={n_filters}-ks={ks}-{init_filters}'
             
         filter_bank = None
@@ -72,10 +72,14 @@ def main(m=60_000, dataset='mnist', center=True, reduce=True, encodings='onehot'
 
         weak_learner = RandomFilters(n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, filter_normalization=fn)
 
-    elif wl == 'lcds' or 'local-convolution_decision-stump':
+    elif wl in ['lcds', 'local-convolution_decision-stump']:
         weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
         filename += f'-nf={n_filters}-ks={ks}-loc={locality}-{init_filters}'
         kwargs['n_jobs'] = n_jobs
+
+    elif wl in ['lcridge', 'local-convolution_ridge']:
+        weak_learner = LocalConvolution(weak_learner=Ridge, n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
+        filename += f'-nf={n_filters}-ks={ks}-loc={locality}-{init_filters}'
     logging.info(f'Weak learner: {type(weak_learner).__name__}')
 
     ### Callbacks
