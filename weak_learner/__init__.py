@@ -6,6 +6,7 @@ try:
     from weak_learner.decision_stump import MulticlassDecisionStump
     from weak_learner.decision_tree import MulticlassDecisionTree
     from weak_learner.local_convolution import LocalConvolution
+    from weak_learner.random_convolution import RandomCompleteConvolution, RandomLocalConvolution
 except ModuleNotFoundError:
     from weak_learner_base import _WeakLearnerBase
     from ridge import *
@@ -14,3 +15,4 @@ except ModuleNotFoundError:
     from decision_stump import MulticlassDecisionStump
     from decision_tree import MulticlassDecisionTree
     from local_convolution import LocalConvolution
+    from random_convolution import RandomCompleteConvolution, RandomLocalConvolution
