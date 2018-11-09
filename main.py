@@ -11,7 +11,7 @@ from utils import parse, timed
 
 @timed
 @parse
-def main(m=1_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rcc', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42):
+def main(m=60_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
