@@ -8,9 +8,9 @@ from callbacks import Callback
 class Progression(Callback):
     """
     This class format a readable output to the console to follow the progression of the training of the QuadBoost algorithm. It outputs a string in the format:
-        Boosting round ### | Train acc: #.### | Valid acc: #.### | Time: #.##s
+        Boosting round ### | Train acc: ##.###% | Valid acc: ##.###% | Risk: ##.### | Time: #.##s
 
-    It omits 'Valid acc' if none was used in the algorithm.
+    It omits 'Valid acc' if none was used in the algorithm. It omits risk in none available.
     """
     def on_step_begin(self):
         self.start_time = time.time()
