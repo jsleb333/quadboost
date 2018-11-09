@@ -11,7 +11,7 @@ from utils import parse, timed
 
 @timed
 @parse
-def main(m=60_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rf', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42):
+def main(m=1_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rcc', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -54,7 +54,7 @@ def main(m=60_000, dataset='mnist', center=True, reduce=True, encodings='onehot'
     elif wl == 'ridge':
         weak_learner = WLThresholdedRidge(threshold=.5)
         
-    elif wl in ['rf', 'random_filters']:
+    elif wl in ['rccridge', 'random-complete-convolution_ridge']:
         filename += f'-nf={n_filters}-ks={ks}-{init_filters}'
             
         filter_bank = None
@@ -70,16 +70,20 @@ def main(m=60_000, dataset='mnist', center=True, reduce=True, encodings='onehot'
         if fn:
             filename += f'_{fn}'
 
-        weak_learner = RandomFilters(n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, filter_normalization=fn)
+        weak_learner = RandomCompleteConvolution(n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, filter_normalization=fn, filter_bank=filter_bank)
 
-    elif wl in ['lcds', 'local-convolution_decision-stump']:
-        weak_learner = LocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
+    elif wl in ['rlcds', 'random-local-convolution_decision-stump']:
+        weak_learner = RandomLocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
         filename += f'-nf={n_filters}-ks={ks}-loc={locality}-{init_filters}'
         kwargs['n_jobs'] = n_jobs
 
-    elif wl in ['lcridge', 'local-convolution_ridge']:
-        weak_learner = LocalConvolution(weak_learner=Ridge, n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
+    elif wl in ['rlcridge', 'random-local-convolution_ridge']:
+        weak_learner = RandomLocalConvolution(weak_learner=Ridge, n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
         filename += f'-nf={n_filters}-ks={ks}-loc={locality}-{init_filters}'
+        
+    else:
+        raise ValueError(f'Invalid weak learner name: "{wl}".')
+
     logging.info(f'Weak learner: {type(weak_learner).__name__}')
 
     ### Callbacks
