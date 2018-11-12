@@ -67,6 +67,7 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
                 bank_size = int(m*bank_ratio)
                 filter_bank = Xtr[:bank_size]
                 Xtr, Ytr = Xtr[bank_size:], Ytr[bank_size:]
+                logging.info(f'Bank size: {bank_size}')
             else:
                 raise ValueError(f'Invalid bank_size {bank_size}.')
             filename += f'_br={bank_ratio}'
