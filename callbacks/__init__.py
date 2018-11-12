@@ -7,6 +7,7 @@ try:
     from callbacks_manager_iterator import *
     from model_checkpoint import *
     from logger import *
+    from restore import RestoreBestModelCallback
 except ModuleNotFoundError:
     from callbacks.callback import *
     from callbacks.break_callbacks import *
@@ -16,3 +17,4 @@ except ModuleNotFoundError:
     from callbacks.callbacks_manager_iterator import *
     from callbacks.model_checkpoint import *
     from callbacks.logger import *
+    from callbacks.restore import RestoreBestModelCallback
