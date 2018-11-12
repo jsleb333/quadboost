@@ -22,8 +22,8 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
     idx = np.arange(m)
     if seed:
         np.random.shuffle(idx)
-        tr_idx = idx[:m-val]
-        val_idx = idx[val:]
+        val_idx = idx[:val]
+        tr_idx = idx[val:]
     X_val, Y_val = Xtr[val_idx], Ytr[val_idx]
     Xtr, Ytr = Xtr[tr_idx], Ytr[tr_idx]
     logging.info(f'Loaded dataset: {dataset} (center: {center}, reduce: {reduce})')
