@@ -24,8 +24,8 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
         np.random.shuffle(idx)
         tr_idx = idx[:m-val]
         val_idx = idx[val:]
+    X_val, Y_val = Xtr[val_idx], Ytr[val_idx]
     Xtr, Ytr = Xtr[tr_idx], Ytr[tr_idx]
-    X_val, Y_val = X_val[val_idx], Y_val[ival_dx]
     logging.info(f'Loaded dataset: {dataset} (center: {center}, reduce: {reduce})')
     logging.info(f'Number of examples - train: {len(tr_idx)}, valid: {len(val_idx)}, test: {len(Xts)}')
 
