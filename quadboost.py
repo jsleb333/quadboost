@@ -236,7 +236,7 @@ class _QuadBoostAlgorithm:
 
         Returns None.
         """
-        with self.boost_manager:
+        with self.boost_manager: # boost_manager handles callbacks and terminating conditions
             for boosting_round in self.boost_manager:
 
                 weak_predictor = self.weak_learner().fit(self.X, self.residue, self.weights,                                                 **weak_learner_fit_kwargs)
@@ -310,6 +310,7 @@ def main():
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
     m = 1_000
     X, Y = Xtr[:m], Ytr[:m]
+    X_val, Y_val = Xtr[-10_000:], Ytr[-10_000:]
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -322,8 +323,8 @@ def main():
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
     filter_bank = Xtr[-3000:]
-    # weak_learner = RandomCompleteConvolution(n_filters=1, kernel_size=(5,5), init_filters='from_bank', filter_bank=filter_bank)
-    weak_learner = RandomLocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, kernel_size=(5,5), init_filters='from_data', locality=5)
+    weak_learner = RandomCompleteConvolution(n_filters=1, kernel_size=(5,5), init_filters='from_bank', filter_bank=filter_bank)
+    # weak_learner = RandomLocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, kernel_size=(5,5), init_filters='from_data', locality=5)
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
     # sorted_X, sorted_X_idx = weak_learner.sort_data(X)
@@ -335,18 +336,21 @@ def main():
     ckpt = ModelCheckpoint(filename=filename+'_{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'_log.csv', dirname='./results/log')
     zero_risk = BreakOnZeroRiskCallback()
+    restore = RestoreBestModelCallback(quantity='valid_acc', monitor='max')
     callbacks = [ckpt,
                 logger,
                 zero_risk,
+                restore,
                 ]
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=1)
     qb.fit(X, Y, max_round_number=3, patience=10,
-            X_val=Xts, Y_val=Yts,
+            X_val=X_val, Y_val=Y_val,
             callbacks=callbacks,
             # n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
             )
+    print(f'Test accuracy on best model (round {len(qb.weak_predictors)}): {qb.evaluate(Xts, Yts):.3%}')
     ### Or resume fitting a model
     # qb = QuadBoostMHCR.load('results/test_3.ckpt')
     # qb.resume_fit(X, Y,
