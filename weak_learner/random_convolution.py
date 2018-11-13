@@ -18,7 +18,7 @@ class Filters(nn.Module):
         super().__init__()
         in_ch, out_ch = 1, n_filters
         self.conv = nn.Conv2d(in_ch, out_ch, kernel_size)
-        self.maxpool = nn.MaxPool2d(maxpool)
+        self.maxpool = nn.MaxPool2d(maxpool, ceil_mode=True)
 
         for param in self.conv.parameters():
             nn.init.constant_(param, 0)
@@ -248,7 +248,7 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 2_000
+    m = 1_000
 
     # init_filters = 'random'
     # init_filters = 'from_data'
@@ -271,13 +271,13 @@ def main():
     wl = RandomLocalConvolution(n_filters=3,
                                 weak_learner=weak_learner,
                                 encoder=encoder,
-                                kernel_size=(11,11),
-                                maxpool_size=(1,1),
+                                kernel_size=(5,5),
+                                maxpool_size=(2,2),
                                 init_filters=init_filters,
                                 filter_normalization='c',
                                 filter_bank=Xtr[m:m+1000],
                                 filter_transform=transform_filter(15, (0.9,1.1)),
-                                locality=5,
+                                locality=3,
                                 ).fit(Xtr[:m], Ytr[:m])
 
     print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
