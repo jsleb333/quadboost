@@ -11,7 +11,7 @@ from utils import parse, timed
 
 @timed
 @parse
-def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42):
+def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42, nl='maxpool', maxpool=3):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -59,7 +59,10 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
         weak_learner = WLThresholdedRidge(threshold=.5)
 
     elif wl in ['rccridge', 'random-complete-convolution_ridge']:
-        filename += f'-nf={n_filters}-ks={ks}-{init_filters}'
+        filename += f'-nf={n_filters}-ks={ks}-{nl}'
+        if nl == 'maxpool': filename += str(maxpool)
+        else: raise ValueError(f'{nl} is an invalid non-linearity.')
+        filename += f'-{init_filters}'
 
         filter_bank = None
         if init_filters == 'from_bank':
@@ -75,7 +78,14 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
         if fn:
             filename += f'_{fn}'
 
-        weak_learner = RandomCompleteConvolution(n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, filter_normalization=fn, filter_bank=filter_bank)
+        weak_learner = RandomCompleteConvolution(
+            n_filters=n_filters,
+            kernel_size=(ks, ks),
+            init_filters=init_filters,
+            filter_normalization=fn,
+            filter_bank=filter_bank,
+            maxpool_size=(maxpool, maxpool),
+            )
 
     elif wl in ['rlcds', 'random-local-convolution_decision-stump']:
         weak_learner = RandomLocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
