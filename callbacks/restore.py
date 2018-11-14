@@ -30,9 +30,9 @@ class RestoreBestModelCallback(Callback):
 
     def _value_is_better_than_current(self, value):
         if self.monitor == 'max':
-            return value > self.best_value
+            return value >= self.best_value
         elif self.monitor == 'min':
-            return value < self.best_value
+            return value <= self.best_value
 
     def on_iteration_end(self):
         del self.manager.caller.weak_predictors[self.best_round:]
