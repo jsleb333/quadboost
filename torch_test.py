@@ -49,8 +49,14 @@ class FunctionalConv:
 
 class NChannelsConv(FunctionalConv):
     def __init__(self, n_filters, kernel_size=(5,5)):
-        shape = (1, n_filters, *kernel_size)
-        self.weight = torch.rand(shape)
+        self.n_filters = n_filters
+        shape = (n_filters, 1, *kernel_size)
+        self.weight = torch.ones(shape)
+        for i in range(n_filters):
+            self.weight[i] *= i+1
+
+    def __call__(self, X):
+        return conv2d(X, self.weight, groups=self.n_filters)
 
 
 def no_list(X, n_filters=10, kernel_size=(5,5), use_gpu=False):
@@ -85,10 +91,9 @@ def n_channels_conv(X, n_filters=10, kernel_size=(5,5), use_gpu=False):
     new_X = []
     for i, j in np.random.randint(1,18, (n_filters, 2)):
         new_X.append(X[:, :, i:i+2*kernel_size[0], j:j+2*kernel_size[1]])
-        print(i, j)
     X = torch.cat(new_X, dim=1)
-    print(X.shape)
-    return m(X)
+    output = m(X)
+    return output
 
 
 def timeit(func, *args, N=10):
@@ -110,20 +115,22 @@ def main():
     # use_gpu = True
 
     with torch.no_grad():
-        X = torch.unsqueeze(torch.from_numpy(Xtr[:8_000]), dim=1).float()
-        if use_gpu:
-            X = timed(X.cuda)()
+        # X = torch.unsqueeze(torch.from_numpy(Xtr[:8_000]), dim=1).float()
+        # if use_gpu:
+        #     X = timed(X.cuda)()
 
-        no_list(X, n_filters, kernel_size, use_gpu)
-        internal_list(X, n_filters, kernel_size, use_gpu)
-        external_list(X, n_filters, kernel_size, use_gpu)
-        functional_conv(X, n_filters, kernel_size, use_gpu)
+        X = torch.ones((5000,1,28,28))
+
+        # no_list(X, n_filters, kernel_size, use_gpu)
+        # internal_list(X, n_filters, kernel_size, use_gpu)
+        # external_list(X, n_filters, kernel_size, use_gpu)
+        # functional_conv(X, n_filters, kernel_size, use_gpu)
         n_channels_conv(X, n_filters, kernel_size, use_gpu)
 
-        print('no list time:', timeit(no_list, X, n_filters, kernel_size, use_gpu))
+        # print('no list time:', timeit(no_list, X, n_filters, kernel_size, use_gpu))
         # print('internal list time:', timeit(internal_list, X, n_filters, kernel_size, use_gpu))
         # print('external list time:', timeit(external_list, X, n_filters, kernel_size, use_gpu))
-        print('functional conv time:', timeit(functional_conv, X, n_filters, kernel_size, use_gpu))
+        # print('functional conv time:', timeit(functional_conv, X, n_filters, kernel_size, use_gpu))
         print('n channels conv time:', timeit(n_channels_conv, X, n_filters, kernel_size, use_gpu))
 
 
