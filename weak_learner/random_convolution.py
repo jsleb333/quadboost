@@ -13,19 +13,33 @@ from weak_learner import _WeakLearnerBase
 from utils import timed
 
 
-class Filters(nn.Module):
-    def __init__(self, n_filters, kernel_size, maxpool=(3,3)):
-        super().__init__()
-        in_ch, out_ch = 1, n_filters
-        self.conv = nn.Conv2d(in_ch, out_ch, kernel_size)
-        self.maxpool = nn.MaxPool2d(maxpool, ceil_mode=True)
+class Filters:
+    def __init__(self, n_filters, kernel_size, maxpool=(3,3), device=None, init_filters='random', filter_normalization=None, filter_bank=None, filter_transform=None):
+        """
+        Args:
+            n_filters (int): Number of filters.
+            kernel_size ((int, int)): Size of the filters.
+            maxpool_size ((int, int), optional): Size of the maxpool kernel layer.
+            device (str or None, either 'cpu' or 'cuda:X' where X is the number of the device, optional): Device on which the weights will be created.
+            init_filters (str, either 'random', 'from_data' or 'from_bank'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are patches uniformly drawn from the data. If 'from_bank', the weights are patches uniformly drawn from the 'filter_bank'.
+            filter_normalization (str or None, either 'c', 'r', 'n', 'cr' or 'cn'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduced (i.e. of unit standard deviation), if 'n' they will be normalized (i.e. of unit euclidean norm) and 'cr' and 'cn' are combinations. If 'n' combined with 'r', the 'r' flag prevails.
+            filter_bank (Array or None, optional): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
+            filter_transform (callable or None, optional): Callable to apply on the filters. Should transform one filter (torch.Tensor) and return the new filter of the same size.
+            If None, no transform is made.
+        """
+        self.maxpool_shape = maxpool
+        self.init_filters = init_filters
+        self.filter_normalization = filter_normalization
+        self.filter_bank = filter_bank
+        self.filter_transform = filter_transform
 
-        for param in self.conv.parameters():
-            nn.init.constant_(param, 0)
-            param.requires_grad = False
+        filters_shape = (1, n_filters, *kernel_size)
+        self.weight = torch.rand(filters_shape, device=device)
 
-    def forward(self, X):
-        return self.maxpool(self.conv(X)).reshape((X.shape[0], -1))
+    def __call__(self, X):
+        output = F.conv2d(X, self.weight)
+        output = F.max_pool2d(output, self.maxpool_shape, ceil_mode=True)
+        return output.reshape((X.shape[0], -1))
 
 
 class _RandomConvolution(_WeakLearnerBase):
@@ -178,8 +192,7 @@ class RandomCompleteConvolution(_RandomConvolution):
             weight, position = self._draw_from_images(formatted_bank)
             weights.append(weight)
 
-        self.filters.conv.weight = torch.nn.Parameter(torch.unsqueeze(torch.cat(weights), dim=1))
-        self.filters.conv.weight.requires_grad = False
+        self.filters.weight = torch.unsqueeze(torch.cat(weights), dim=1)
 
 
 class RandomLocalConvolution(_RandomConvolution):
@@ -228,8 +241,7 @@ class RandomLocalConvolution(_RandomConvolution):
         formatted_bank = self._format_data(filter_bank)
         for conv_filter in self.filters:
             weights, position = self._draw_from_images(formatted_bank)
-            conv_filter.conv.weight = torch.nn.Parameter(torch.unsqueeze(weights, dim=1))
-            conv_filter.conv.weight.requires_grad = False
+            conv_filter.weight = torch.unsqueeze(weights, dim=1)
             conv_filter.position = position
 
 
@@ -257,28 +269,28 @@ def main():
     weak_learner = Ridge
     # weak_learner = MulticlassDecisionStump
 
-    # print('Complete')
-    # wl = RandomCompleteConvolution(n_filters=3,
-    #                                weak_learner=weak_learner,
-    #                                encoder=encoder,
-    #                                kernel_size=(11,11),
-    #                                maxpool_size=(1,1),
-    #                                init_filters=init_filters,
-    #                                filter_normalization='c',
-    #                                filter_bank=Xtr[m:m+1000],
-    #                                ).fit(Xtr[:m], Ytr[:m])
-    print('Local')
-    wl = RandomLocalConvolution(n_filters=3,
-                                weak_learner=weak_learner,
-                                encoder=encoder,
-                                kernel_size=(5,5),
-                                maxpool_size=(2,2),
-                                init_filters=init_filters,
-                                filter_normalization='c',
-                                filter_bank=Xtr[m:m+1000],
-                                filter_transform=transform_filter(15, (0.9,1.1)),
-                                locality=3,
-                                ).fit(Xtr[:m], Ytr[:m])
+    print('Complete')
+    wl = RandomCompleteConvolution(n_filters=3,
+                                   weak_learner=weak_learner,
+                                   encoder=encoder,
+                                   kernel_size=(11,11),
+                                   maxpool_size=(1,1),
+                                   init_filters=init_filters,
+                                   filter_normalization='c',
+                                   filter_bank=Xtr[m:m+1000],
+                                   ).fit(Xtr[:m], Ytr[:m])
+    # print('Local')
+    # wl = RandomLocalConvolution(n_filters=3,
+    #                             weak_learner=weak_learner,
+    #                             encoder=encoder,
+    #                             kernel_size=(5,5),
+    #                             maxpool_size=(2,2),
+    #                             init_filters=init_filters,
+    #                             filter_normalization='c',
+    #                             filter_bank=Xtr[m:m+1000],
+    #                             filter_transform=transform_filter(15, (0.9,1.1)),
+    #                             locality=3,
+    #                             ).fit(Xtr[:m], Ytr[:m])
 
     print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
     print('All train acc', wl.evaluate(Xtr, Ytr))
