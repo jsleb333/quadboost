@@ -30,6 +30,7 @@ This project relies on the following `Python` libraries:
 - scikit-learn
 - numpy
 - matplotlib
+- pytorch (used in `weak_learner/random_convolution.py`)
 - scikit-image (optional, used in `mnist_ideals/ideal_preprocessing.py`)
 - tblib (optional, used in `utils/multiprocessing_utils.py`)
 - colorama (optional, used in `utils/timed.py`)
@@ -40,6 +41,7 @@ The file `quadboost.py` provides an implementation of a general QuadBoost algori
 A `main()` function with minimal working example is also provided.
 
 The module `weak_learner` provides some weak learners to be used with QuadBoost, such as a `MulticlassDecisionStump` and a `MulticlassDecisionTree` based on the former.
+Is also included a `RandomConvolution` feature extractor that wraps around a weak learner.
 All weak learners can be used as standalone.
 A `_WeakLearnerBase` parent class is provided to facilitate the implementations of other weak learners that can easily be passed to the QuadBoost algorithm.
 
