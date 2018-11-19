@@ -14,13 +14,15 @@ from utils import timed
 
 
 class Filters:
-    def __init__(self, n_filters, kernel_size, maxpool=(3,3), device=None, init_filters='random', filter_normalization=None, filter_bank=None, filter_transform=None):
+    def __init__(self, n_filters, maxpool=(3,3), device=None, filters=None, filter_normalization=None, filter_bank=None, filter_transform=None):
         """
         Args:
             n_filters (int): Number of filters.
-            kernel_size ((int, int)): Size of the filters.
-            maxpool_size ((int, int), optional): Size of the maxpool kernel layer.
+            maxpool_shape ((int, int), optional): Shape of the maxpool kernel layer.
             device (str or None, either 'cpu' or 'cuda:X' where X is the number of the device, optional): Device on which the weights will be created.
+            filters (Iterable, optional): Iterable that yields filters weight.
+
+            filter_shape ((int, int)): Size of the filters.
             init_filters (str, either 'random', 'from_data' or 'from_bank'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are patches uniformly drawn from the data. If 'from_bank', the weights are patches uniformly drawn from the 'filter_bank'.
             filter_normalization (str or None, either 'c', 'r', 'n', 'cr' or 'cn'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduced (i.e. of unit standard deviation), if 'n' they will be normalized (i.e. of unit euclidean norm) and 'cr' and 'cn' are combinations. If 'n' combined with 'r', the 'r' flag prevails.
             filter_bank (Array or None, optional): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
@@ -28,13 +30,13 @@ class Filters:
             If None, no transform is made.
         """
         self.maxpool_shape = maxpool
-        self.init_filters = init_filters
+        self.filters = filters
         self.filter_normalization = filter_normalization
         self.filter_bank = filter_bank
         self.filter_transform = filter_transform
 
-        filters_shape = (1, n_filters, *kernel_size)
-        self.weight = torch.rand(filters_shape, device=device)
+        filters_shape = (1, n_filters, *filter_shape)
+        self.weight = torch.ones(filters_shape, device=device)
 
     def __call__(self, X):
         output = F.conv2d(X, self.weight)
@@ -42,45 +44,33 @@ class Filters:
         return output.reshape((X.shape[0], -1))
 
 
+class InitFromBank:
+    """
+
+    """
+    def __init__(self, filter_shape, filter_bank):
+        """
+        Args:
+
+        """
+        self.filter_bank = filter_bank
+        self.filter_shape = filter_shape
+
+
 class _RandomConvolution(_WeakLearnerBase):
     """
     This weak learner is takes random filters and convolutes the dataset with them. It then applies a non-linearity on the resulting random features and uses an other weak regressor as final classifier.
     """
-    def __init__(self, encoder=None, weak_learner=Ridge, n_filters=2, kernel_size=(5,5), maxpool_size=(3,3), init_filters='random', filter_normalization=None, filter_bank=None, filter_transform=None):
+    def __init__(self, filters, encoder=None, weak_learner=Ridge):
         """
         Args:
+            filters (Uninstanciated class that defines __call__)): Callable that returns that receives the examples (torch array of shape (n_examples, n_channels, width, height)) and outputs extracted features (torch array of shape (n_examples, n_features)).
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
-            weak_learner (Class that defines the 'fit' and 'predict' methods or object instance that inherits from _WeakLearnerBase, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
-            n_filters (int, optional): Number of filters.
-            kernel_size ((int, int), optional): Size of the filters.
-            maxpool_size ((int, int), optional): Size of the maxpool kernel layer.
-            init_filters (str, either 'random', 'from_data' or 'from_bank'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are patches uniformly drawn from the data. If 'from_bank', the weights are patches uniformly drawn from the 'filter_bank'.
-            filter_normalization (str or None, either 'c', 'r', 'n', 'cr' or 'cn'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduced (i.e. of unit standard deviation), if 'n' they will be normalized (i.e. of unit euclidean norm) and 'cr' and 'cn' are combinations. If 'n' combined with 'r', the 'r' flag prevails.
-            filter_bank (Array or None, optional): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
-            filter_transform (callable or None, optional): Callable to apply on the filters. Should transform one filter (torch.Tensor) and return the new filter of the same size.
-            If None, no transform is made.
+            weak_learner (Callable that returns a new object that defines the 'fit' and 'predict' methods, such as object inheriting from _WeakLearnerBase, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
         """
+        self.filters = filters
         self.encoder = encoder
         self.weak_learner = weak_learner()
-        self.n_filters = n_filters
-        self.kernel_size = kernel_size
-        self.maxpool_size = maxpool_size
-        self.filter_normalization = filter_normalization or ''
-        self.filter_bank = None
-        self.filter_transform = filter_transform
-
-        if init_filters == 'random':
-            self.init_filters = self.init_from_normal
-
-        elif init_filters == 'from_data':
-            self.init_filters = self.init_from_images
-
-        elif init_filters == 'from_bank':
-            self.init_filters = self.init_from_images
-            self.filter_bank = filter_bank
-
-        else:
-            raise ValueError(f"'{init_filters} is an invalid init_filters option.")
 
     def fit(self, X, Y, W=None, **weak_learner_kwargs):
         """
@@ -97,9 +87,7 @@ class _RandomConvolution(_WeakLearnerBase):
                 Y, W = self.encoder.encode_labels(Y)
             X = self._format_data(X)
 
-            self.filters = self._generate_filters(X)
-            filter_bank = self.filter_bank if self.filter_bank is not None else X
-            self.init_filters(filter_bank=filter_bank)
+            self.filters(X)
 
             random_feat = self._apply_filters(X)
 
@@ -147,15 +135,15 @@ class _RandomConvolution(_WeakLearnerBase):
 
     def _draw_from_images(self, X):
         n_examples = X.shape[0]
-        i_max = X.shape[-2] - self.kernel_size[0]
-        j_max = X.shape[-1] - self.kernel_size[1]
+        i_max = X.shape[-2] - self.filter_shape[0]
+        j_max = X.shape[-1] - self.filter_shape[1]
 
         x = X[np.random.randint(n_examples)]
         i = np.random.randint(i_max)
         j = np.random.randint(j_max)
         position = (i, j)
 
-        weight = torch.tensor(x[:, i:i+self.kernel_size[0], j:j+self.kernel_size[1]], requires_grad=False)
+        weight = torch.tensor(x[:, i:i+self.filter_shape[0], j:j+self.filter_shape[1]], requires_grad=False)
         if self.filter_transform:
             weight = self.filter_transform(weight)
         self._normalize_weight(weight)
@@ -173,7 +161,7 @@ class _RandomConvolution(_WeakLearnerBase):
 
 class RandomCompleteConvolution(_RandomConvolution):
     def _generate_filters(self, X):
-        return Filters(self.n_filters, self.kernel_size, self.maxpool_size)
+        return Filters(self.n_filters, self.filter_shape, self.maxpool_size)
 
     def _apply_filters(self, X):
         return self.filters(X).numpy()
@@ -202,7 +190,7 @@ class RandomLocalConvolution(_RandomConvolution):
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
             weak_learner (Class that defines the 'fit' and 'predict' methods or object instance that inherits from _WeakLearnerBase, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
             n_filters (int, optional): Number of filters.
-            kernel_size ((int, int), optional): Size of the filters.
+            filter_shape ((int, int), optional): Size of the filters.
             init_filters (str, either 'from_data' or 'from_bank'): Choice of initialization of the filters weights. If 'from_data', the weights are patches uniformly drawn from the data. If 'from_bank', the weights are patches uniformly drawn from the 'filter_bank'.
             filter_normalization (str or None, either 'c', 'r', 'n', 'cr' or 'cn'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduced (i.e. of unit standard deviation), if 'n' they will be normalized (i.e. of unit euclidean norm) and 'cr' and 'cn' are combinations. If 'n' combined with 'r', the 'r' flag prevails.
             filter_bank (Array or None, optional): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
@@ -215,7 +203,7 @@ class RandomLocalConvolution(_RandomConvolution):
             raise ValueError(f'Invalid init_filters {init_filters} argument for RandomLocalConvolution.')
 
     def _generate_filters(self, X):
-        return [Filters(1, self.kernel_size, self.maxpool_size) for _ in range(self.n_filters)]
+        return [Filters(1, self.filter_shape, self.maxpool_size) for _ in range(self.n_filters)]
 
     def _apply_filters(self, X):
         height, width = X.shape[-2:]
@@ -224,8 +212,8 @@ class RandomLocalConvolution(_RandomConvolution):
             i, j = filt.position
             i_min = max(i - self.locality, 0)
             j_min = max(j - self.locality, 0)
-            i_max = min(i + self.kernel_size[0] + self.locality, height)
-            j_max = min(j + self.kernel_size[1] + self.locality, width)
+            i_max = min(i + self.filter_shape[0] + self.locality, height)
+            j_max = min(j + self.filter_shape[1] + self.locality, width)
             local_X = X[:,:,i_min:i_max, j_min:j_max]
             random_feat.append(filt(local_X))
 
@@ -273,7 +261,7 @@ def main():
     wl = RandomCompleteConvolution(n_filters=3,
                                    weak_learner=weak_learner,
                                    encoder=encoder,
-                                   kernel_size=(11,11),
+                                   filter_shape=(11,11),
                                    maxpool_size=(1,1),
                                    init_filters=init_filters,
                                    filter_normalization='c',
@@ -283,7 +271,7 @@ def main():
     # wl = RandomLocalConvolution(n_filters=3,
     #                             weak_learner=weak_learner,
     #                             encoder=encoder,
-    #                             kernel_size=(5,5),
+    #                             filter_shape=(5,5),
     #                             maxpool_size=(2,2),
     #                             init_filters=init_filters,
     #                             filter_normalization='c',
