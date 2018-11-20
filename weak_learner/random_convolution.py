@@ -31,6 +31,7 @@ class Filters(_WeakLearnerBase):
             If None, no transform is made.
         """
         self.maxpool_shape = maxpool
+        self.n_filters = n_filters
         # self.filter_normalization = filter_normalization
         # self.filter_bank = filter_bank
         # self.filter_transform = filter_transform
@@ -46,6 +47,22 @@ class Filters(_WeakLearnerBase):
         output = F.conv2d(X, self.weights)
         output = F.max_pool2d(output, self.maxpool_shape, ceil_mode=True)
         return output.reshape((X.shape[0], -1))
+
+
+class LocalFilters:
+    """
+
+    """
+    def __init__(self, *args, locality=5, **kwargs):
+        """
+        Args:
+            locality (int, optional):
+        """
+        super().__init__(self, *args, **kwargs)
+        self.locality = locality
+
+    def apply(self, X):
+        output = F.conv2d(X, self.weights, groups=self.n_filters)
 
 
 class WeightFromBankGenerator:
@@ -140,12 +157,6 @@ class _RandomConvolution(_WeakLearnerBase):
 
         return self.weak_learner.predict(random_feat)
 
-    def init_from_normal(self, **kwargs):
-        raise NotImplementedError
-
-    def init_from_images(self, *, filter_bank, **kwargs):
-        raise NotImplementedError
-
     def _draw_from_images(self, X):
         n_examples = X.shape[0]
         i_max = X.shape[-2] - self.filter_shape[0]
@@ -173,28 +184,7 @@ class _RandomConvolution(_WeakLearnerBase):
 
 
 class RandomCompleteConvolution(_RandomConvolution):
-    def _generate_filters(self, X):
-        return Filters(self.n_filters, self.filter_shape, self.maxpool_size)
-
-    def _apply_filters(self, X):
-        return self.filters(X).numpy()
-
-    def init_from_normal(self, **kwargs):
-        for param in self.filters.conv.parameters():
-            nn.init.normal_(param)
-
-    def init_from_images(self, *, filter_bank, **kwargs):
-        """
-        Assumes X is a torch tensor with shape (n_examples, n_channels, width, height).
-        """
-        weights = []
-        formatted_bank = self._format_data(filter_bank)
-        for _ in range(self.n_filters):
-            weight, position = self._draw_from_images(formatted_bank)
-            weights.append(weight)
-
-        self.filters.weight = torch.unsqueeze(torch.cat(weights), dim=1)
-
+    pass
 
 class RandomLocalConvolution(_RandomConvolution):
     def __init__(self, *args, locality=5, init_filters='from_data', **kwargs):
