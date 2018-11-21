@@ -58,6 +58,45 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
     elif wl == 'ridge':
         weak_learner = WLThresholdedRidge(threshold=.5)
 
+    elif wl.startswith('rcc') or wl.startswith('rlc'):
+        filter_bank = None
+        if init_filters == 'from_bank':
+            if 0 < bank_ratio < 1:
+                bank_size = int(m*bank_ratio)
+                filter_bank = Xtr[:bank_size]
+                Xtr, Ytr = Xtr[bank_size:], Ytr[bank_size:]
+                logging.info(f'Bank size: {bank_size}')
+            else:
+                raise ValueError(f'Invalid bank_size {bank_size}.')
+            filename += f'_br={bank_ratio}'
+        elif init_filters == 'from_data':
+            filter_bank = Xtr
+
+        f_proc = []
+        if 'c' in fn:
+            f_proc.append(center_weight)
+        if 'n' in fn:
+            f_proc.append(normalize_weight)
+        if 'r' in fn:
+            f_proc.append(reduce_weight)
+
+        f_gen = WeightFromBankGenerator(filter_bank=filter_bank,
+                                        filter_shape=(ks, ks),
+                                        filter_processing=f_proc)
+        if wl.startswith('rcc'):
+            filters = Filters(n_filters=n_filters,
+                              filters_generator=f_gen,
+                              maxpool_shape=(maxpool, maxpool))
+        elif wl.startswith('rlc'):
+            filters = LocalFilters(n_filters=n_filters,
+                                   filters_generator=f_gen,
+                                   locality=locality,
+                                   maxpool_shape=(maxpool, maxpool))
+        if wl.endswith('ridge'):
+            weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
+        if wl.endswith('ds'):
+            weak_learner = RandomConvolution(filters=filters, weak_learner=MulticlassDecisionStump)
+
     elif wl in ['rccridge', 'random-complete-convolution_ridge']:
         filename += f'-nf={n_filters}-ks={ks}-{nl}'
         if nl == 'maxpool': filename += str(maxpool)
