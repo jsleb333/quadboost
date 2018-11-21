@@ -26,9 +26,6 @@ class Filters(_Cloner):
         self.n_filters = n_filters
         self.filters_generator = filters_generator or torch.rand()
         self.maxpool_shape = maxpool_shape
-        # self.filter_normalization = filter_normalization
-        # self.filter_bank = filter_bank
-        # self.filter_transform = filter_transform
 
         self.weights, self.positions = [], []
         for (weight, position), _ in zip(filters_generator, range(n_filters)):
