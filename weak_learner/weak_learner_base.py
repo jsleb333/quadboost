@@ -2,14 +2,15 @@ from sklearn.metrics import accuracy_score
 import inspect
 
 
-class _WeakLearnerBase:
+class _Cloner:
     """
-    This class implements a abstract base weak learner that should be inherited. It makes sure all weak learner are clonable and have an encoder, as well as a predict and an evaluate methods.
+    This class is essentially a decorator around the constructor of its subclasses, but without the inconveniences of decorators (with pickling).
+
+    The class becomes clonable with the same init args and kwargs when the object is called. This allows to use instanciated objects as if they were the class itself.
     """
     def __new__(cls, *args, **kwargs):
         """
-        This constructor class makes any weak learners clonable by setting the __call__ function as a constructor using the initialization parameters.
-        This class, to be inherited, acts like a decorator around the constructor, but without the inconveniences of decorators (with pickling).
+        This constructor class makes any class clonable by setting the __call__ function as a constructor using the initialization parameters.
         """
         def clone(self):
             return cls(*self.init_args, **self.init_kwargs)
@@ -22,6 +23,11 @@ class _WeakLearnerBase:
 
         return new_weak_learner
 
+
+class _WeakLearnerBase(_Cloner):
+    """
+    This class implements a abstract base weak learner that should be inherited. It makes sure all weak learner are clonable and have an encoder, as well as a predict and an evaluate methods.
+    """
     def __init__(self, *args, encoder=None, **kwargs):
         self.encoder = encoder
         super().__init__(*args, **kwargs)
