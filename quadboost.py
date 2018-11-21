@@ -325,10 +325,12 @@ def main():
     f_gen = WeightFromBankGenerator(filter_bank=RandomConvolution.format_data(Xtr[-3000:]),
                                     filter_shape=(5,5),
                                     filter_processing=center_weight)
-    filters = LocalFilters(n_filters=3,
+    filters = Filters(n_filters=3,
                       filters_generator=f_gen,
-                      locality=3,
+                    #   locality=3,
                       maxpool_shape=(3,3))
+    # Xtr, X_val, Xts = RandomConvolution.format_data(Xtr), RandomConvolution.format_data(X_val),RandomConvolution.format_data(Xts)
+    # Xtr, X_val, Xts = Xtr.to('cuda'), X_val.to('cuda'), Xts.to('cuda')
     weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
@@ -350,7 +352,7 @@ def main():
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=1)
-    qb.fit(X, Y, max_round_number=3, patience=10,
+    qb.fit(X, Y, max_round_number=5, patience=10,
             X_val=X_val, Y_val=Y_val,
             callbacks=callbacks,
             # n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
