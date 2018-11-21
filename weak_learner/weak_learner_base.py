@@ -13,13 +13,13 @@ class _Cloner:
         This constructor class makes any class clonable by setting the __call__ function as a constructor using the initialization parameters.
         """
         def clone(self):
-            return cls(*self.init_args, **self.init_kwargs)
+            return cls(*self._init_args, **self._init_kwargs)
         cls.__call__ = clone
 
         new_weak_learner = super().__new__(cls)
 
-        new_weak_learner.init_args = args
-        new_weak_learner.init_kwargs = kwargs
+        new_weak_learner._init_args = args
+        new_weak_learner._init_kwargs = kwargs
 
         return new_weak_learner
 
