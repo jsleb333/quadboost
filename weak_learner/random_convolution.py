@@ -87,12 +87,12 @@ class WeightFromBankGenerator:
             filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
             filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callable that processes one weight and returns the result.
         """
-        self.filter_bank = filter_bank
+        self.filter_bank = RandomConvolution.format_data(filter_bank)
         self.filter_shape = filter_shape
         if callable(filter_processing): filter_processing = [filter_processing]
         self.filter_processing = filter_processing or []
 
-        self.n_examples, n_channels, height, width = filter_bank.shape
+        self.n_examples, n_channels, height, width = self.filter_bank.shape
         self.i_max = height - filter_shape[0]
         self.j_max = width - filter_shape[1]
 
@@ -202,8 +202,8 @@ def reduce_weight(weight):
 def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
-    Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
+    # Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
+    # Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
 
     encoder = OneHotEncoder(Ytr)
 
@@ -219,7 +219,7 @@ def main():
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filter_shape=(5,5),
                                          filter_processing=[center_weight])
-    filters = Filters(n_filters=10,
+    filters = Filters(n_filters=5,
                       maxpool_shape=(3,3),
                       filters_generator=filter_gen)
     weak_learner = Ridge
