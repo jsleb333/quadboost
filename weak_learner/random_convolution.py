@@ -42,6 +42,7 @@ class Filters(_WeakLearnerBase):
             self.positions.append(position)
 
         self.weights = torch.cat(self.weights, dim=0).to(device=device)
+        print(self.weights.shape)
 
     def apply(self, X):
         output = F.conv2d(X, self.weights)
@@ -49,7 +50,7 @@ class Filters(_WeakLearnerBase):
         return output.reshape((X.shape[0], -1))
 
 
-class LocalFilters:
+class LocalFilters(Filters):
     """
 
     """
@@ -58,11 +59,25 @@ class LocalFilters:
         Args:
             locality (int, optional):
         """
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.locality = locality
 
     def apply(self, X):
-        output = F.conv2d(X, self.weights, groups=self.n_filters)
+        n_examples, n_channels, height, width = X.shape
+        random_feat = []
+        for (i, j), weight in zip(self.positions, self.weights):
+            i_min = max(i - self.locality, 0)
+            j_min = max(j - self.locality, 0)
+            i_max = min(i + self.weights.shape[2] + self.locality, height)
+            j_max = min(j + self.weights.shape[3] + self.locality, width)
+
+            output = F.conv2d(X[:,:,i_min:i_max, j_min:j_max], torch.unsqueeze(weight, dim=0))
+            output = F.max_pool2d(output, self.maxpool_shape, ceil_mode=True)
+            random_feat.append(output.reshape(n_examples, -1))
+
+        random_feat = torch.cat(random_feat, dim=1)
+
+        return random_feat
 
 
 class WeightFromBankGenerator:
@@ -248,10 +263,8 @@ def transform_filter(degrees=0, scale=None, shear=None):
 def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    Xtr, Xts = torch.from_numpy(Xtr), torch.from_numpy(Xts)
-    Xtr = torch.unsqueeze(Xtr, dim=1)
-    Xts = torch.unsqueeze(Xts, dim=1)
-    print(Xtr.shape)
+    Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
+    Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
 
     encoder = OneHotEncoder(Ytr)
 
@@ -260,33 +273,33 @@ def main():
     # init_filters = 'random'
     # init_filters = 'from_data'
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+1000], filter_shape=(5,5))
-    filters = Filters(n_filters=3,
+    filters = LocalFilters(n_filters=3,
                       maxpool=(3,3),
                       device='cpu',
                       filters_generator=filter_gen)
     weak_learner = Ridge
     # weak_learner = MulticlassDecisionStump
 
-    print('Complete')
-    wl = RandomCompleteConvolution(filters=filters,
-                                   weak_learner=weak_learner,
-                                   encoder=encoder,
-                                   ).fit(Xtr[:m], Ytr[:m])
-    # print('Local')
-    # wl = RandomLocalConvolution(n_filters=3,
-    #                             weak_learner=weak_learner,
-    #                             encoder=encoder,
-    #                             filter_shape=(5,5),
-    #                             maxpool_size=(2,2),
-    #                             init_filters=init_filters,
-    #                             filter_normalization='c',
-    #                             filter_bank=Xtr[m:m+1000],
-    #                             filter_transform=transform_filter(15, (0.9,1.1)),
-    #                             locality=3,
-    #                             ).fit(Xtr[:m], Ytr[:m])
+    # print('New')
+    # wl = RandomCompleteConvolution(filters=filters,
+    #                                weak_learner=weak_learner,
+    #                                encoder=encoder,
+    #                                ).fit(Xtr[:m], Ytr[:m])
+    print('Old')
+    wl = RandomLocalConvolution(n_filters=3,
+                                weak_learner=weak_learner,
+                                encoder=encoder,
+                                filter_shape=(5,5),
+                                maxpool_size=(3,3),
+                                init_filters='from_bank',
+                                # filter_normalization='c',
+                                filter_bank=Xtr[m:m+1000],
+                                # filter_transform=transform_filter(15, (0.9,1.1)),
+                                locality=5,
+                                ).fit(Xtr[:m], Ytr[:m])
 
     print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
-    print('All train acc', wl.evaluate(Xtr, Ytr))
+    # print('All train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
 
