@@ -143,7 +143,7 @@ class RandomConvolution(_WeakLearnerBase):
         with torch.no_grad():
             if self.encoder is not None:
                 Y, W = self.encoder.encode_labels(Y)
-            X = self._format_data(X)
+            X = self.format_data(X)
 
             random_feat = self.filters.apply(X)
 
@@ -157,7 +157,8 @@ class RandomConvolution(_WeakLearnerBase):
 
         return self
 
-    def _format_data(self, data):
+    @staticmethod
+    def format_data(data):
         if type(data) is np.ndarray:
             data = torch.from_numpy(data).float()
         if len(data.shape) == 3:
@@ -172,7 +173,7 @@ class RandomConvolution(_WeakLearnerBase):
             X (Array of shape (n_examples, n_channels, height, width)): Examples to predict.
         """
         with torch.no_grad():
-            X = self._format_data(X)
+            X = self.format_data(X)
             random_feat = self.filters.apply(X)
 
         return self.weak_learner.predict(random_feat)
