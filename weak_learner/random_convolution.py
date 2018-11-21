@@ -9,29 +9,23 @@ import warnings
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import _WeakLearnerBase
+from weak_learner import _WeakLearnerBase, _Cloner
 from utils import timed
 
 
-class Filters(_WeakLearnerBase):
-    def __init__(self, n_filters, maxpool=(3,3), device='cpu', filters_generator=None):
-        # filter_normalization=None, filter_bank=None, filter_transform=None):
+class Filters(_Cloner):
+    """
+    """
+    def __init__(self, n_filters, filters_generator, maxpool_shape=(3,3)):
         """
         Args:
             n_filters (int): Number of filters.
-            maxpool_shape ((int, int), optional): Shape of the maxpool kernel layer.
-            device (str, either 'cpu' or 'cuda:X' where X is the number of the device, optional): Device on which the weights will be created.
             filters_generator (iterable, optional): Iterable that yields filters weight.
-
-            filter_shape ((int, int)): Size of the filters.
-            init_filters (str, either 'random', 'from_data' or 'from_bank'): Choice of initialization of the filters weights. If 'random', the weights are drawn from a normal distribution. If 'from_data', the weights are patches uniformly drawn from the data. If 'from_bank', the weights are patches uniformly drawn from the 'filter_bank'.
-            filter_normalization (str or None, either 'c', 'r', 'n', 'cr' or 'cn'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduced (i.e. of unit standard deviation), if 'n' they will be normalized (i.e. of unit euclidean norm) and 'cr' and 'cn' are combinations. If 'n' combined with 'r', the 'r' flag prevails.
-            filter_bank (Array or None, optional): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
-            filter_transform (callable or None, optional): Callable to apply on the filters. Should transform one filter (torch.Tensor) and return the new filter of the same size.
-            If None, no transform is made.
+            maxpool_shape ((int, int), optional): Shape of the maxpool kernel layer.
         """
-        self.maxpool_shape = maxpool
         self.n_filters = n_filters
+        self.filters_generator = filters_generator or torch.rand()
+        self.maxpool_shape = maxpool_shape
         # self.filter_normalization = filter_normalization
         # self.filter_bank = filter_bank
         # self.filter_transform = filter_transform
@@ -41,10 +35,14 @@ class Filters(_WeakLearnerBase):
             self.weights.append(torch.unsqueeze(weight, dim=0))
             self.positions.append(position)
 
-        self.weights = torch.cat(self.weights, dim=0).to(device=device)
-        print(self.weights.shape)
+        self.weights = torch.cat(self.weights, dim=0)#.to(device=device)
+
+    def _send_weights_to_device(self, X):
+        self.weights = self.weights.to(device=X.device)
 
     def apply(self, X):
+        self._send_weights_to_device(X)
+
         output = F.conv2d(X, self.weights)
         output = F.max_pool2d(output, self.maxpool_shape, ceil_mode=True)
         return output.reshape((X.shape[0], -1))
@@ -52,17 +50,18 @@ class Filters(_WeakLearnerBase):
 
 class LocalFilters(Filters):
     """
-
     """
     def __init__(self, *args, locality=5, **kwargs):
         """
         Args:
-            locality (int, optional):
+            locality (int, optional): Applies the filters locally around the place where the filter was taken from the picture in the filter bank. For example, for a filter_shape=(N,N) and a locality=L, the convolution will be made on a square of side N+2L centered around the original position. It will yield an array of side 2L+1. No padding is made in case the square exceeds the size of the examples.
         """
         super().__init__(*args, **kwargs)
         self.locality = locality
 
     def apply(self, X):
+        self._send_weights_to_device(X)
+
         n_examples, n_channels, height, width = X.shape
         random_feat = []
         for (i, j), weight in zip(self.positions, self.weights):
@@ -84,15 +83,19 @@ class WeightFromBankGenerator:
     """
     Infinite generator of weights.
     """
-    def __init__(self, filter_bank, filter_shape=(5,5)):
+    def __init__(self, filter_bank, filter_shape=(5,5), filter_processing=None):
         """
         Args:
             filter_shape ((int, int), optional): Shape of the filters.
-            filter_bank (tensor or array of shape (n_examples, n_channels, height, width)):
+            filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
+            filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callable that processes one weight and returns the result.
         """
         self.filter_bank = filter_bank
-        self.n_examples, n_channels, height, width = filter_bank.shape
         self.filter_shape = filter_shape
+        if callable(filter_processing): filter_processing = [filter_processing]
+        self.filter_processing = filter_processing or []
+
+        self.n_examples, n_channels, height, width = filter_bank.shape
         self.i_max = height - filter_shape[0]
         self.j_max = width - filter_shape[1]
 
@@ -106,11 +109,13 @@ class WeightFromBankGenerator:
 
         x = self.filter_bank[np.random.randint(self.n_examples)]
         weight = torch.tensor(x[:, i:i+self.filter_shape[0], j:j+self.filter_shape[1]], requires_grad=False)
+        for process in self.filter_processing:
+            weight = process(weight)
 
         return weight, (i, j)
 
 
-class _RandomConvolution(_WeakLearnerBase):
+class RandomConvolution(_WeakLearnerBase):
     """
     This weak learner is takes random filters and convolutes the dataset with them. It then applies a non-linearity on the resulting random features and uses an other weak regressor as final classifier.
     """
@@ -121,7 +126,7 @@ class _RandomConvolution(_WeakLearnerBase):
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
             weak_learner (Callable that returns a new object that defines the 'fit' and 'predict' methods, such as object inheriting from _WeakLearnerBase, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
         """
-        self.filters = filters
+        self.filters = filters()
         self.encoder = encoder
         self.weak_learner = weak_learner()
 
@@ -164,7 +169,7 @@ class _RandomConvolution(_WeakLearnerBase):
         Predicts the label of the sample X.
 
         Args:
-            X (Array of shape (n_examples, ...)): Examples to predict.
+            X (Array of shape (n_examples, n_channels, height, width)): Examples to predict.
         """
         with torch.no_grad():
             X = self._format_data(X)
@@ -172,92 +177,28 @@ class _RandomConvolution(_WeakLearnerBase):
 
         return self.weak_learner.predict(random_feat)
 
-    def _draw_from_images(self, X):
-        n_examples = X.shape[0]
-        i_max = X.shape[-2] - self.filter_shape[0]
-        j_max = X.shape[-1] - self.filter_shape[1]
-
-        x = X[np.random.randint(n_examples)]
-        i = np.random.randint(i_max)
-        j = np.random.randint(j_max)
-        position = (i, j)
-
-        weight = torch.tensor(x[:, i:i+self.filter_shape[0], j:j+self.filter_shape[1]], requires_grad=False)
-        if self.filter_transform:
-            weight = self.filter_transform(weight)
-        self._normalize_weight(weight)
-
-        return weight, position
-
-    def _normalize_weight(self, weight):
-        if 'c' in self.filter_normalization:
-            weight -= torch.mean(weight)
-        if 'n' in self.filter_normalization:
-            weight /= torch.norm(weight, p=2)
-        if 'r' in self.filter_normalization:
-            weight /= torch.std(weight)
-
-
-class RandomCompleteConvolution(_RandomConvolution):
-    pass
-
-class RandomLocalConvolution(_RandomConvolution):
-    def __init__(self, *args, locality=5, init_filters='from_data', **kwargs):
-        """
-        Args:
-            encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
-            weak_learner (Class that defines the 'fit' and 'predict' methods or object instance that inherits from _WeakLearnerBase, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
-            n_filters (int, optional): Number of filters.
-            filter_shape ((int, int), optional): Size of the filters.
-            init_filters (str, either 'from_data' or 'from_bank'): Choice of initialization of the filters weights. If 'from_data', the weights are patches uniformly drawn from the data. If 'from_bank', the weights are patches uniformly drawn from the 'filter_bank'.
-            filter_normalization (str or None, either 'c', 'r', 'n', 'cr' or 'cn'): If 'c', weights of the filters will be centered (i.e. of mean 0), if 'r', they will be reduced (i.e. of unit standard deviation), if 'n' they will be normalized (i.e. of unit euclidean norm) and 'cr' and 'cn' are combinations. If 'n' combined with 'r', the 'r' flag prevails.
-            filter_bank (Array or None, optional): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
-            locality (int, optional): Applies the filters locally around the place where the patch was taken from the picture. Only applies if 'init_filters' is 'from_data'. For example, locality=2 will convolute the filter only ±2 pixels translated to yield 9 values.
-        """
-        super().__init__(*args, **kwargs)
-        self.locality = locality
-
-        if init_filters == 'random':
-            raise ValueError(f'Invalid init_filters {init_filters} argument for RandomLocalConvolution.')
-
-    def _generate_filters(self, X):
-        return [Filters(1, self.filter_shape, self.maxpool_size) for _ in range(self.n_filters)]
-
-    def _apply_filters(self, X):
-        height, width = X.shape[-2:]
-        random_feat = []
-        for filt in self.filters:
-            i, j = filt.position
-            i_min = max(i - self.locality, 0)
-            j_min = max(j - self.locality, 0)
-            i_max = min(i + self.filter_shape[0] + self.locality, height)
-            j_max = min(j + self.filter_shape[1] + self.locality, width)
-            local_X = X[:,:,i_min:i_max, j_min:j_max]
-            random_feat.append(filt(local_X))
-
-        return torch.cat(random_feat, dim=1).numpy()
-
-    def init_from_normal(self, **kwargs):
-        raise RuntimeError('This should not have happened. Try another init_filters option.')
-
-    def init_from_images(self, *, filter_bank, **kwargs):
-        """
-        Assumes X is a torch tensor with shape (n_examples, n_channels, width, height).
-        """
-        formatted_bank = self._format_data(filter_bank)
-        for conv_filter in self.filters:
-            weights, position = self._draw_from_images(formatted_bank)
-            conv_filter.weight = torch.unsqueeze(weights, dim=1)
-            conv_filter.position = position
-
 
 def transform_filter(degrees=0, scale=None, shear=None):
+    affine = RandomAffine(degrees=degrees, scale=scale, shear=shear)
     def transform(weight):
         tmp_weight = to_pil_image(weight)
-        affine = RandomAffine(degrees=degrees, scale=scale, shear=shear)
         tmp_weight = affine(tmp_weight)
         return to_tensor(tmp_weight)
     return transform
+
+
+def center_weight(weight):
+    weight -= torch.mean(weight)
+    return weight
+
+def normalize_weight(weight):
+    weight /= torch.norm(weight, p=2)
+    return weight
+
+def reduce_weight(weight):
+    weight /= torch.std(weight)
+    return weight
+
 
 @timed
 def main():
@@ -269,37 +210,29 @@ def main():
     encoder = OneHotEncoder(Ytr)
 
     m = 1_000
+    bank = 1000
 
-    # init_filters = 'random'
-    # init_filters = 'from_data'
-    filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+1000], filter_shape=(5,5))
-    filters = LocalFilters(n_filters=3,
-                      maxpool=(3,3),
-                      device='cpu',
+    # print('CPU')
+    # print('CUDA')
+    # Xtr = Xtr[:m+bank].to(device='cuda:0')
+    # Xts = Xts.to(device='cuda:0')
+
+    random_transform = transform_filter(15,(.9,1.1))
+    filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
+                                         filter_shape=(5,5),
+                                         filter_processing=[center_weight])
+    filters = Filters(n_filters=10,
+                      maxpool_shape=(3,3),
                       filters_generator=filter_gen)
     weak_learner = Ridge
     # weak_learner = MulticlassDecisionStump
 
-    # print('New')
-    # wl = RandomCompleteConvolution(filters=filters,
-    #                                weak_learner=weak_learner,
-    #                                encoder=encoder,
-    #                                ).fit(Xtr[:m], Ytr[:m])
-    print('Old')
-    wl = RandomLocalConvolution(n_filters=3,
-                                weak_learner=weak_learner,
-                                encoder=encoder,
-                                filter_shape=(5,5),
-                                maxpool_size=(3,3),
-                                init_filters='from_bank',
-                                # filter_normalization='c',
-                                filter_bank=Xtr[m:m+1000],
-                                # filter_transform=transform_filter(15, (0.9,1.1)),
-                                locality=5,
-                                ).fit(Xtr[:m], Ytr[:m])
-
+    wl = RandomConvolution(filters=filters,
+                           weak_learner=weak_learner,
+                           encoder=encoder,
+                           )
+    wl.fit(Xtr[:m], Ytr[:m])
     print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
-    # print('All train acc', wl.evaluate(Xtr, Ytr))
     print('Test acc', wl.evaluate(Xts, Yts))
 
 
@@ -310,8 +243,8 @@ if __name__ == '__main__':
     from torchvision.transforms.functional import to_pil_image, to_tensor
     from torchvision.transforms import RandomAffine
 
-    seed = 42
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    # seed = 42
+    # torch.manual_seed(seed)
+    # np.random.seed(seed)
 
     main()
