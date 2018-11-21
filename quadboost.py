@@ -322,9 +322,14 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    filter_bank = Xtr[-3000:]
-    weak_learner = RandomCompleteConvolution(n_filters=1, kernel_size=(5,5), init_filters='from_bank', filter_bank=filter_bank)
-    # weak_learner = RandomLocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=3, kernel_size=(5,5), init_filters='from_data', locality=5)
+    f_gen = WeightFromBankGenerator(filter_bank=RandomConvolution.format_data(Xtr[-3000:]),
+                                    filter_shape=(5,5),
+                                    filter_processing=center_weight)
+    filters = LocalFilters(n_filters=3,
+                      filters_generator=f_gen,
+                      locality=3,
+                      maxpool_shape=(3,3))
+    weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
     # weak_learner = MulticlassDecisionTree(max_n_leaves=4)
     # weak_learner = MulticlassDecisionStump
     # sorted_X, sorted_X_idx = weak_learner.sort_data(X)
