@@ -26,14 +26,8 @@ def parse(func):
     return wrapper
 
 
-def to_one_hot(Y):
-    labels = set(Y)
-    n_classes = len(labels)
-    Y_one_hot = np.zeros((len(Y), n_classes))
-    for i, label in enumerate(Y):
-        Y_one_hot[i,label] = 1
-
-    return Y_one_hot
+def return_arg(arg):
+    return arg
 
 
 def compute_subplots_shape(N, aspect_ratio=9/16):
