@@ -66,9 +66,18 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
 
         filename += f'-nf={n_filters}-ks={ks}'
         if wl.startswith('rlc'): filename += f'-loc={locality}'
-        if nl == 'maxpool': filename += str(maxpool)
-        else: raise ValueError(f'{nl} is an invalid non-linearity.')
-        filename += f'-{nl}-{init_filters}'
+
+        activation = None
+        if 'maxpool' in nl:
+            filename += f'-maxpool{maxpool}'
+        if 'relu' in nl:
+            filename += f'-relu'
+            activation = torch.nn.functional.relu
+        elif 'sigmoid' in nl:
+            filename += f'-sigmoid'
+            activation = torch.sigmoid
+
+        filename += f'-{init_filters}'
 
         filter_bank = None
         if init_filters == 'from_bank':
@@ -100,6 +109,7 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
         if wl.startswith('rcc'):
             filters = Filters(n_filters=n_filters,
                               filters_generator=f_gen,
+                              activation=activation,
                               maxpool_shape=(maxpool, maxpool))
         elif wl.startswith('rlc'):
             filters = LocalFilters(n_filters=n_filters,
