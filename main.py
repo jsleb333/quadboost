@@ -11,7 +11,7 @@ from utils import parse, timed
 
 @timed
 @parse
-def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42, nl='maxpool', maxpool=3):
+def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42, nl='maxpool', maxpool=3, device='cpu'):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -59,10 +59,16 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
         weak_learner = WLThresholdedRidge(threshold=.5)
 
     elif wl.startswith('rcc') or wl.startswith('rlc'):
-        filename += f'-nf={n_filters}-ks={ks}-{nl}'
+        if device.startswith('cuda'):
+            Xtr = RandomConvolution.format_data(Xtr).to(device=device)
+            X_val = RandomConvolution.format_data(X_val).to(device=device)
+            Xts = RandomConvolution.format_data(Xts).to(device=device)
+
+        filename += f'-nf={n_filters}-ks={ks}'
+        if wl.startswith('rlc'): filename += f'-loc={locality}'
         if nl == 'maxpool': filename += str(maxpool)
         else: raise ValueError(f'{nl} is an invalid non-linearity.')
-        filename += f'-{init_filters}'
+        filename += f'-{nl}-{init_filters}'
 
         filter_bank = None
         if init_filters == 'from_bank':
@@ -105,44 +111,6 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
         if wl.endswith('ds'):
             weak_learner = RandomConvolution(filters=filters, weak_learner=MulticlassDecisionStump)
             kwargs['n_jobs'] = n_jobs
-
-    elif wl in ['rccridge', 'random-complete-convolution_ridge']:
-        filename += f'-nf={n_filters}-ks={ks}-{nl}'
-        if nl == 'maxpool': filename += str(maxpool)
-        else: raise ValueError(f'{nl} is an invalid non-linearity.')
-        filename += f'-{init_filters}'
-
-        filter_bank = None
-        if init_filters == 'from_bank':
-            if 0 < bank_ratio < 1:
-                bank_size = int(m*bank_ratio)
-                filter_bank = Xtr[:bank_size]
-                Xtr, Ytr = Xtr[bank_size:], Ytr[bank_size:]
-                logging.info(f'Bank size: {bank_size}')
-            else:
-                raise ValueError(f'Invalid bank_size {bank_size}.')
-            filename += f'_br={bank_ratio}'
-
-        if fn:
-            filename += f'_{fn}'
-
-        weak_learner = RandomCompleteConvolution(
-            n_filters=n_filters,
-            kernel_size=(ks, ks),
-            init_filters=init_filters,
-            filter_normalization=fn,
-            filter_bank=filter_bank,
-            maxpool_size=(maxpool, maxpool),
-            )
-
-    elif wl in ['rlcds', 'random-local-convolution_decision-stump']:
-        weak_learner = RandomLocalConvolution(weak_learner=MulticlassDecisionStump(), n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
-        filename += f'-nf={n_filters}-ks={ks}-loc={locality}-{init_filters}'
-        kwargs['n_jobs'] = n_jobs
-
-    elif wl in ['rlcridge', 'random-local-convolution_ridge']:
-        weak_learner = RandomLocalConvolution(weak_learner=Ridge, n_filters=n_filters, kernel_size=(ks, ks), init_filters=init_filters, locality=locality)
-        filename += f'-nf={n_filters}-ks={ks}-loc={locality}-{init_filters}'
 
     else:
         raise ValueError(f'Invalid weak learner name: "{wl}".')

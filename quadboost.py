@@ -322,7 +322,7 @@ def main():
     ### Choice of weak learner
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
-    f_gen = WeightFromBankGenerator(filter_bank=RandomConvolution.format_data(Xtr[-3000:]),
+    f_gen = WeightFromBankGenerator(filter_bank=Xtr[-3000:],
                                     filter_shape=(5,5),
                                     filter_processing=center_weight)
     filters = Filters(n_filters=3,
