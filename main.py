@@ -59,6 +59,11 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
         weak_learner = WLThresholdedRidge(threshold=.5)
 
     elif wl.startswith('rcc') or wl.startswith('rlc'):
+        filename += f'-nf={n_filters}-ks={ks}-{nl}'
+        if nl == 'maxpool': filename += str(maxpool)
+        else: raise ValueError(f'{nl} is an invalid non-linearity.')
+        filename += f'-{init_filters}'
+
         filter_bank = None
         if init_filters == 'from_bank':
             if 0 < bank_ratio < 1:
@@ -71,6 +76,9 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
             filename += f'_br={bank_ratio}'
         elif init_filters == 'from_data':
             filter_bank = Xtr
+
+        if fn:
+            filename += f'_{fn}'
 
         f_proc = []
         if 'c' in fn:
@@ -96,6 +104,7 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
             weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
         if wl.endswith('ds'):
             weak_learner = RandomConvolution(filters=filters, weak_learner=MulticlassDecisionStump)
+            kwargs['n_jobs'] = n_jobs
 
     elif wl in ['rccridge', 'random-complete-convolution_ridge']:
         filename += f'-nf={n_filters}-ks={ks}-{nl}'
