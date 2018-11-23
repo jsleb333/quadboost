@@ -64,6 +64,7 @@ class LocalFilters(Filters):
 
     def _generate_filters(self, filters_generator, n_filters):
         for (weight, position), _ in zip(filters_generator, range(n_filters)):
+            print(weight.shape)
             self.weights.append(torch.unsqueeze(weight, dim=0))
             self.positions.append(position)
 
@@ -96,32 +97,44 @@ class WeightFromBankGenerator:
     """
     Infinite generator of weights.
     """
-    def __init__(self, filter_bank, filters_shape=(5,5), filter_processing=None):
+    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, filter_processing=None):
         """
         Args:
-            filters_shape ((int, int), optional): Shape of the filters.
-            filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
-            filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callable that processes one weight and returns the result.
+            filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn.
+            filters_shape (sequence of 2 integers, optional): Shape of the filters.
+            filters_shape_high (sequence of 2 integers or None, optional): If not None, the shape of the filters will be randomly drawn from a uniform distribution between filters_shape (inclusive) and filters_shape_high (exclusive).
+            filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callables that execute (sequentially) some process on one weight and returns the result.
         """
         self.filter_bank = RandomConvolution.format_data(filter_bank)
         self.filters_shape = filters_shape
+        self.filters_shape_high = filters_shape_high
         if callable(filter_processing): filter_processing = [filter_processing]
         self.filter_processing = filter_processing or []
 
-        self.n_examples, n_channels, height, width = self.filter_bank.shape
-        self.i_max = height - filters_shape[0]
-        self.j_max = width - filters_shape[1]
+        self.n_examples, n_channels, self.bank_height, self.bank_width = self.filter_bank.shape
+        self.i_max = self.bank_height - filters_shape[0]
+        self.j_max = self.bank_width - filters_shape[1]
+
+    def _draw_filter_shape(self):
+        if not self.filters_shape_high:
+            return self.filters_shape
+        else:
+            return (np.random.randint(self.filters_shape[0], self.filters_shape_high[0]),
+                    np.random.randint(self.filters_shape[1], self.filters_shape_high[1]))
 
     def __iter__(self):
         while True:
-            yield self._draw_from_bank()
+            height, width = self._draw_filter_shape()
+            i_max = self.bank_height - height
+            j_max = self.bank_width - width
+            yield self._draw_from_bank(height, width, i_max, j_max)
 
-    def _draw_from_bank(self):
+    def _draw_from_bank(self, height, width, i_max, j_max):
         # (i, j) is the top left corner where the filter position was taken
-        i, j = np.random.randint(self.i_max), np.random.randint(self.j_max)
+        i, j = np.random.randint(i_max), np.random.randint(j_max)
 
         x = self.filter_bank[np.random.randint(self.n_examples)]
-        weight = torch.tensor(x[:, i:i+self.filters_shape[0], j:j+self.filters_shape[1]], requires_grad=False)
+        weight = torch.tensor(x[:, i:i+height, j:j+width], requires_grad=False)
         for process in self.filter_processing:
             weight = process(weight)
 
@@ -233,7 +246,8 @@ def main():
 
     random_transform = transform_filter(15,(.9,1.1))
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
-                                         filters_shape=(5,5),
+                                         filters_shape=(8,8),
+                                        #  filters_shape_high=(9,9),
                                          filter_processing=[center_weight])
     filters = LocalFilters(n_filters=5,
                       maxpool_shape=(3,3),
