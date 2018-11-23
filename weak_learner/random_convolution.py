@@ -31,9 +31,11 @@ class Filters(_Cloner):
         self.activation = activation or return_arg
 
         self.weights, self.positions = [], []
+        self._generate_filters(filters_generator, n_filters)
+
+    def _generate_filters(self, filters_generator, n_filters):
         for (weight, position), _ in zip(filters_generator, range(n_filters)):
             self.weights.append(torch.unsqueeze(weight, dim=0))
-            self.positions.append(position)
 
         self.weights = torch.cat(self.weights, dim=0)
 
@@ -55,10 +57,18 @@ class LocalFilters(Filters):
     def __init__(self, *args, locality=5, **kwargs):
         """
         Args:
-            locality (int, optional): Applies the filters locally around the place where the filter was taken from the picture in the filter bank. For example, for a filter_shape=(N,N) and a locality=L, the convolution will be made on a square of side N+2L centered around the original position. It will yield an array of side 2L+1. No padding is made in case the square exceeds the size of the examples.
+            locality (int, optional): Applies the filters locally around the place where the filter was taken from the picture in the filter bank. For example, for a filters_shape=(N,N) and a locality=L, the convolution will be made on a square of side N+2L centered around the original position. It will yield an array of side 2L+1. No padding is made in case the square exceeds the size of the examples.
         """
         super().__init__(*args, **kwargs)
         self.locality = locality
+
+    def _generate_filters(self, filters_generator, n_filters):
+        for (weight, position), _ in zip(filters_generator, range(n_filters)):
+            self.weights.append(torch.unsqueeze(weight, dim=0))
+            self.positions.append(position)
+
+    def _send_weights_to_device(self, X):
+        self.weights = [weight.to(device=X.device) for weight in self.weights]
 
     def apply(self, X):
         self._send_weights_to_device(X)
@@ -68,10 +78,10 @@ class LocalFilters(Filters):
         for (i, j), weight in zip(self.positions, self.weights):
             i_min = max(i - self.locality, 0)
             j_min = max(j - self.locality, 0)
-            i_max = min(i + self.weights.shape[2] + self.locality, height)
-            j_max = min(j + self.weights.shape[3] + self.locality, width)
+            i_max = min(i + weight.shape[-2] + self.locality, height)
+            j_max = min(j + weight.shape[-1] + self.locality, width)
 
-            output = F.conv2d(X[:,:,i_min:i_max, j_min:j_max], torch.unsqueeze(weight, dim=0))
+            output = F.conv2d(X[:,:,i_min:i_max, j_min:j_max], weight)
             if self.maxpool_shape:
                 output = F.max_pool2d(output, self.maxpool_shape, ceil_mode=True)
             random_feat.append(output.reshape(n_examples, -1))
@@ -86,21 +96,21 @@ class WeightFromBankGenerator:
     """
     Infinite generator of weights.
     """
-    def __init__(self, filter_bank, filter_shape=(5,5), filter_processing=None):
+    def __init__(self, filter_bank, filters_shape=(5,5), filter_processing=None):
         """
         Args:
-            filter_shape ((int, int), optional): Shape of the filters.
+            filters_shape ((int, int), optional): Shape of the filters.
             filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn. Only valid if 'init_filters' is set to 'from_bank'.
             filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callable that processes one weight and returns the result.
         """
         self.filter_bank = RandomConvolution.format_data(filter_bank)
-        self.filter_shape = filter_shape
+        self.filters_shape = filters_shape
         if callable(filter_processing): filter_processing = [filter_processing]
         self.filter_processing = filter_processing or []
 
         self.n_examples, n_channels, height, width = self.filter_bank.shape
-        self.i_max = height - filter_shape[0]
-        self.j_max = width - filter_shape[1]
+        self.i_max = height - filters_shape[0]
+        self.j_max = width - filters_shape[1]
 
     def __iter__(self):
         while True:
@@ -111,7 +121,7 @@ class WeightFromBankGenerator:
         i, j = np.random.randint(self.i_max), np.random.randint(self.j_max)
 
         x = self.filter_bank[np.random.randint(self.n_examples)]
-        weight = torch.tensor(x[:, i:i+self.filter_shape[0], j:j+self.filter_shape[1]], requires_grad=False)
+        weight = torch.tensor(x[:, i:i+self.filters_shape[0], j:j+self.filters_shape[1]], requires_grad=False)
         for process in self.filter_processing:
             weight = process(weight)
 
@@ -223,9 +233,9 @@ def main():
 
     random_transform = transform_filter(15,(.9,1.1))
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
-                                         filter_shape=(5,5),
+                                         filters_shape=(5,5),
                                          filter_processing=[center_weight])
-    filters = Filters(n_filters=5,
+    filters = LocalFilters(n_filters=5,
                       maxpool_shape=(3,3),
                       activation=torch.sigmoid,
                       filters_generator=filter_gen)

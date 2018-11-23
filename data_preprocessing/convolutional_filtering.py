@@ -84,13 +84,13 @@ if __name__ == '__main__':
         median.append(np.median(X_i, axis=0))
 
     filters = []
-    filter_shape = (5,5)
+    filters_shape = (5,5)
     for X in median:
-        for i, j in product(range(28-filter_shape[0]+1), range(28-filter_shape[1]+1)):
-            filters.append(Filter(i, j, X[i:i+filter_shape[0], j:j+filter_shape[1]]))
+        for i, j in product(range(28-filters_shape[0]+1), range(28-filters_shape[1]+1)):
+            filters.append(Filter(i, j, X[i:i+filters_shape[0], j:j+filters_shape[1]]))
 
 
-    dataset_shape = (10, 28-filter_shape[0]+1, 28-filter_shape[1]+1)
+    dataset_shape = (10, 28-filters_shape[0]+1, 28-filters_shape[1]+1)
 
     ### Applying the filters
     print('Train dataset:')

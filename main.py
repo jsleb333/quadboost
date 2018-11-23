@@ -104,7 +104,7 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
             f_proc.append(reduce_weight)
 
         f_gen = WeightFromBankGenerator(filter_bank=filter_bank,
-                                        filter_shape=(ks, ks),
+                                        filters_shape=(ks, ks),
                                         filter_processing=f_proc)
         if wl.startswith('rcc'):
             filters = Filters(n_filters=n_filters,

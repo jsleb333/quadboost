@@ -323,7 +323,7 @@ def main():
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
     f_gen = WeightFromBankGenerator(filter_bank=Xtr[-3000:],
-                                    filter_shape=(5,5),
+                                    filters_shape=(5,5),
                                     filter_processing=center_weight)
     filters = Filters(n_filters=3,
                       filters_generator=f_gen,
