@@ -64,7 +64,6 @@ class LocalFilters(Filters):
 
     def _generate_filters(self, filters_generator, n_filters):
         for (weight, position), _ in zip(filters_generator, range(n_filters)):
-            print(weight.shape)
             self.weights.append(torch.unsqueeze(weight, dim=0))
             self.positions.append(position)
 

@@ -11,7 +11,7 @@ from utils import parse, timed
 
 @timed
 @parse
-def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, ks=11, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42, nl='maxpool', maxpool=3, device='cpu'):
+def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, fs=11, fsh=0, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42, nl='maxpool', maxpool=3, device='cpu'):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -64,7 +64,8 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
             X_val = RandomConvolution.format_data(X_val).to(device=device)
             Xts = RandomConvolution.format_data(Xts).to(device=device)
 
-        filename += f'-nf={n_filters}-ks={ks}'
+        filename += f'-nf={n_filters}-fs={fs}'
+        if fsh: filename += f'_to_{fsh}'
         if wl.startswith('rlc'): filename += f'-loc={locality}'
 
         activation = None
@@ -104,7 +105,8 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
             f_proc.append(reduce_weight)
 
         f_gen = WeightFromBankGenerator(filter_bank=filter_bank,
-                                        filters_shape=(ks, ks),
+                                        filters_shape=(fs, fs),
+                                        filters_shape_high=(fsh, fsh) if fsh else None,
                                         filter_processing=f_proc)
         if wl.startswith('rcc'):
             filters = Filters(n_filters=n_filters,
