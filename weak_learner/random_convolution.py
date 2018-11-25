@@ -235,7 +235,7 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 1_000
+    m = 5_000
     bank = 1000
 
     # print('CPU')
@@ -245,13 +245,15 @@ def main():
 
     random_transform = transform_filter(15,(.9,1.1))
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
-                                         filters_shape=(8,8),
+                                         filters_shape=(11,11),
                                         #  filters_shape_high=(9,9),
                                          filter_processing=[center_weight])
-    filters = LocalFilters(n_filters=5,
+    filters = LocalFilters(n_filters=21,
                       maxpool_shape=(3,3),
                       activation=torch.sigmoid,
-                      filters_generator=filter_gen)
+                      filters_generator=filter_gen,
+                      locality=4,
+                      )
     weak_learner = Ridge
     # weak_learner = MulticlassDecisionStump
 
@@ -271,8 +273,8 @@ if __name__ == '__main__':
     from torchvision.transforms.functional import to_pil_image, to_tensor
     from torchvision.transforms import RandomAffine
 
-    # seed = 42
-    # torch.manual_seed(seed)
-    # np.random.seed(seed)
+    seed = 42
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
     main()
