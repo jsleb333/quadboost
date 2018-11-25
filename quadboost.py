@@ -27,6 +27,7 @@ class _QuadBoost:
         """
         self.weak_learner = weak_learner
         self.encoder = encoder
+        self.best_round = None
 
     def algorithm(self, *args, **kwargs):
         raise NotImplementedError
@@ -128,34 +129,39 @@ class _QuadBoost:
 
         return self
 
-    def predict(self, X):
+    def predict(self, X, mode='best'):
         """
         Returns the predicted labels of the given sample.
 
         Args:
             X (Array of shape(n_examples, ...)): Examples to predict.
+            mode (str, either 'last' or 'best, optional): Mode of prediction. If 'best' (default), will use only the weak_predictors up to the best round (according to the BestRoundTrackerCallback). If 'last', all weak_predictors found during training are used.
 
         Returns Y_pred (Array of shape (n_examples))
         """
-        return self.encoder.decode_labels(self.predict_encoded(X))
+        return self.encoder.decode_labels(self.predict_encoded(X, mode))
 
-    def predict_encoded(self, X):
+    def predict_encoded(self, X, mode='last'):
         """
         Returns the predicted encoded labels of the given sample. Can be decoded with the LabelEncoder.decode_labels() method.
 
         Args:
             X (Array of shape(n_examples, ...)): Examples to predict.
+            mode (str, either 'last' or 'best, optional): Mode of prediction. If 'last' (default), all weak_predictors found during training are used. If 'best', will use only the weak_predictors up to the best round (according to the BestRoundTrackerCallback).
 
         Returns encoded_Y_pred (Array of shape (n_examples, encoding_dim))
         """
         encoded_Y_pred = np.zeros((X.shape[0], self.encoder.encoding_dim)) + self.f0
 
-        for wp_weight, wp in zip(self.weak_predictors_weights, self.weak_predictors):
+        wp_weights, wps = self.weak_predictors_weights, self.weak_predictors
+        if mode == 'best':
+            wp_weights, wps = wp_weights[:self.best_round], wps[:self.best_round]
+        for wp_weight, wp in zip(wp_weights, wps):
             encoded_Y_pred += wp_weight * wp.predict(X)
 
         return encoded_Y_pred
 
-    def evaluate(self, X, Y, return_risk=False):
+    def evaluate(self, X, Y, return_risk=False, mode='best'):
         """
         Evaluates the accuracy of the classifier given a sample and its labels.
 
@@ -163,10 +169,11 @@ class _QuadBoost:
             X (Array of shape(n_examples, ...)): Examples to predict.
             Y (Array of shape (n_examples)): True labels.
             return_risk (bool, optional): If True, additionally returns the (non normalized) risk of the examples.
+            mode (str, either 'last' or 'best, optional): Mode of prediction. If 'best' (default), will use only the weak_predictors up to the best round (according to the BestRoundTrackerCallback). If 'last', all weak_predictors found during training are used.
 
         Returns the accuracy (float) or a tuple of (accuracy (float), risk (float))
         """
-        encoded_Y_pred = self.predict_encoded(X)
+        encoded_Y_pred = self.predict_encoded(X, mode)
         Y_pred = self.encoder.decode_labels(encoded_Y_pred)
 
         accuracy = accuracy_score(y_true=Y, y_pred=Y_pred)
@@ -308,7 +315,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 1_000
+    m = 1_00
     X, Y = Xtr[:m], Ytr[:m]
     X_val, Y_val = Xtr[-10_000:], Ytr[-10_000:]
 
@@ -323,7 +330,7 @@ def main():
     # weak_learner = WLThresholdedRidge(threshold=.5)
     # weak_learner = WLRidge
     f_gen = WeightFromBankGenerator(filter_bank=Xtr[-3000:],
-                                    filters_shape=(5,5),
+                                    filters_shape=(11,11),
                                     filter_processing=center_weight)
     filters = Filters(n_filters=3,
                       filters_generator=f_gen,
@@ -343,21 +350,22 @@ def main():
     ckpt = ModelCheckpoint(filename=filename+'_{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'_log.csv', dirname='./results/log')
     zero_risk = BreakOnZeroRiskCallback()
-    restore = RestoreBestModelCallback(quantity='valid_acc', monitor='max')
+    tracker = BestRoundTrackerCallback(quantity='valid_acc', monitor='max')
     callbacks = [ckpt,
                 logger,
                 zero_risk,
-                restore,
+                tracker,
                 ]
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=1)
-    qb.fit(X, Y, max_round_number=5, patience=10,
+    qb.fit(X, Y, max_round_number=2, patience=10,
             X_val=X_val, Y_val=Y_val,
             callbacks=callbacks,
             # n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
             )
-    print(f'Test accuracy on best model (round {len(qb.weak_predictors)}): {qb.evaluate(Xts, Yts):.3%}')
+    print(f'Test accuracy on best model (round {qb.best_round}): {qb.evaluate(Xts, Yts):.3%}')
+    print(f'Test accuracy on last model (round {len(qb.weak_predictors)}): {qb.evaluate(Xts, Yts, mode="last"):.3%}')
     ### Or resume fitting a model
     # qb = QuadBoostMHCR.load('results/test_3.ckpt')
     # qb.resume_fit(X, Y,
