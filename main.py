@@ -133,11 +133,9 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
     ckpt = ModelCheckpoint(filename=filename+'-{round}.ckpt', dirname='./results', save_last=True)
     logger = CSVLogger(filename=filename+'-log.csv', dirname='./results/log')
     zero_risk = BreakOnZeroRiskCallback()
-    restore = RestoreBestModelCallback(monitor='max')
     callbacks = [ckpt,
                 logger,
                 zero_risk,
-                restore,
                 ]
 
     logging.info(f'Filename: {filename}')
@@ -159,7 +157,9 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
                       max_round_number=max_round,
                       **kwargs)
 
-    print(f'Test accuracy on best model (round {len(qb.weak_predictors)}): {qb.evaluate(Xts, Yts):.3%}')
+    print(f'Test accuracy on best model (round {qb.best_round}): {qb.evaluate(Xts, Yts):.3%}')
+    print(f'Test accuracy on last model (round {len(qb.weak_predictors)}): {qb.evaluate(Xts, Yts, mode="last"):.3%}')
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, style='{', format='[{levelname}] {message}')
