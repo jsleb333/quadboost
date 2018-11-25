@@ -78,6 +78,12 @@ class _QuadBoost:
         elif not any(isinstance(callback, Progression) for callback in callbacks):
             callbacks.append(Progression())
 
+        if not any(isinstance(callback, BestRoundTrackerCallback) for callback in callbacks):
+            if X_val is not None and Y_val is not None:
+                callbacks.append(BestRoundTrackerCallback(quantity='valid_acc'))
+            else:
+                callbacks.append(BestRoundTrackerCallback(quantity='train_acc'))
+
         if break_on_perfect_train_acc:
             callbacks.append(BreakOnPerfectTrainAccuracyCallback())
         if max_round_number:
@@ -354,7 +360,7 @@ def main():
     callbacks = [ckpt,
                 logger,
                 zero_risk,
-                tracker,
+                # tracker,
                 ]
 
     ### Fitting the model
