@@ -96,17 +96,19 @@ class WeightFromBankGenerator:
     """
     Infinite generator of weights.
     """
-    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, filter_processing=None):
+    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None):
         """
         Args:
             filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn.
             filters_shape (sequence of 2 integers, optional): Shape of the filters.
             filters_shape_high (sequence of 2 integers or None, optional): If not None, the shape of the filters will be randomly drawn from a uniform distribution between filters_shape (inclusive) and filters_shape_high (exclusive).
+            margin (int, optional): Number of pixels from the sides that are excluded from the pool of possible filters.
             filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callables that execute (sequentially) some process on one weight and returns the result.
         """
         self.filter_bank = RandomConvolution.format_data(filter_bank)
         self.filters_shape = filters_shape
         self.filters_shape_high = filters_shape_high
+        self.margin = margin
         if callable(filter_processing): filter_processing = [filter_processing]
         self.filter_processing = filter_processing or []
 
@@ -124,13 +126,13 @@ class WeightFromBankGenerator:
     def __iter__(self):
         while True:
             height, width = self._draw_filter_shape()
-            i_max = self.bank_height - height
-            j_max = self.bank_width - width
+            i_max = self.bank_height - height - self.margin
+            j_max = self.bank_width - width - self.margin
             yield self._draw_from_bank(height, width, i_max, j_max)
 
     def _draw_from_bank(self, height, width, i_max, j_max):
         # (i, j) is the top left corner where the filter position was taken
-        i, j = np.random.randint(i_max), np.random.randint(j_max)
+        i, j = np.random.randint(self.margin, i_max), np.random.randint(self.margin, j_max)
 
         x = self.filter_bank[np.random.randint(self.n_examples)]
         weight = torch.tensor(x[:, i:i+height, j:j+width], requires_grad=False)
@@ -243,11 +245,12 @@ def main():
     # Xtr = Xtr[:m+bank].to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
 
-    random_transform = transform_filter(15,(.9,1.1))
+    random_transform = transform_filter(0,(.9,1.1))
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filters_shape=(11,11),
                                         #  filters_shape_high=(9,9),
-                                         filter_processing=[center_weight])
+                                         margin=2,
+                                         filter_processing=[center_weight])#, random_transform])
     filters = LocalFilters(n_filters=21,
                       maxpool_shape=(3,3),
                       activation=torch.sigmoid,
