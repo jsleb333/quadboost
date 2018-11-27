@@ -274,15 +274,16 @@ def main():
     # print('CUDA')
     # Xtr = Xtr[:m+bank].to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
-
+    scale = 1
+    shear = 0
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filters_shape=(11,11),
                                         #  filters_shape_high=(9,9),
                                          margin=2,
                                          filter_processing=[center_weight],
                                          degrees=20,
-                                         scale=(.9, 1.1),
-                                         shear=15,
+                                         scale=scale if scale != 1 else None,
+                                         shear=shear if shear != 0 else None,
                                          )
     filters = LocalFilters(n_filters=5,
                       maxpool_shape=(3,3),

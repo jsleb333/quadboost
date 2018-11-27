@@ -339,7 +339,7 @@ def main():
                                     filters_shape=(11,11),
                                     filter_processing=center_weight)
     filters = Filters(n_filters=3,
-                      filters_generator=f_gen,
+                      weights_generator=f_gen,
                     #   locality=3,
                       maxpool_shape=(3,3))
     # Xtr, X_val, Xts = RandomConvolution.format_data(Xtr), RandomConvolution.format_data(X_val),RandomConvolution.format_data(Xts)

@@ -11,7 +11,7 @@ from utils import parse, timed
 
 @timed
 @parse
-def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, fs=11, fsh=0, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42, nl='maxpool', maxpool=3, device='cpu'):
+def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, fs=11, fsh=0, locality=5, init_filters='from_bank', bank_ratio=.05, fn='', seed=42, nl='maxpool', maxpool=3, device='cpu', degrees=.0, scale=.0, shear=.0):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -79,6 +79,17 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
             activation = torch.sigmoid
 
         filename += f'-{init_filters}'
+        if degrees:
+            filename += f'-deg={degrees}'
+        if scale:
+            filename += f'-scale={scale}'
+            scale = (1-scale, 1/(1-scale))
+        else:
+            scale = None
+        if shear:
+            filename += f'-shear={shear}'
+        else:
+            shear = None
 
         filter_bank = None
         if init_filters == 'from_bank':
@@ -104,18 +115,22 @@ def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodi
         if 'r' in fn:
             f_proc.append(reduce_weight)
 
-        f_gen = WeightFromBankGenerator(filter_bank=filter_bank,
+        w_gen = WeightFromBankGenerator(filter_bank=filter_bank,
                                         filters_shape=(fs, fs),
                                         filters_shape_high=(fsh, fsh) if fsh else None,
-                                        filter_processing=f_proc)
+                                        filter_processing=f_proc,
+                                        degrees=degrees,
+                                        scale=scale,
+                                        shear=shear,
+                                        )
         if wl.startswith('rcc'):
             filters = Filters(n_filters=n_filters,
-                              filters_generator=f_gen,
+                              weights_generator=w_gen,
                               activation=activation,
                               maxpool_shape=(maxpool, maxpool))
         elif wl.startswith('rlc'):
             filters = LocalFilters(n_filters=n_filters,
-                                   filters_generator=f_gen,
+                                   weights_generator=w_gen,
                                    locality=locality,
                                    maxpool_shape=(maxpool, maxpool))
         if wl.endswith('ridge'):
