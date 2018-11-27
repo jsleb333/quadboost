@@ -18,6 +18,9 @@ from utils import timed, return_arg
 
 class Filters(_Cloner):
     """
+    Class that encapsulates a number of filters and convolutes them with a dataset when 'apply' is called.
+
+    Each call to an instance of the class will yield a new Filters object instanciated with the same arguments (see _Cloner). This allows to pick different filters from the weights_generator every new instance.
     """
     def __init__(self, n_filters, weights_generator, maxpool_shape=(3,3), activation=None):
         """
@@ -55,7 +58,8 @@ class Filters(_Cloner):
 
 
 class LocalFilters(Filters):
-    """
+    __doc__ = Filters.__doc__ + """\n
+    The convolution is made locally only around the area the filter was drawn.
     """
     def __init__(self, *args, locality=5, **kwargs):
         """
@@ -107,6 +111,9 @@ class WeightFromBankGenerator:
             filters_shape_high (sequence of 2 integers or None, optional): If not None, the shape of the filters will be randomly drawn from a uniform distribution between filters_shape (inclusive) and filters_shape_high (exclusive).
             margin (int, optional): Number of pixels from the sides that are excluded from the pool of possible filters.
             filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callables that execute (sequentially) some process on one weight and returns the result.
+            degrees (int or tuple of int, optional): Maximum number of degrees the image drawn will be rotated before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
+            scale (tuple of float or None, optional): Scale factor the image drawn will be rescaled before a filter in drawn. The actual factor is drawn from random. See torchvision.transforms.RandomAffine for more info.
+            shear (float or None, optional): Shear degree the image drawn will be sheared before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
         """
         self.filter_bank = RandomConvolution.format_data(filter_bank)
         self.filters_shape = filters_shape
@@ -215,6 +222,9 @@ class RandomConvolution(_WeakLearnerBase):
 
     @staticmethod
     def format_data(data):
+        """
+        Formats a data array to the right format accepted by this class, which is a torch.Tensor of shape (n_examples, n_channels, height, width).
+        """
         if type(data) is np.ndarray:
             data = torch.from_numpy(data).float()
         if len(data.shape) == 3:
