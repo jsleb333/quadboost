@@ -5,7 +5,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torchvision.transforms import RandomAffine
-import torchvision.transforms.functional as tf#import to_pil_image, to_tensor, pad, crop
+import torchvision.transforms.functional as tf
+from PIL.Image import BICUBIC
 import warnings
 
 import sys, os
@@ -18,25 +19,25 @@ from utils import timed, return_arg
 class Filters(_Cloner):
     """
     """
-    def __init__(self, n_filters, filters_generator, maxpool_shape=(3,3), activation=None):
+    def __init__(self, n_filters, weights_generator, maxpool_shape=(3,3), activation=None):
         """
         Args:
             n_filters (int): Number of filters.
-            filters_generator (iterable, optional): Iterable that yields filters weight.
+            weights_generator (iterable, optional): Iterable that yields filters weight.
             maxpool_shape ((int, int) or None, optional): Shape of the maxpool kernel layer. If None, no maxpool is done.
             activation (Callable or None, optional): Activation function to apply which returns transformed data.
         """
         self.n_filters = n_filters
-        self.filters_generator = filters_generator or torch.rand()
+        self.weights_generator = weights_generator or torch.rand()
         self.maxpool_shape = maxpool_shape
 
         self.activation = activation or return_arg
 
         self.weights, self.positions = [], []
-        self._generate_filters(filters_generator, n_filters)
+        self._generate_filters(weights_generator, n_filters)
 
-    def _generate_filters(self, filters_generator, n_filters):
-        for (weight, position), _ in zip(filters_generator, range(n_filters)):
+    def _generate_filters(self, weights_generator, n_filters):
+        for _, (weight, position) in zip(range(n_filters), weights_generator):
             self.weights.append(torch.unsqueeze(weight, dim=0))
 
         self.weights = torch.cat(self.weights, dim=0)
@@ -64,8 +65,8 @@ class LocalFilters(Filters):
         super().__init__(*args, **kwargs)
         self.locality = locality
 
-    def _generate_filters(self, filters_generator, n_filters):
-        for (weight, position), _ in zip(filters_generator, range(n_filters)):
+    def _generate_filters(self, weights_generator, n_filters):
+        for _, (weight, position) in zip(range(n_filters), weights_generator):
             self.weights.append(torch.unsqueeze(weight, dim=0))
             self.positions.append(position)
 
@@ -118,7 +119,9 @@ class WeightFromBankGenerator:
         self.i_max = self.bank_height - filters_shape[0]
         self.j_max = self.bank_width - filters_shape[1]
 
-        self.affine_transform = RandomAffine(degrees=degrees, scale=scale, shear=shear)
+        self.degrees, self.scale, self.shear = degrees, scale, shear
+        self.affine_transform = RandomAffine(degrees=degrees, scale=scale, shear=shear,
+                                             resample=BICUBIC)
         self.padding = padding
 
     def _draw_filter_shape(self):
@@ -141,24 +144,27 @@ class WeightFromBankGenerator:
                 np.random.randint(self.margin, j_max-self.margin))
 
         x = torch.tensor(self.filter_bank[np.random.randint(self.n_examples)], requires_grad=False)
-        min_x = torch.min(x)
-        x_orig = x - min_x
-        max_x = torch.max(x_orig)
-        x_orig /= max_x
-        print(torch.max(x_orig), max_x, torch.min(x_orig), min_x)
 
-        x_pil = tf.to_pil_image(x_orig)
-        # x_pil = tf.crop(self.affine_transform(tf.pad(x_pil, self.padding)),
-                        # self.padding, self.padding, self.bank_height, self.bank_width)
-        x_transformed = tf.to_tensor(x_pil)
-        x_transformed *= max_x
-        x_transformed += min_x
-        # print(torch.max(x_transformed), torch.max(x), torch.min(x_transformed), torch.min(x))
-        print(x[0,:5,:5], x_transformed[0,:5,:5])
-        print(torch.sum(torch.abs(x - x_transformed)))
-        # plot_images([x.numpy().reshape(28,28), x_transformed.numpy().reshape(28,28)])
+        if self.degrees or self.scale or self.shear:
+            # PIL images must be in format float 0-1 gray scale:
+            min_x = torch.min(x)
+            x -= min_x
+            max_x = torch.max(x)
+            x /= max_x
 
-        weight = torch.tensor(x_transformed[:, i:i+height, j:j+width], requires_grad=False)
+            fillcolor = int(-min_x/max_x * 255) # Value to use to fill so that when reconverted to tensor, fill value is 0.
+            self.affine_transform.fillcolor = fillcolor
+
+            x_pil = tf.to_pil_image(x) # Conversion to PIl image looses quality because it is converted to 0-255 gray scale.
+            x_pil = tf.crop(self.affine_transform(tf.pad(x_pil, self.padding, fill=fillcolor)),
+                            self.padding, self.padding, self.bank_height, self.bank_width)
+            x = tf.to_tensor(x_pil)
+            x *= max_x
+            x += min_x
+
+        # plot_images([x.numpy().reshape(28,28)])
+
+        weight = torch.tensor(x[:, i:i+height, j:j+width], requires_grad=False)
         for process in self.filter_processing:
             weight = process(weight)
 
@@ -229,15 +235,6 @@ class RandomConvolution(_WeakLearnerBase):
         return self.weak_learner.predict(random_feat)
 
 
-def transform_filter(degrees=0, scale=None, shear=None):
-    affine = RandomAffine(degrees=degrees, scale=scale, shear=shear)
-    def transform(weight):
-        tmp_weight = tf.to_pil_image(weight)
-        tmp_weight = tf.affine(tmp_weight)
-        return tf.to_tensor(tmp_weight)
-    return transform
-
-
 def center_weight(weight):
     weight -= torch.mean(weight)
     return weight
@@ -268,16 +265,19 @@ def main():
     # Xtr = Xtr[:m+bank].to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
 
-    random_transform = transform_filter(0,(.9,1.1))
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filters_shape=(11,11),
                                         #  filters_shape_high=(9,9),
                                          margin=2,
-                                         filter_processing=[center_weight])#, random_transform])
-    filters = LocalFilters(n_filters=1,
+                                         filter_processing=[center_weight],
+                                         degrees=20,
+                                         scale=(.9, 1.1),
+                                         shear=15,
+                                         )
+    filters = LocalFilters(n_filters=5,
                       maxpool_shape=(3,3),
                       activation=torch.sigmoid,
-                      filters_generator=filter_gen,
+                      weights_generator=filter_gen,
                       locality=4,
                       )
     weak_learner = Ridge
@@ -296,16 +296,17 @@ def plot_images(images, titles=None, block=True):
 
     fig, axes = make_fig_axes(len(images))
 
-    vmax = min(np.max(np.abs(im)) for im in images)
+    # vmax = min(np.max(np.abs(im)) for im in images)
+    vmax = 1
     if not titles:
-        titles = range(len(images))
+        titles = (f'{n}: {vmax}' for n in range(len(images)))
     for im, title, ax in zip(images, titles, axes):
         # ax.imshow(im, cmap='gray_r')
-        ax.imshow(im, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
-        if titles:
-            ax.set_title(title)
+        cax = ax.imshow(im, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
+        ax.set_title(title)
 
-    plt.get_current_fig_manager().window.showMaximized()
+    # fig.colorbar(cax)
+    # plt.get_current_fig_manager().window.showMaximized()
     plt.show(block=block)
 
 
