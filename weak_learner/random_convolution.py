@@ -172,7 +172,7 @@ class RandomConvolution(_WeakLearnerBase):
     def __init__(self, filters, encoder=None, weak_learner=Ridge):
         """
         Args:
-            filters (Uninstanciated class that defines __call__)): Callable that returns that receives the examples (torch array of shape (n_examples, n_channels, width, height)) and outputs extracted features (torch array of shape (n_examples, n_features)).
+            filters (callable): Callable that creates and returns a Filters object. A Filters object should define a 'apply' method that receives the examples (torch array of shape (n_examples, n_channels, width, height)) and outputs extracted features (torch array of shape (n_examples, n_features)).
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
             weak_learner (Callable that returns a new object that defines the 'fit' and 'predict' methods, such as object inheriting from _WeakLearnerBase, optional): Regressor that will fit the data. Default is a Ridge regressor from scikit-learn.
         """
