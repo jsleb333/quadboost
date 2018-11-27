@@ -150,7 +150,7 @@ class WeightFromBankGenerator:
         i, j = (np.random.randint(self.margin, i_max-self.margin),
                 np.random.randint(self.margin, j_max-self.margin))
 
-        x = torch.tensor(self.filter_bank[np.random.randint(self.n_examples)], requires_grad=False)
+        x = torch.tensor(self.filter_bank[np.random.randint(self.n_examples)], requires_grad=False).cpu()
 
         if self.degrees or self.scale or self.shear:
             # PIL images must be in format float 0-1 gray scale:
