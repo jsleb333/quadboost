@@ -103,7 +103,7 @@ class WeightFromBankGenerator:
     """
     Infinite generator of weights.
     """
-    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None, degrees=0, scale=None, shear=None, padding=2):
+    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None, degrees=0, scale=None, shear=None, padding=2, ):
         """
         Args:
             filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn.
@@ -153,22 +153,7 @@ class WeightFromBankGenerator:
         x = torch.tensor(self.filter_bank[np.random.randint(self.n_examples)], requires_grad=False).cpu()
 
         if self.degrees or self.scale or self.shear:
-            # PIL images must be in format float 0-1 gray scale:
-            min_x = torch.min(x)
-            x -= min_x
-            max_x = torch.max(x)
-            x /= max_x
-
-            fillcolor = int(-min_x/max_x * 255) # Value to use to fill so that when reconverted to tensor, fill value is 0.
-            self.affine_transform.fillcolor = fillcolor
-
-            x_pil = tf.to_pil_image(x) # Conversion to PIl image looses quality because it is converted to 0-255 gray scale.
-            x_pil = tf.crop(self.affine_transform(tf.pad(x_pil, self.padding, fill=fillcolor)),
-                            self.padding, self.padding, self.bank_height, self.bank_width)
-            x = tf.to_tensor(x_pil)
-            x *= max_x
-            x += min_x
-
+            x = self._transform_image(x)
         # plot_images([x.numpy().reshape(28,28)])
 
         weight = torch.tensor(x[:, i:i+height, j:j+width], requires_grad=False)
@@ -176,6 +161,25 @@ class WeightFromBankGenerator:
             weight = process(weight)
 
         return weight, (i, j)
+
+    def _transform_image(self, x):
+        # PIL images must be in format float 0-1 gray scale:
+        min_x = torch.min(x)
+        x -= min_x
+        max_x = torch.max(x)
+        x /= max_x
+
+        fillcolor = int(-min_x/max_x * 255) # Value to use to fill so that when reconverted to tensor, fill value is 0.
+        self.affine_transform.fillcolor = fillcolor
+
+        x_pil = tf.to_pil_image(x) # Conversion to PIl image looses quality because it is converted to 0-255 gray scale.
+        x_pil = tf.crop(self.affine_transform(tf.pad(x_pil, self.padding, fill=fillcolor)),
+                        self.padding, self.padding, self.bank_height, self.bank_width)
+        x = tf.to_tensor(x_pil)
+        x *= max_x
+        x += min_x
+
+        return x
 
 
 class RandomConvolution(_WeakLearnerBase):
