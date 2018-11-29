@@ -27,7 +27,7 @@ class Filters(_Cloner):
         Args:
             n_filters (int): Number of filters.
             weights_generator (iterable, optional): Iterable that yields filters weight.
-            maxpool_shape ((int, int) or None, optional): Shape of the maxpool kernel layer. If None, no maxpool is done.
+            maxpool_shape (tuple of 2 or 3 integers or None, optional): Shape of the maxpool kernel layer. If None, no maxpool is done. If one of the dim is set to -1, the maxpool is done over all components of this dim.
             activation (Callable or None, optional): Activation function to apply which returns transformed data.
         """
         self.n_filters = n_filters
@@ -41,7 +41,7 @@ class Filters(_Cloner):
 
     def _generate_filters(self, weights_generator, n_filters):
         for _, (weight, position) in zip(range(n_filters), weights_generator):
-            self.weights.append(torch.unsqueeze(weight, dim=0))
+            self.weights.append(weight)
 
         self.weights = torch.cat(self.weights, dim=0)
 
@@ -71,7 +71,8 @@ class LocalFilters(Filters):
 
     def _generate_filters(self, weights_generator, n_filters):
         for _, (weight, position) in zip(range(n_filters), weights_generator):
-            self.weights.append(torch.unsqueeze(weight, dim=0))
+            # self.weights.append(torch.unsqueeze(weight, dim=0))
+            self.weights.append(weight)
             self.positions.append(position)
 
     def _send_weights_to_device(self, X):
@@ -89,8 +90,15 @@ class LocalFilters(Filters):
             j_max = min(j + weight.shape[-1] + self.locality, width)
 
             output = F.conv2d(X[:,:,i_min:i_max, j_min:j_max], weight)
+            # output.shape -> (n_examples, n_transforms, height, array)
             if self.maxpool_shape:
-                output = F.max_pool2d(output, self.maxpool_shape, ceil_mode=True)
+                output = torch.unsqueeze(output, dim=1)
+                # output.shape -> (n_examples, 1, n_transforms, height, array)
+                maxpool_shape = (1, *self.maxpool_shape) if len(self.maxpool_shape) == 2 else self.maxpool_shape # Expanding maxpool_shape to account for n_transforms
+                maxpool_shape = tuple(ms if ms != -1 else output.shape[i+2] for i, ms in enumerate(maxpool_shape)) # Finding actual shape if -1 was used.
+
+                output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
+
             random_feat.append(output.reshape(n_examples, -1))
 
         random_feat = torch.cat(random_feat, dim=1)
@@ -103,7 +111,7 @@ class WeightFromBankGenerator:
     """
     Infinite generator of weights.
     """
-    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None, degrees=0, scale=None, shear=None, padding=2, ):
+    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None, degrees=0, scale=None, shear=None, padding=2, n_transforms=1):
         """
         Args:
             filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn.
@@ -114,6 +122,7 @@ class WeightFromBankGenerator:
             degrees (int or tuple of int, optional): Maximum number of degrees the image drawn will be rotated before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
             scale (tuple of float or None, optional): Scale factor the image drawn will be rescaled before a filter in drawn. The actual factor is drawn from random. See torchvision.transforms.RandomAffine for more info.
             shear (float or None, optional): Shear degree the image drawn will be sheared before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
+            n_transform (int, optional): Number of filters made from the same image (at the same position) but with a different random transformation applied each time.
         """
         self.filter_bank = RandomConvolution.format_data(filter_bank)
         self.filters_shape = filters_shape
@@ -130,6 +139,7 @@ class WeightFromBankGenerator:
         self.affine_transform = RandomAffine(degrees=degrees, scale=scale, shear=shear,
                                              resample=BICUBIC)
         self.padding = padding
+        self.n_transforms = n_transforms
 
     def _draw_filter_shape(self):
         if not self.filters_shape_high:
@@ -152,34 +162,39 @@ class WeightFromBankGenerator:
 
         x = torch.tensor(self.filter_bank[np.random.randint(self.n_examples)], requires_grad=False).cpu()
 
-        if self.degrees or self.scale or self.shear:
-            x = self._transform_image(x)
-        # plot_images([x.numpy().reshape(28,28)])
+        weight = []
+        for _ in range(self.n_transforms):
+            if self.degrees or self.scale or self.shear:
+                x_transformed = self._transform_image(x)
+                # plot_images([x_transformed.numpy().reshape(28,28)])
 
-        weight = torch.tensor(x[:, i:i+height, j:j+width], requires_grad=False)
-        for process in self.filter_processing:
-            weight = process(weight)
+                w = torch.tensor(x_transformed[:, i:i+height, j:j+width], requires_grad=False)
+                for process in self.filter_processing:
+                    w = process(w)
+                weight.append(w)
+
+        weight = torch.unsqueeze(torch.cat(weight, dim=0), dim=1)
 
         return weight, (i, j)
 
     def _transform_image(self, x):
         # PIL images must be in format float 0-1 gray scale:
         min_x = torch.min(x)
-        x -= min_x
+        x_transformed = x - min_x
         max_x = torch.max(x)
-        x /= max_x
+        x_transformed /= max_x
 
         fillcolor = int(-min_x/max_x * 255) # Value to use to fill so that when reconverted to tensor, fill value is 0.
         self.affine_transform.fillcolor = fillcolor
 
-        x_pil = tf.to_pil_image(x) # Conversion to PIl image looses quality because it is converted to 0-255 gray scale.
+        x_pil = tf.to_pil_image(x_transformed) # Conversion to PIl image looses quality because it is converted to 0-255 gray scale.
         x_pil = tf.crop(self.affine_transform(tf.pad(x_pil, self.padding, fill=fillcolor)),
                         self.padding, self.padding, self.bank_height, self.bank_width)
-        x = tf.to_tensor(x_pil)
-        x *= max_x
-        x += min_x
+        x_transformed = tf.to_tensor(x_pil)
+        x_transformed *= max_x
+        x_transformed += min_x
 
-        return x
+        return x_transformed
 
 
 class RandomConvolution(_WeakLearnerBase):
@@ -288,16 +303,19 @@ def main():
                                          degrees=20,
                                          scale=scale if scale != 1 else None,
                                          shear=shear if shear != 0 else None,
+                                         n_transforms=10,
                                          )
-    filters = LocalFilters(n_filters=5,
-                      maxpool_shape=(3,3),
+    filters = LocalFilters(n_filters=100,
+                    #   maxpool_shape=(-1,-1,-1),
+                      maxpool_shape=(-1,-1,-1),
                       activation=torch.sigmoid,
                       weights_generator=filter_gen,
-                      locality=4,
+                      locality=2,
                       )
     weak_learner = Ridge
     # weak_learner = MulticlassDecisionStump
 
+    print('Starting fit')
     wl = RandomConvolution(filters=filters,
                            weak_learner=weak_learner,
                            encoder=encoder,
