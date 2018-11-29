@@ -245,16 +245,16 @@ class RandomConvolution(_WeakLearnerBase):
         return self.weak_learner.predict(random_feat)
 
 
-def center_weight(weight):
-    weight -= torch.mean(weight)
+def center_weight(weight, dim=-1):
+    weight -= torch.mean(weight, dim)
     return weight
 
-def normalize_weight(weight):
-    weight /= torch.norm(weight, p=2)
+def normalize_weight(weight, dim=-1):
+    weight /= torch.norm(weight, dim, p=2)
     return weight
 
-def reduce_weight(weight):
-    weight /= torch.std(weight)
+def reduce_weight(weight, dim=-1):
+    weight /= torch.std(weight, dim)
     return weight
 
 
