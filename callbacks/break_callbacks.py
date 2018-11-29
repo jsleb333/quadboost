@@ -3,7 +3,7 @@ import logging
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import Callback
+from callbacks import Callback, BestRoundTrackerCallback
 
 
 class BreakCallback(Callback):
@@ -27,26 +27,17 @@ class BreakOnMaxStepCallback(BreakCallback):
                 raise StopIteration
 
 
-class BreakOnPlateauCallback(BreakCallback):
-    def __init__(self, patience=None, manager=None):
-        super().__init__(manager)
+class BreakOnPlateauCallback(BreakCallback, BestRoundTrackerCallback):
+    def __init__(self, patience=None, manager=None, quantity='valid_acc', monitor='max'):
+        super().__init__(quantity=quantity, monitor=monitor, manager=manager)
         self.patience = patience
-        self.rounds_since_no_improvements = 0
-        self.best_train_acc = -1
 
     def on_step_end(self):
-        if self.manager.step.train_acc is not None:
-            self._update_best_train_acc()
-            if self.patience is not None and self.rounds_since_no_improvements > self.patience:
+        if self.patience is not None:
+            super().on_step_end() # Updates self.best_round
+            if self.manager.step.step_number - self.best_round > self.patience:
                 logging.info('Terminating iteration due to maximum round number without improvement reached.')
                 raise StopIteration
-
-    def _update_best_train_acc(self):
-        if self.manager.step.train_acc > self.best_train_acc:
-            self.best_train_acc = self.manager.step.train_acc
-            self.rounds_since_no_improvements = 0
-        else:
-            self.rounds_since_no_improvements += 1
 
 
 class BreakOnPerfectTrainAccuracyCallback(BreakCallback):

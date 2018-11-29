@@ -24,7 +24,7 @@ class BestRoundTrackerCallback(Callback):
         value = getattr(self.manager.step, self.quantity)
         if self._value_is_better_than_current(value):
             self.best_value = value
-            self.manager.caller.best_round = self.manager.step.step_number + 1
+            self.manager.caller.best_round = self.best_round = self.manager.step.step_number + 1
             if self.verbose:
                 logging.info('New best model found.')
 
