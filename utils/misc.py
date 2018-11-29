@@ -26,7 +26,7 @@ def parse(func):
     return wrapper
 
 
-def return_arg(arg):
+def identity_func(arg):
     return arg
 
 

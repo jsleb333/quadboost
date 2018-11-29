@@ -13,7 +13,7 @@ import sys, os
 sys.path.append(os.getcwd())
 
 from weak_learner import _WeakLearnerBase, _Cloner
-from utils import timed, return_arg
+from utils import timed, identity_func
 
 
 class Filters(_Cloner):
@@ -34,7 +34,7 @@ class Filters(_Cloner):
         self.weights_generator = weights_generator or torch.rand()
         self.maxpool_shape = maxpool_shape
 
-        self.activation = activation or return_arg
+        self.activation = activation or identity_func
 
         self.weights, self.positions = [], []
         self._generate_filters(weights_generator, n_filters)
