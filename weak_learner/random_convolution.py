@@ -31,8 +31,11 @@ class Filters(_Cloner):
             activation (Callable or None, optional): Activation function to apply which returns transformed data.
         """
         self.n_filters = n_filters
-        self.weights_generator = weights_generator or torch.rand()
-        self.maxpool_shape = maxpool_shape
+        if maxpool_shape:
+            # Expanding maxpool_shape to account for n_transforms if needed
+            self.maxpool_shape = (1, *maxpool_shape) if len(maxpool_shape) == 2 else maxpool_shape
+        else:
+            self.maxpool_shape = maxpool_shape
 
         self.activation = activation or identity_func
 
@@ -41,9 +44,9 @@ class Filters(_Cloner):
 
     def _generate_filters(self, weights_generator, n_filters):
         for _, (weight, position) in zip(range(n_filters), weights_generator):
-            self.weights.append(weight)
+            self.weights.append(torch.unsqueeze(weight, dim=1))
 
-        self.weights = torch.cat(self.weights, dim=0)
+        self.weights = torch.cat(self.weights, dim=1)
 
     def _send_weights_to_device(self, X):
         self.weights = self.weights.to(device=X.device)
@@ -51,10 +54,19 @@ class Filters(_Cloner):
     def apply(self, X):
         self._send_weights_to_device(X)
 
-        output = F.conv2d(X, self.weights)
-        if self.maxpool_shape: output = F.max_pool2d(output, self.maxpool_shape, ceil_mode=True)
+        output = []
+        for weights in self.weights:
+            output.append(torch.unsqueeze(F.conv2d(X, weights), dim=2))
+        output = torch.cat(output, dim=2)
+        if self.maxpool_shape:
+            maxpool_shape = self._compute_maxpool_shape(output)
+            output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
+        print(output.shape)
         self.activation(output)
         return output.reshape((X.shape[0], -1))
+
+    def _compute_maxpool_shape(self, output):
+        return tuple(ms if ms != -1 else output.shape[i+2] for i, ms in enumerate(self.maxpool_shape))  # Finding actual shape if -1 was used.
 
 
 class LocalFilters(Filters):
@@ -94,9 +106,7 @@ class LocalFilters(Filters):
             if self.maxpool_shape:
                 output = torch.unsqueeze(output, dim=1)
                 # output.shape -> (n_examples, 1, n_transforms, height, array)
-                maxpool_shape = (1, *self.maxpool_shape) if len(self.maxpool_shape) == 2 else self.maxpool_shape # Expanding maxpool_shape to account for n_transforms
-                maxpool_shape = tuple(ms if ms != -1 else output.shape[i+2] for i, ms in enumerate(maxpool_shape)) # Finding actual shape if -1 was used.
-
+                maxpool_shape = self._compute_maxpool_shape(output)
                 output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
 
             random_feat.append(output.reshape(n_examples, -1))
@@ -294,8 +304,8 @@ def main():
     # print('CUDA')
     # Xtr = Xtr[:m+bank].to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
-    scale = 1
-    shear = 0
+    scale = (0.9, 1.1)
+    shear = 10
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filters_shape=(5,5),
                                          filters_shape_high=(16,16),
@@ -306,11 +316,11 @@ def main():
                                          shear=shear if shear != 0 else None,
                                          n_transforms=10,
                                          )
-    filters = LocalFilters(n_filters=100,
-                      maxpool_shape=(-1,-1,-1),
+    filters = Filters(n_filters=3,
+                      maxpool_shape=(-1,5,5),
                       activation=torch.sigmoid,
                       weights_generator=filter_gen,
-                      locality=2,
+                    #   locality=3,
                       )
     weak_learner = Ridge
     # weak_learner = MulticlassDecisionStump
