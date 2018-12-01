@@ -264,16 +264,17 @@ class RandomConvolution(_WeakLearnerBase):
         return self.weak_learner.predict(random_feat)
 
 
-def center_weight(weight, dim=-1):
-    weight -= torch.mean(weight, dim)
+def center_weight(weight):
+    mean = torch.mean(weight)
+    weight -= mean
     return weight
 
-def normalize_weight(weight, dim=-1):
-    weight /= torch.norm(weight, dim, p=2)
+def normalize_weight(weight):
+    weight /= torch.norm(weight, p=2)
     return weight
 
-def reduce_weight(weight, dim=-1):
-    weight /= torch.std(weight, dim)
+def reduce_weight(weight):
+    weight /= torch.std(weight)
     return weight
 
 
@@ -286,7 +287,7 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 5_000
+    m = 1_000
     bank = 1000
 
     # print('CPU')
@@ -296,8 +297,8 @@ def main():
     scale = 1
     shear = 0
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
-                                         filters_shape=(11,11),
-                                        #  filters_shape_high=(9,9),
+                                         filters_shape=(5,5),
+                                         filters_shape_high=(16,16),
                                          margin=2,
                                          filter_processing=[center_weight],
                                          degrees=20,
@@ -306,7 +307,6 @@ def main():
                                          n_transforms=10,
                                          )
     filters = LocalFilters(n_filters=100,
-                    #   maxpool_shape=(-1,-1,-1),
                       maxpool_shape=(-1,-1,-1),
                       activation=torch.sigmoid,
                       weights_generator=filter_gen,
