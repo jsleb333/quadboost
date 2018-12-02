@@ -45,25 +45,63 @@ class Filters(_Cloner):
     def _generate_filters(self, weights_generator, n_filters):
         for _, (weight, position) in zip(range(n_filters), weights_generator):
             self.weights.append(torch.unsqueeze(weight, dim=1))
+            print(weight.shape)
 
-        self.weights = torch.cat(self.weights, dim=1)
+        if weights_generator.filters_shape_high is None:
+            self.n_transforms_first = True
+            self.weights = torch.cat(self.weights, dim=1)
+            # self.weights.shape -> (n_transforms, n_filters, n_channels, height, width)
+            print(self.weights.shape)
+        else:
+            self.n_transforms_first = False
+            self.weights = [torch.squeeze(w, dim=1) for w in self.weights]
+            # len(self.weights) -> n_filters
+            # weight.shape -> (n_transforms, n_channels, height, width)
 
     def _send_weights_to_device(self, X):
-        self.weights = self.weights.to(device=X.device)
+        if isinstance(self.weights, torch.Tensor):
+            self.weights = self.weights.to(device=X.device)
+        else:
+            self.weights = [w.to(device=X.device) for w in self.weights]
 
     def apply(self, X):
         self._send_weights_to_device(X)
+        n_examples, *_ = X.shape
 
         output = []
-        for weights in self.weights:
-            output.append(torch.unsqueeze(F.conv2d(X, weights), dim=2))
-        output = torch.cat(output, dim=2)
-        if self.maxpool_shape:
-            maxpool_shape = self._compute_maxpool_shape(output)
-            output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
-        print(output.shape)
+
+        if self.n_transforms_first: # This is more efficient, but can't be done if filters are of different filter_shape (i.e. filters_shape_high is not None)
+            for weights in self.weights:
+                # weights.shape -> (n_filters, n_channels, height, width)
+                output.append(torch.unsqueeze(F.conv2d(X, weights), dim=2))
+                # output[0].shape -> (n_examples, n_filters, conv_height, conv_width)
+            output = torch.cat(output, dim=2)
+
+            print('output shape after conv', output.shape)
+            # output.shape -> (n_examples, n_filters, n_transforms, conv_height, conv_width)
+            if self.maxpool_shape:
+                maxpool_shape = self._compute_maxpool_shape(output)
+                output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
+            print('output shape after maxpool', output.shape)
+
+        else:
+            for weights in self.weights:
+                # weights.shape -> (n_transforms, n_channels, height, width)
+                output_ = torch.unsqueeze(F.conv2d(X, weights), dim=1)
+                # output_.shape -> (n_examples, 1, n_transforms, conv_height, conv_width)
+                print('output shape after conv', output_.shape)
+
+                if self.maxpool_shape:
+                    maxpool_shape = self._compute_maxpool_shape(output_)
+                    output_ = F.max_pool3d(output_, maxpool_shape, ceil_mode=True)
+                print('output shape after maxpool', output_.shape)
+
+                output.append(output_.reshape((n_examples, -1)))
+            output = torch.cat(output, dim=1)
+            print('output shape after reshape', output.shape)
+
         self.activation(output)
-        return output.reshape((X.shape[0], -1))
+        return output.reshape((n_examples, -1))
 
     def _compute_maxpool_shape(self, output):
         return tuple(ms if ms != -1 else output.shape[i+2] for i, ms in enumerate(self.maxpool_shape))  # Finding actual shape if -1 was used.
@@ -132,7 +170,7 @@ class WeightFromBankGenerator:
             degrees (int or tuple of int, optional): Maximum number of degrees the image drawn will be rotated before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
             scale (tuple of float or None, optional): Scale factor the image drawn will be rescaled before a filter in drawn. The actual factor is drawn from random. See torchvision.transforms.RandomAffine for more info.
             shear (float or None, optional): Shear degree the image drawn will be sheared before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
-            n_transform (int, optional): Number of filters made from the same image (at the same position) but with a different random transformation applied each time.
+            n_transforms (int, optional): Number of filters made from the same image (at the same position) but with a different random transformation applied each time.
         """
         self.filter_bank = RandomConvolution.format_data(filter_bank)
         self.filters_shape = filters_shape
