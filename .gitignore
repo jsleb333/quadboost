@@ -2,15 +2,24 @@
 .vs/
 __pycache__/
 data/
+quadboost/data/
 
 cloner/
 
 test.py
 test/
+quadboost/test/
 
 results/
+quadboost/results/
+
 build/
 CMakeFiles/
 cmake_install.cmake
 CMakeCache.txt
 Makefile
+quadboost/build/
+quadboost/CMakeFiles/
+quadboost/cmake_install.cmake
+quadboost/CMakeCache.txt
+quadboost/Makefile

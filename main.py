@@ -2,11 +2,11 @@ import torch
 import logging
 
 from quadboost import QuadBoostMHCR
-from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
-from weak_learner import *
-from callbacks import *
-from mnist_dataset import MNISTDataset
-from utils import parse, timed
+from quadboost.label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
+from quadboost.weak_learner import *
+from quadboost.callbacks import *
+from quadboost.mnist_dataset import MNISTDataset
+from quadboost.utils import parse, timed
 
 
 @timed

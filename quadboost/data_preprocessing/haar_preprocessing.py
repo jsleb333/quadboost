@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import sys, os
 sys.path.append(os.getcwd())
 
-from mnist_dataset import MNISTDataset
+from quadboost.mnist_dataset import MNISTDataset
 
 
 def haar_projection(images):

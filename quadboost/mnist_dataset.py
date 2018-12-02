@@ -7,6 +7,8 @@ try:
 except:
     def path_to(dataset='mnist'):
         return "data/mnist"
+import sys, os
+sys.path.append(os.getcwd())
 
 import pickle as pkl
 from sklearn.preprocessing import StandardScaler
@@ -131,11 +133,11 @@ class MNISTDataset:
         return self.get_train(center, reduce), self.get_test(center, reduce)
 
     @staticmethod
-    def load(filename='mnist.pkl', filepath='./data/preprocessed/'):
+    def load(filename='mnist.pkl', filepath='./quadboost/data/preprocessed/'):
         with open(filepath + filename, 'rb') as file:
             return pkl.load(file)
 
-    def save(self, filename='mnist.pkl', filepath='./data/preprocessed/'):
+    def save(self, filename='mnist.pkl', filepath='./quadboost/data/preprocessed/'):
         os.makedirs(filepath, exist_ok=True)
         with open(filepath + filename, 'wb') as file:
             pkl.dump(self, file)
@@ -152,18 +154,11 @@ class MNISTDataset:
 if __name__ == '__main__':
 
     # download_mnist()
-    # path_to_mnist = '/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/mnist/raw/'
+    path_to_mnist = '/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/mnist/raw/'
     # (Xtr, Ytr), (Xts, Yts) = load_raw_mnist()
     # dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
     # dataset.save()
-    dataset = MNISTDataset.load('filtered_mnist.pkl')
-    dataset.shape = (10,24,24)
-    print(dataset.side_size, dataset.shape)
-    del dataset.side_size
-    print(hasattr(dataset, 'side_size'))
-    (Xtr, Ytr), (Xts, Yts) = dataset.get_train_test(center=False)
-    print(Xtr.shape, Xts.shape)
-    dataset.save('filtered_mnist2.pkl')
+    # dataset = MNISTDataset.load('mnist.pkl')
     # dataset.test()
 
     # visualize_mnist(Xtr[:5], Ytr[:5])

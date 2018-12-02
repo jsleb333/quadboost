@@ -3,7 +3,10 @@ import logging
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import Callback, BestRoundTrackerCallback
+try:
+    from quadboost.callbacks import Callback, BestRoundTrackerCallback
+except ModuleNotFoundError:
+    from callbacks import Callback, BestRoundTrackerCallback
 
 
 class BreakCallback(Callback):

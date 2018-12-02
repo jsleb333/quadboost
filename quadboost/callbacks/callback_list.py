@@ -1,7 +1,10 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import Callback, BreakCallback
+try:
+    from quadboost.callbacks import Callback, BreakCallback
+except ModuleNotFoundError:
+    from callbacks import Callback, BreakCallback
 
 
 class CallbackList:

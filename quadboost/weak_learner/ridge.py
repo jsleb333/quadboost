@@ -4,8 +4,12 @@ from sklearn.linear_model import Ridge
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import _WeakLearnerBase
-from utils import timed
+try:
+    from quadboost.weak_learner import _WeakLearnerBase
+    from quadboost.utils import timed
+except ModuleNotFoundError:
+    from weak_learner import _WeakLearnerBase
+    from utils import timed
 
 
 class WLRidge(_WeakLearnerBase, Ridge):
@@ -78,6 +82,6 @@ def main():
     print(wl.evaluate(Xts, Yts))
 
 if __name__ == '__main__':
-    from mnist_dataset import MNISTDataset
-    from label_encoder import *
+    from quadboost.mnist_dataset import MNISTDataset
+    from quadboost.label_encoder import *
     main()

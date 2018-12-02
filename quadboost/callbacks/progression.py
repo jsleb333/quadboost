@@ -2,7 +2,10 @@ import time
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import Callback
+try:
+    from quadboost.callbacks import Callback
+except ModuleNotFoundError:
+    from callbacks import Callback
 
 
 class Progression(Callback):

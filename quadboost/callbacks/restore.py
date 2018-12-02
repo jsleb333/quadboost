@@ -1,5 +1,9 @@
-from callbacks import Callback
 import logging
+
+try:
+    from quadboost.callbacks import Callback
+except ModuleNotFoundError:
+    from callbacks import Callback
 
 
 class RestoreBestModelCallback(Callback):

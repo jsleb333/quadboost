@@ -1,7 +1,11 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import PeriodicSaveCallback, CSVSaveMixin
+
+try:
+    from quadboost.callbacks import PeriodicSaveCallback, CSVSaveMixin
+except ModuleNotFoundError:
+    from callbacks import PeriodicSaveCallback, CSVSaveMixin
 
 
 class CSVLogger(PeriodicSaveCallback, CSVSaveMixin):

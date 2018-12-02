@@ -1,7 +1,10 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import CallbackList
+try:
+    from quadboost.callbacks import CallbackList
+except ModuleNotFoundError:
+    from callbacks import CallbackList
 
 
 class Step:
@@ -72,7 +75,7 @@ class CallbacksManagerIterator:
 
 
 if __name__ == '__main__':
-    from callbacks import BreakOnMaxStepCallback
+    from quadboost.callbacks import BreakOnMaxStepCallback
     a = 0
     safe = 0
     cb = [BreakOnMaxStepCallback(10)]

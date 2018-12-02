@@ -4,14 +4,27 @@ from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import logging
 
-from weak_learner import *
-from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
-from mnist_dataset import MNISTDataset
-from callbacks import CallbacksManagerIterator, Step
-from callbacks import ModelCheckpoint, CSVLogger, Progression, BestRoundTrackerCallback
-from callbacks import (BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback,
-                       BreakOnPlateauCallback, BreakOnZeroRiskCallback)
-from utils import *
+import sys, os
+sys.path.append(os.getcwd())
+
+try:
+    from weak_learner import *
+    from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
+    from mnist_dataset import MNISTDataset
+    from callbacks import CallbacksManagerIterator, Step
+    from callbacks import ModelCheckpoint, CSVLogger, Progression, BestRoundTrackerCallback
+    from callbacks import (BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback,
+                        BreakOnPlateauCallback, BreakOnZeroRiskCallback)
+    from utils import *
+except ModuleNotFoundError:
+    from .weak_learner import *
+    from .label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
+    from .mnist_dataset import MNISTDataset
+    from .callbacks import CallbacksManagerIterator, Step
+    from .callbacks import ModelCheckpoint, CSVLogger, Progression, BestRoundTrackerCallback
+    from .callbacks import (BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback,
+                        BreakOnPlateauCallback, BreakOnZeroRiskCallback)
+    from .utils import *
 
 
 class _QuadBoost:
@@ -322,7 +335,7 @@ def main():
     # mnist = MNISTDataset.load('filtered_mnist.pkl')
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 1_00
+    m = 1_0
     X, Y = Xtr[:m], Ytr[:m]
     X_val, Y_val = Xtr[-10_000:], Ytr[-10_000:]
 

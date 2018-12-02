@@ -1,7 +1,11 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from callbacks import PeriodicSaveCallback, PickleSaveMixin
+
+try:
+    from quadboost.callbacks import PeriodicSaveCallback, PickleSaveMixin
+except ModuleNotFoundError:
+    from callbacks import PeriodicSaveCallback, PickleSaveMixin
 
 
 class ModelCheckpoint(PeriodicSaveCallback, PickleSaveMixin):

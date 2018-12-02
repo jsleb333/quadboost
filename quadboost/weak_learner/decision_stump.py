@@ -5,9 +5,14 @@ import multiprocessing as mp
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import _WeakLearnerBase
-from utils import split_int, timed, ComparableMixin
-from utils.multiprocessing_utils import PicklableExceptionWrapper, SafeQueue, parallel_processes
+try:
+    from quadboost.weak_learner import _WeakLearnerBase
+    from quadboost.utils import split_int, timed, ComparableMixin
+    from quadboost.utils.multiprocessing_utils import PicklableExceptionWrapper, SafeQueue, parallel_processes
+except ModuleNotFoundError:
+    from weak_learner import _WeakLearnerBase
+    from utils import split_int, timed, ComparableMixin
+    from utils.multiprocessing_utils import PicklableExceptionWrapper, SafeQueue, parallel_processes
 
 
 class MulticlassDecisionStump(_WeakLearnerBase):
@@ -252,8 +257,8 @@ def main():
 
 
 if __name__ == '__main__':
-    from mnist_dataset import MNISTDataset
-    from label_encoder import *
+    from quadboost.mnist_dataset import MNISTDataset
+    from quadboost.label_encoder import *
     # import cProfile
     # cProfile.run('main()', sort='tottime')
     main()

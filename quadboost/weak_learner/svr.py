@@ -1,9 +1,13 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVR
-from weak_learner import _WeakLearnerBase
-from utils import *
 
+try:
+    from quadboost.weak_learner import _WeakLearnerBase
+    from quadboost.utils import timed
+except ModuleNotFoundError:
+    from weak_learner import _WeakLearnerBase
+    from utils import timed
 
 class MultidimSVR(_WeakLearnerBase):
     """
@@ -47,6 +51,6 @@ def main():
 
 
 if __name__ == '__main__':
-    from mnist_dataset import MNISTDataset
-    from label_encoder import *
+    from quadboost.mnist_dataset import MNISTDataset
+    from quadboost.label_encoder import *
     main()

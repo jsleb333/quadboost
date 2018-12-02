@@ -4,8 +4,8 @@ import skimage.transform as skit
 import sys, os
 sys.path.append(os.getcwd())
 
-from mnist_dataset import MNISTDataset
-from utils import *
+from quadboost.mnist_dataset import MNISTDataset
+from quadboost.utils import *
 from haar_preprocessing import *
 
 def plot_images(images, titles):

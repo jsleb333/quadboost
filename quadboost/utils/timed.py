@@ -38,7 +38,7 @@ class _ColoredTimer:
             BLACK, WHITE, RED, BLUE, GREEN, CYAN, MAGENTA, YELLOW, LIGHTRED_EX, BLIGHTLUE_EX, GRLIGHTEEN_EX, CLIGHTYAN_EX, MAGELIGHTNTA_EX, YELLIGHTLOW_EX,
 
         Example 1:
-            >>> from utils import timed
+            >>> from quadboost.utils import timed
             >>> @timed
             ... def foo():
             ...     print('foo!')
@@ -64,7 +64,7 @@ class _ColoredTimer:
             bar!
 
             Execution terminated after 0.00 seconds on 20h25m06s.
-        
+
         Example 3:
             >>> class Spam:
             ...     @timed

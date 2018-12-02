@@ -12,8 +12,12 @@ import warnings
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import _WeakLearnerBase, _Cloner
-from utils import timed, identity_func
+try:
+    from quadboost.weak_learner import _WeakLearnerBase, _Cloner
+    from quadboost.utils import timed, identity_func
+except ModuleNotFoundError:
+    from weak_learner import _WeakLearnerBase, _Cloner
+    from utils import timed, identity_func
 
 
 class Filters(_Cloner):
@@ -45,13 +49,11 @@ class Filters(_Cloner):
     def _generate_filters(self, weights_generator, n_filters):
         for _, (weight, position) in zip(range(n_filters), weights_generator):
             self.weights.append(torch.unsqueeze(weight, dim=1))
-            print(weight.shape)
 
         if weights_generator.filters_shape_high is None:
             self.n_transforms_first = True
             self.weights = torch.cat(self.weights, dim=1)
             # self.weights.shape -> (n_transforms, n_filters, n_channels, height, width)
-            print(self.weights.shape)
         else:
             self.n_transforms_first = False
             self.weights = [torch.squeeze(w, dim=1) for w in self.weights]
@@ -77,28 +79,23 @@ class Filters(_Cloner):
                 # output[0].shape -> (n_examples, n_filters, conv_height, conv_width)
             output = torch.cat(output, dim=2)
 
-            print('output shape after conv', output.shape)
             # output.shape -> (n_examples, n_filters, n_transforms, conv_height, conv_width)
             if self.maxpool_shape:
                 maxpool_shape = self._compute_maxpool_shape(output)
                 output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
-            print('output shape after maxpool', output.shape)
 
         else:
             for weights in self.weights:
                 # weights.shape -> (n_transforms, n_channels, height, width)
                 output_ = torch.unsqueeze(F.conv2d(X, weights), dim=1)
                 # output_.shape -> (n_examples, 1, n_transforms, conv_height, conv_width)
-                print('output shape after conv', output_.shape)
 
                 if self.maxpool_shape:
                     maxpool_shape = self._compute_maxpool_shape(output_)
                     output_ = F.max_pool3d(output_, maxpool_shape, ceil_mode=True)
-                print('output shape after maxpool', output_.shape)
 
                 output.append(output_.reshape((n_examples, -1)))
             output = torch.cat(output, dim=1)
-            print('output shape after reshape', output.shape)
 
         self.activation(output)
         return output.reshape((n_examples, -1))
@@ -215,14 +212,15 @@ class WeightFromBankGenerator:
             if self.degrees or self.scale or self.shear:
                 x_transformed = self._transform_image(x)
                 # plot_images([x_transformed.numpy().reshape(28,28)])
+            else:
+                x_transformed = x
 
-                w = torch.tensor(x_transformed[:, i:i+height, j:j+width], requires_grad=False)
-                for process in self.filter_processing:
-                    w = process(w)
-                weight.append(w)
+            w = torch.tensor(x_transformed[:, i:i+height, j:j+width], requires_grad=False)
+            for process in self.filter_processing:
+                w = process(w)
+            weight.append(w)
 
         weight = torch.unsqueeze(torch.cat(weight, dim=0), dim=1)
-
         return weight, (i, j)
 
     def _transform_image(self, x):
@@ -392,11 +390,11 @@ def plot_images(images, titles=None, block=True):
 
 
 if __name__ == '__main__':
-    from mnist_dataset import MNISTDataset
-    from label_encoder import OneHotEncoder
-    from weak_learner import MulticlassDecisionStump
+    from quadboost.mnist_dataset import MNISTDataset
+    from quadboost.label_encoder import OneHotEncoder
+    from quadboost.weak_learner import MulticlassDecisionStump
     import matplotlib.pyplot as plt
-    from utils import make_fig_axes
+    from quadboost.utils import make_fig_axes
 
     seed = 42
     torch.manual_seed(seed)

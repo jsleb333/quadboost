@@ -5,9 +5,15 @@ import heapq as hq
 import sys, os
 sys.path.append(os.getcwd())
 
-from weak_learner import _WeakLearnerBase
-from weak_learner import MulticlassDecisionStump
-from utils import timed, ComparableMixin
+try:
+    from quadboost.weak_learner import _WeakLearnerBase
+    from quadboost.weak_learner import MulticlassDecisionStump
+    from quadboost.utils import timed, ComparableMixin
+except ModuleNotFoundError:
+    from weak_learner import _WeakLearnerBase
+    from weak_learner import MulticlassDecisionStump
+    from utils import timed, ComparableMixin
+
 
 
 class MulticlassDecisionTree(_WeakLearnerBase):
@@ -275,6 +281,6 @@ def main():
 
 
 if __name__ == '__main__':
-    from mnist_dataset import MNISTDataset
-    from label_encoder import OneHotEncoder
+    from quadboost.mnist_dataset import MNISTDataset
+    from quadboost.label_encoder import OneHotEncoder
     main()
