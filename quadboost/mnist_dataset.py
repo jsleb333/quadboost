@@ -133,11 +133,11 @@ class MNISTDataset:
         return self.get_train(center, reduce), self.get_test(center, reduce)
 
     @staticmethod
-    def load(filename='mnist.pkl', filepath='./quadboost/data/preprocessed/'):
+    def load(filename='mnist.pkl', filepath='./data/preprocessed/'):
         with open(filepath + filename, 'rb') as file:
             return pkl.load(file)
 
-    def save(self, filename='mnist.pkl', filepath='./quadboost/data/preprocessed/'):
+    def save(self, filename='mnist.pkl', filepath='./data/preprocessed/'):
         os.makedirs(filepath, exist_ok=True)
         with open(filepath + filename, 'wb') as file:
             pkl.dump(self, file)
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     # (Xtr, Ytr), (Xts, Yts) = load_raw_mnist()
     # dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
     # dataset.save()
-    # dataset = MNISTDataset.load('mnist.pkl')
-    # dataset.test()
+    dataset = MNISTDataset.load('mnist.pkl')
+    dataset.test()
 
     # visualize_mnist(Xtr[:5], Ytr[:5])
