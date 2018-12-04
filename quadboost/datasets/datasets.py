@@ -12,6 +12,10 @@ sys.path.append(os.getcwd())
 import pickle as pkl
 from sklearn.preprocessing import StandardScaler
 import warnings
+try:
+    from quadboost.utils import identity_func
+except ModuleNotFoundError:
+    from utils import identity_func
 
 
 def visualize_mnist(X, Y):
@@ -36,17 +40,59 @@ class ImageDataset:
         self.Yts = Yts
 
         self.scaler = StandardScaler()
-        self.scaler.fit(self.Xtr)
+        self._fit_scaler(self.Xtr, center=True, reduce=True)
 
-    def get_train_valid(self, valid=0, shuffle=True, center=True, reduce=False):
+    @property
+    def n_examples_train(self): # Retrocompatibility
+        if not hasattr(self, '_n_examples_train'):
+            self.n_examples_train = self.Xtr.shape[0]
+        return self._n_examples_train
+    @n_examples_train.setter
+    def n_examples_train(self, value):
+        self._n_examples_train = value
+
+    @property
+    def n_examples_test(self): # Retrocompatibility
+        if not hasattr(self, '_n_examples_test'):
+            self.n_examples_test = self.Xts.shape[0] if self.Xts is not None else 0
+        return self._n_examples_test
+    @n_examples_test.setter
+    def n_examples_test(self, value):
+        self._n_examples_test = value
+
+    @property
+    def shape(self): # Retrocompatibility
+        if (not hasattr(self, '_shape')) and hasattr(self, 'side_size'):
+            self._shape = (self.side_size, self.side_size)
+        return self._shape
+    @shape.setter
+    def shape(self, shape):
+        self._shape = shape
+
+    @property
+    def mean(self):
+        return self.scaler.mean_
+    @property
+    def std(self):
+        return self.scaler.scale_
+
+    def _fit_scaler(self, X, *, center, reduce):
+        if center or reduce: # Only if needed
+            with warnings.catch_warnings(): # Catch conversion type warning
+                warnings.simplefilter("ignore")
+                self.scaler = StandardScaler(with_std=reduce, with_mean=center).fit(X.reshape(X.shape[0],-1))
+        else:
+            self.scaler.transform = identity_func
+
+    def get_train_valid(self, valid=0, center=False, reduce=False, shuffle=True):
         """
         Gets the training set and splits it in a train and valid datasets.
 
         Args:
             valid (float between 0 and 1 or int, optional): If a float, it is interpreted as the fraction of examples to get for the validation dataset. If an integer, it is interpreted as the number of examples to select. If 0, not validation set is returned.
-            shuffle (bool, optional): Whether to shuffle the examples or not. If False, the validation examples as taken from the start of the training dataset.
             center (bool, optional): Whether or not to center (zero mean) the images pixels using the training set only.
             reduce (bool, optional): Whether or not to reduce (unit variance) the images pixels using the training set only.
+            shuffle (bool, optional): Whether to shuffle the examples or not. If False, the validation examples as taken from the start of the training dataset.
         """
         idx = np.arange(self.n_examples_train)
         if shuffle: np.random.shuffle(idx)
@@ -59,108 +105,113 @@ class ImageDataset:
         Xtr, Ytr = X[valid:], Y[valid:]
         Xval, Yval = X[:valid], Y[:valid]
 
-        # Recompute mean and std to account for validation only if needed.
-        transform_needed = center or reduce
-        if valid and transform_needed:
-            self.scaler = StandardScaler(with_std=reduce, with_mean=center).fit(Xtr)
+        # Recompute mean and std to account for validation.
+        self._fit_scaler(Xtr, center=center, reduce=reduce)
 
-        return self._prepare_data(Xtr, Ytr, transform_needed), self._prepare_data(Xval, Yval, transform_needed)
+        return self._prepare_data(Xtr, Ytr), self._prepare_data(Xval, Yval)
 
-    def _prepare_data(self, X, Y, transform_needed):
+    def _prepare_data(self, X, Y):
         """
         Centers, reduces and reshapes data if needed.
         """
-        if transform_needed:
+        if X.size > 0:
             with warnings.catch_warnings(): # Catch conversion type warning
                 warnings.simplefilter("ignore")
                 X = self.scaler.transform(X)
         return X.reshape((-1,) + self.shape), Y
 
-    def get_train(self, shuffle=False, center=True, reduce=False):
-        train, valid = self.get_train_valid(0, shuffle, center, reduce)
+    def get_train(self, center=False, reduce=False, shuffle=True):
+        """
+        Gets the training dataset with wanted transformations.
+
+        Args:
+            center (bool, optional): Whether or not to center (zero mean) the images pixels using the training set only.
+            reduce (bool, optional): Whether or not to reduce (unit variance) the images pixels using the training set only.
+            shuffle (bool, optional): Whether to shuffle the examples or not.
+        """
+        train, valid = self.get_train_valid(0, center=center, reduce=reduce, shuffle=shuffle)
         return train
 
+    def get_test(self, center=False, reduce=False, scale_with=None):
+        """
+        Gets the testing dataset with wanted transformations.
 
-class MNISTDataset:
-    def __init__(self, Xtr, Ytr, Xts=None, Yts=None, shape=(28,28)):
-        self.Xtr = Xtr.reshape(Xtr.shape[0],-1)
-        self.Ytr = Ytr
-        self.Xts = Xts.reshape(Xts.shape[0],-1)
-        self.Yts = Yts
+        Args:
+            center (bool, optional): Whether or not to center (zero mean) the images pixels using the 'scale_with' dataset.
+            reduce (bool, optional): Whether or not to reduce (unit variance) the images pixels using the 'scale_with' dataset.
+            scale_with (Array of shape (n_examples, ...) or None, optional): Dataset to use to scale the test set. If None, the complete training set is used.
+        """
+        X = scale_with if scale_with is not None else self.Xtr
+        self._fit_scaler(X, center=center, reduce=reduce)
+        return self._get_test()
 
-        self.shape = shape
-
-        self.scaler = StandardScaler()
-        self.scaler.fit(self.Xtr)
-
-    @property
-    def shape(self):
-        if (not hasattr(self, '_shape')) and hasattr(self, 'side_size'): # Retrocompatibility
-            self._shape = (self.side_size, self.side_size)
-        return self._shape
-    @shape.setter
-    def shape(self, shape):
-        self._shape = shape
-
-    @property
-    def mean(self):
-        return self.scaler.mean_
-
-    @property
-    def std(self):
-        return self.scaler.scale_
-
-    def get_train(self, center=True, reduce=False):
-        return self._get_data(self.Xtr, self.Ytr, center, reduce)
-
-
-    def get_test(self, center=True, reduce=False):
+    def _get_test(self):
         if self.Xts is None:
             return self.Xts, self.Yts
         else:
-            return self._get_data(self.Xts, self.Yts, center, reduce)
+            return self._prepare_data(self.Xts, self.Yts)
 
-    def _get_data(self, X, Y, center, reduce):
-        with warnings.catch_warnings(): # Catch conversion type warning
-            warnings.simplefilter("ignore")
-            if center and reduce:
-                X = self.scaler.transform(X)
-            elif center and not reduce:
-                X = StandardScaler(with_std=False).fit(self.Xtr).transform(X)
-            elif not center and reduce:
-                X = StandardScaler(with_mean=False).fit(self.Xtr).transform(X)
-        return X.reshape((-1,) + self.shape), Y
+    def get_train_valid_test(self, valid=0, center=False, reduce=False, shuffle=True):
+        train, valid = self.get_train_valid(valid, center=center, reduce=reduce, shuffle=shuffle)
+        test = self._get_test()
+        return train, valid, test
 
-    def get_train_test(self, center=True, reduce=False):
-        return self.get_train(center, reduce), self.get_test(center, reduce)
+    def get_train_test(self, center=False, reduce=False):
+        train, valid, test = self.get_train_valid_test(0, center=center, reduce=reduce)
+        return train, test
 
     @staticmethod
-    def load(filename='mnist.pkl', filepath='./data/preprocessed/'):
+    def load(filename, filepath='./data/'):
         with open(filepath + filename, 'rb') as file:
             return pkl.load(file)
 
-    def save(self, filename='mnist.pkl', filepath='./data/preprocessed/'):
+    def save(self, filename, filepath='./data/'):
         os.makedirs(filepath, exist_ok=True)
         with open(filepath + filename, 'wb') as file:
             pkl.dump(self, file)
         print(f'Saved to {filepath+filename}')
 
-    def test(self):
-        print(self.mean.shape, self.std.shape)
-        self.get_train_test(center=True, reduce=True)
-        self.get_train_test(center=True, reduce=False)
-        self.get_train_test(center=False, reduce=True)
-        self.get_train_test(center=False, reduce=False)
+
+class MNISTDataset(ImageDataset):
+    def __init__(self, Xtr, Ytr, Xts=None, Yts=None, shape=(28,28)):
+        super().__init__(Xtr, Ytr, Xts, Yts, shape)
+
+    @staticmethod
+    def load(filename='mnist.pkl', filepath='./quadboost/data/preprocessed/'):
+        return ImageDataset.load(filename, filepath)
+
+    def save(self, filename='mnist.pkl', filepath='./quadboost/data/preprocessed/'):
+        super().save(filename, filepath)
+
+
+class CIFAR10Dataset(ImageDataset):
+    def __init__(self, Xtr, Ytr, Xts=None, Yts=None, shape=(3,32,32)):
+        super().__init__(Xtr, Ytr, Xts, Yts, shape)
+
+    @staticmethod
+    def load(filename='cifar10.pkl', filepath='./quadboost/data/preprocessed/'):
+        return ImageDataset.load(filename, filepath)
+
+    def save(self, filename='cifar10.pkl', filepath='./quadboost/data/preprocessed/'):
+        super().save(filename, filepath)
 
 
 if __name__ == '__main__':
+    from mnist import load_mnist
 
-    # download_mnist()
-    path_to_mnist = '/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/mnist/raw/'
-    # (Xtr, Ytr), (Xts, Yts) = load_raw_mnist()
+    path_to_mnist = '/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/mnist/'
+    (Xtr, Ytr), (Xts, Yts) = load_mnist(path=path_to_mnist)
+    print(Xtr.shape, Xts.shape)
     # dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
     # dataset.save()
-    dataset = MNISTDataset.load('mnist.pkl')
-    dataset.test()
 
-    # visualize_mnist(Xtr[:5], Ytr[:5])
+    ### Update old dataset
+    # dataset = MNISTDataset.load('mnist.pkl', 'quadboost/data/preprocessed/')
+    # print(dataset.shape)
+    # print(dataset._shape)
+    # print(dataset.n_examples_train)
+    # print(dataset._n_examples_train)
+    # print(dataset.n_examples_test)
+    # print(dataset._n_examples_test)
+    # dataset.save()
+

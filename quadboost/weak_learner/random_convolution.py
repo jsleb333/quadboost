@@ -334,7 +334,7 @@ def main():
     encoder = OneHotEncoder(Ytr)
 
     m = 1_000
-    bank = 1000
+    bank = 1_000
 
     # print('CPU')
     # print('CUDA')
@@ -390,10 +390,11 @@ def plot_images(images, titles=None, block=True):
 
 
 if __name__ == '__main__':
-    from quadboost.mnist_dataset import MNISTDataset
+    import matplotlib.pyplot as plt
+
+    from quadboost.datasets import MNISTDataset
     from quadboost.label_encoder import OneHotEncoder
     from quadboost.weak_learner import MulticlassDecisionStump
-    import matplotlib.pyplot as plt
     from quadboost.utils import make_fig_axes
 
     seed = 42
