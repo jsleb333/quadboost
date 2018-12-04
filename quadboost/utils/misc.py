@@ -30,6 +30,10 @@ def identity_func(arg):
     return arg
 
 
+def identity_method(self, arg):
+    return arg
+
+
 def compute_subplots_shape(N, aspect_ratio=9/16):
     """
     Returns the shape (n, m) of the subplots that will fit N images with respect to the given aspect_ratio.
