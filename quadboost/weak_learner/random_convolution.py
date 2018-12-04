@@ -218,9 +218,10 @@ class WeightFromBankGenerator:
             w = torch.tensor(x_transformed[:, i:i+height, j:j+width], requires_grad=False)
             for process in self.filter_processing:
                 w = process(w)
+            w = torch.unsqueeze(w, dim=0)
             weight.append(w)
 
-        weight = torch.unsqueeze(torch.cat(weight, dim=0), dim=1)
+        weight = torch.cat(weight, dim=0)
         return weight, (i, j)
 
     def _transform_image(self, x):
@@ -328,6 +329,8 @@ def reduce_weight(weight):
 def main():
     mnist = MNISTDataset.load()
     (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
+    # cifar = CIFAR10Dataset.load()
+    # (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=True, reduce=True)
     # Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
     # Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
 
@@ -352,11 +355,11 @@ def main():
                                          shear=shear if shear != 0 else None,
                                          n_transforms=10,
                                          )
-    filters = Filters(n_filters=3,
+    filters = LocalFilters(n_filters=5,
                       maxpool_shape=(-1,5,5),
                       activation=torch.sigmoid,
                       weights_generator=filter_gen,
-                    #   locality=3,
+                      locality=3,
                       )
     weak_learner = Ridge
     # weak_learner = MulticlassDecisionStump
@@ -368,7 +371,7 @@ def main():
                            )
     wl.fit(Xtr[:m], Ytr[:m])
     print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
-    print('Test acc', wl.evaluate(Xts, Yts))
+    print('Test acc', wl.evaluate(Xts[:m], Yts[:m]))
 
 
 def plot_images(images, titles=None, block=True):
@@ -392,7 +395,7 @@ def plot_images(images, titles=None, block=True):
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    from quadboost.datasets import MNISTDataset
+    from quadboost.datasets import MNISTDataset, CIFAR10Dataset
     from quadboost.label_encoder import OneHotEncoder
     from quadboost.weak_learner import MulticlassDecisionStump
     from quadboost.utils import make_fig_axes
