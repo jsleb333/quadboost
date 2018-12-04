@@ -11,18 +11,23 @@ The current development of the project focuses on the MNIST Dataset.
 
 ## Getting started
 
-To make the minimal working examples of the program work, you have to download the [MNIST dataset](http://yann.lecun.com/exdb/mnist/).
-The module `datasets.py` provides resources to handle the dataset.
-The function `download_mnist` will download MNIST to your computer in the specified directory.
-Alternatively, if you already have MNIST downloaded and unzipped elsewhere on your computer, you can skip this step and only provide the path to the dataset into the function `load_raw_mnist`.
-Once this is done, the `main.py` script present a typical training ready to launch with many options, as well as all modules coming with a minimal working example in their `__main__`.
+To make the minimal working examples of the program work, you have to download the [MNIST dataset](http://yann.lecun.com/exdb/mnist/) or the [CIFAR-10 dataset](https://www.cs.toronto.edu/~kriz/cifar.html).
+The module `datasets` provides resources to easily handle datasets.
+In the file `./quadboost/datasets/datasets.py`, you will find the functions `_generate_mnist_dataset` and `_generate_cifar10_dataset`.
+These will automatically download the datasets, create a MNISTDataset or CIFAR10Dataset object and save it to the specified directory (which is `./quadboost/data/` by default).
 
-### MNIST Dataset
+Alternatively, if you already have MNIST or CIFAR-10 downloaded, you can create the file `./quadboost/datasets/datasets_path.py` containing a `dict` of the form:
+```python
+path_to = {'mnist':'path/to/mnist/raw/',
+           'cifar10':'path/to/cifar10/raw'}
+```
+and the functions should create the datasets objects without downloading.
 
-The `datasets.py` file provides the necessary resources to unpack the raw dataset.
-It also provides a class `MNISTDataset` which handle the dataset and can center/reduce it if desired.
+### Dataset
+
+The `datasets.py` file provides the classes `MNISTDataset` and `CIFAR10Dataset`, which handle the datasets and can center and/or reduce them if desired.
 This class can pickle the dataset, which make it faster to load in subsequent uses.
-This step is required to run the minimal working examples.
+The use of the datasets is required to run the minimal working examples.
 
 ### Prerequisites
 
