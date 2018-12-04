@@ -12,14 +12,14 @@ The current development of the project focuses on the MNIST Dataset.
 ## Getting started
 
 To make the minimal working examples of the program work, you have to download the [MNIST dataset](http://yann.lecun.com/exdb/mnist/).
-The module `mnist_dataset.py` provides resources to handle the dataset.
+The module `datasets.py` provides resources to handle the dataset.
 The function `download_mnist` will download MNIST to your computer in the specified directory.
 Alternatively, if you already have MNIST downloaded and unzipped elsewhere on your computer, you can skip this step and only provide the path to the dataset into the function `load_raw_mnist`.
 Once this is done, the `main.py` script present a typical training ready to launch with many options, as well as all modules coming with a minimal working example in their `__main__`.
 
 ### MNIST Dataset
 
-The `mnist_dataset.py` file provides the necessary resources to unpack the raw dataset.
+The `datasets.py` file provides the necessary resources to unpack the raw dataset.
 It also provides a class `MNISTDataset` which handle the dataset and can center/reduce it if desired.
 This class can pickle the dataset, which make it faster to load in subsequent uses.
 This step is required to run the minimal working examples.

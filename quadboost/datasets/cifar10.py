@@ -7,8 +7,14 @@ import pickle as pkl
 from sklearn.preprocessing import StandardScaler
 from time import time
 
+try:
+    from datasets_path import path_to
+except:
+    path_to = {'cifar10':"quadboost/data/cifar10/"}
+cifar10_raw = os.path.join(path_to['cifar10'], 'raw/')
 
-def download_cifar10(filepath='quadboost/data/cifar10/raw/'):
+
+def download_cifar10(filepath=cifar10_raw):
     """
     Args:
         filepath (str, optional): Directory containing CIFAR-10. Path is created if nonexistant. CIFAR-10 is downloaded if missing.
@@ -18,7 +24,7 @@ def download_cifar10(filepath='quadboost/data/cifar10/raw/'):
     tar_filename = 'cifar-10-binary.tar.gz'
 
     if filepath is None:
-        # Set filepath to /home/USER/data/mnist or C:\Users\USER\data\mnist
+        # Set filepath to /home/USER/data/cifar10 or C:\Users\USER\data\cifar10
         filepath = os.path.join(os.path.expanduser('~'), 'data', 'cifar10')
 
     # Create path if it doesn't exist
@@ -30,7 +36,7 @@ def download_cifar10(filepath='quadboost/data/cifar10/raw/'):
         print("Downloaded %s to %s" % (tar_filename, filepath))
 
 
-def load_cifar10(filepath='quadboost/data/cifar10/raw/'):
+def load_cifar10(filepath=cifar10_raw):
     """
     Args:
         filepath (str, optional): Directory containing CIFAR-10. Path is created if nonexistant. CIFAR-10 is downloaded if missing.
@@ -79,9 +85,9 @@ def load_cifar10(filepath='quadboost/data/cifar10/raw/'):
     train_labels, test_labels = labels[:50000], labels[50000:]
 
     print(f'Loaded CIFAR-10 in {time()-t:.2f}s.')
-    return train_images, train_labels, test_images, test_labels
+    return (train_images, train_labels), (test_images, test_labels)
 
 
 if __name__ == '__main__':
-    Xtr, Ytr, Xts, Yts = load_cifar10()
+    (Xtr, Ytr), (Xts, Yts) = load_cifar10()
     print(Xtr.shape)

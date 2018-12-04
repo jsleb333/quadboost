@@ -1,11 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-try:
-    from datasets import path_to
-except:
-    def path_to(dataset='mnist'):
-        return "data/mnist"
+
 import sys, os
 sys.path.append(os.getcwd())
 
@@ -177,10 +173,10 @@ class MNISTDataset(ImageDataset):
         super().__init__(Xtr, Ytr, Xts, Yts, shape)
 
     @staticmethod
-    def load(filename='mnist.pkl', filepath='./quadboost/data/preprocessed/'):
+    def load(filename='mnist.pkl', filepath='./quadboost/data/mnist/preprocessed/'):
         return ImageDataset.load(filename, filepath)
 
-    def save(self, filename='mnist.pkl', filepath='./quadboost/data/preprocessed/'):
+    def save(self, filename='mnist.pkl', filepath='./quadboost/data/mnist/preprocessed/'):
         super().save(filename, filepath)
 
 
@@ -189,21 +185,31 @@ class CIFAR10Dataset(ImageDataset):
         super().__init__(Xtr, Ytr, Xts, Yts, shape)
 
     @staticmethod
-    def load(filename='cifar10.pkl', filepath='./quadboost/data/preprocessed/'):
+    def load(filename='cifar10.pkl', filepath='./quadboost/data/cifar10/preprocessed/'):
         return ImageDataset.load(filename, filepath)
 
-    def save(self, filename='cifar10.pkl', filepath='./quadboost/data/preprocessed/'):
+    def save(self, filename='cifar10.pkl', filepath='./quadboost/data/cifar10/preprocessed/'):
         super().save(filename, filepath)
 
 
+def _generate_mnist_dataset():
+    (Xtr, Ytr), (Xts, Yts) = load_mnist()
+    print(Xtr.shape, Xts.shape)
+    dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
+    dataset.save()
+
+def _generate_cifar10_dataset():
+    (Xtr, Ytr), (Xts, Yts) = load_cifar10()
+    print(Xtr.shape, Xts.shape)
+    dataset = CIFAR10Dataset(Xtr, Ytr, Xts, Yts)
+    dataset.save()
+
 if __name__ == '__main__':
     from mnist import load_mnist
+    # _generate_mnist_dataset()
 
-    path_to_mnist = '/home/jsleb333/OneDrive/Doctorat/Apprentissage par réseaux de neurones profonds/Datasets/mnist/'
-    (Xtr, Ytr), (Xts, Yts) = load_mnist(path=path_to_mnist)
-    print(Xtr.shape, Xts.shape)
-    # dataset = MNISTDataset(Xtr, Ytr, Xts, Yts)
-    # dataset.save()
+    from cifar10 import load_cifar10
+    _generate_cifar10_dataset()
 
     ### Update old dataset
     # dataset = MNISTDataset.load('mnist.pkl', 'quadboost/data/preprocessed/')

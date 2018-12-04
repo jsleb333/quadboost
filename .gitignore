@@ -3,6 +3,7 @@
 __pycache__/
 data/
 quadboost/data/
+quadboost/datasets/datasets_path.py
 
 cloner/
 

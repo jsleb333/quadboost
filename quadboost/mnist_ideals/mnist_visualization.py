@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import sys, os
 sys.path.append(os.getcwd())
 
-from quadboost.mnist_dataset import MNISTDataset
+from quadboost.datasets import MNISTDataset
 from quadboost.utils import *
 import json
 

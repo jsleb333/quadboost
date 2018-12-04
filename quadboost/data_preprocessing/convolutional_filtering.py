@@ -6,7 +6,7 @@ sys.path.append(os.getcwd())
 from numpy.random import randint
 from itertools import product
 
-from quadboost.mnist_dataset import MNISTDataset
+from quadboost.datasets import MNISTDataset
 from quadboost.utils import *
 from haar_preprocessing import *
 

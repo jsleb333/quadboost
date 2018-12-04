@@ -5,7 +5,7 @@ from quadboost import QuadBoostMHCR
 from quadboost.label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from quadboost.weak_learner import *
 from quadboost.callbacks import *
-from quadboost.mnist_dataset import MNISTDataset
+from quadboost.datasets import MNISTDataset
 from quadboost.utils import parse, timed
 
 

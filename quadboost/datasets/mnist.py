@@ -1,19 +1,20 @@
-import os, struct
+import sys, os
+sys.path.append(os.getcwd())
+import struct
 import numpy as np
 import matplotlib.pyplot as plt
 import gzip, urllib, io # To download MNIST
-try:
-    from datasets import path_to
-except:
-    def path_to(dataset='mnist'):
-        return "quadboost/data/mnist"
-import sys, os
-sys.path.append(os.getcwd())
 
 import pickle as pkl
 from sklearn.preprocessing import StandardScaler
 import warnings
 from time import time
+
+try:
+    from datasets_path import path_to
+except:
+    path_to = {'mnist':"quadboost/data/mnist/"}
+mnist_raw = os.path.join(path_to['mnist'], 'raw/')
 
 # File paths, names and format
 filename_images_train = 'train-images-idx3-ubyte'
@@ -25,7 +26,7 @@ data_type_labels, data_bytes_labels = 'B', 1
 data_type_images, data_bytes_images = 'B', 1
 
 
-def download_mnist(filepath='quadboost/data/mnist/raw/'):
+def download_mnist(filepath=mnist_raw):
     os.makedirs(filepath, exist_ok=True)
     for filename in [filename_images_train,
                      filename_images_test,
@@ -61,8 +62,9 @@ def load_raw_labels(filename, N):
 		return header, np.array(labels)
 
 
-def load_mnist(Ntr=60000, Nts=10000, path=None):
-    mnist_path = path or path_to('mnist') + '/raw/'
+def load_mnist(Ntr=60000, Nts=10000, path=mnist_raw):
+    t = time()
+    mnist_path = path
     if filename_images_train not in os.listdir(mnist_path):
         print('Downloading mnist...')
         download_mnist()
@@ -71,6 +73,7 @@ def load_mnist(Ntr=60000, Nts=10000, path=None):
     h, Xts = load_raw_data(mnist_path + filename_images_test, Nts)
     h, Ytr = load_raw_labels(mnist_path + filename_labels_train, Ntr)
     h, Yts = load_raw_labels(mnist_path + filename_labels_test, Nts)
+    print(f'Loaded MNIST in {time()-t:.2f}s.')
 
     return (Xtr, Ytr), (Xts, Yts)
 

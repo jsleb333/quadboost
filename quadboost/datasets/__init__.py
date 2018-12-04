@@ -1,5 +1,5 @@
 try:
     from quadboost.datasets.datasets import ImageDataset, MNISTDataset
-    import mnist_dataset
+    import datasets
 except ModuleNotFoundError:
     from .datasets import ImageDataset, MNISTDataset

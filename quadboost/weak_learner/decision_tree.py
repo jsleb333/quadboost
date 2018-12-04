@@ -281,6 +281,6 @@ def main():
 
 
 if __name__ == '__main__':
-    from quadboost.mnist_dataset import MNISTDataset
+    from quadboost.datasets import MNISTDataset
     from quadboost.label_encoder import OneHotEncoder
     main()
