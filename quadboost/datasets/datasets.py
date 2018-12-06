@@ -36,7 +36,7 @@ class ImageDataset:
         self.Yts = Yts
 
         self.scaler = StandardScaler()
-        self._fit_scaler(self.Xtr, center=True, reduce=True)
+        self.fit_scaler(self.Xtr, center=True, reduce=True)
 
     @property
     def n_examples_train(self): # Retrocompatibility
@@ -72,7 +72,7 @@ class ImageDataset:
     def std(self):
         return self.scaler.scale_
 
-    def _fit_scaler(self, X, *, center, reduce):
+    def fit_scaler(self, X, *, center, reduce):
         if center or reduce: # Only if needed
             with warnings.catch_warnings(): # Catch conversion type warning
                 warnings.simplefilter("ignore")
@@ -102,11 +102,11 @@ class ImageDataset:
         Xval, Yval = X[:valid], Y[:valid]
 
         # Recompute mean and std to account for validation.
-        self._fit_scaler(Xtr, center=center, reduce=reduce)
+        self.fit_scaler(Xtr, center=center, reduce=reduce)
 
-        return self._prepare_data(Xtr, Ytr), self._prepare_data(Xval, Yval)
+        return self.transform_data(Xtr, Ytr), self.transform_data(Xval, Yval)
 
-    def _prepare_data(self, X, Y):
+    def transform_data(self, X, Y):
         """
         Centers, reduces and reshapes data if needed.
         """
@@ -138,14 +138,14 @@ class ImageDataset:
             scale_with (Array of shape (n_examples, ...) or None, optional): Dataset to use to scale the test set. If None, the complete training set is used.
         """
         X = scale_with if scale_with is not None else self.Xtr
-        self._fit_scaler(X, center=center, reduce=reduce)
+        self.fit_scaler(X, center=center, reduce=reduce)
         return self._get_test()
 
     def _get_test(self):
         if self.Xts is None:
             return self.Xts, self.Yts
         else:
-            return self._prepare_data(self.Xts, self.Yts)
+            return self.transform_data(self.Xts, self.Yts)
 
     def get_train_valid_test(self, valid=0, center=False, reduce=False, shuffle=True):
         train, valid = self.get_train_valid(valid, center=center, reduce=reduce, shuffle=shuffle)
