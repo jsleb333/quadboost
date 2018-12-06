@@ -175,7 +175,8 @@ class _QuadBoost:
 
         wp_weights, wps = self.weak_predictors_weights, self.weak_predictors
         if mode == 'best':
-            wp_weights, wps = wp_weights[:self.best_round], wps[:self.best_round]
+            best = self.best_round.step_number + 1
+            wp_weights, wps = wp_weights[:best], wps[:best]
         for wp_weight, wp in zip(wp_weights, wps):
             encoded_Y_pred += wp_weight * wp.predict(X)
 
@@ -384,8 +385,9 @@ def main():
             callbacks=callbacks,
             # n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
             )
-    print(f'Test accuracy on best model (round {qb.best_round}): {qb.evaluate(Xts, Yts):.3%}')
-    print(f'Test accuracy on last model (round {len(qb.weak_predictors)}): {qb.evaluate(Xts, Yts, mode="last"):.3%}')
+    print(f'Best round recap:\nBoosting round {qb.best_round.step_number+1:03d} | Train acc: {qb.best_round.train_acc:.3%} | Valid acc: {qb.best_round.valid_acc:.3%} | Risk: {qb.best_round.risk:.3f}')
+    print(f'Test accuracy on best model: {qb.evaluate(Xts, Yts):.3%}')
+    print(f'Test accuracy on last model: {qb.evaluate(Xts, Yts, mode="last"):.3%}')
     ### Or resume fitting a model
     # qb = QuadBoostMHCR.load('results/test_3.ckpt')
     # qb.resume_fit(X, Y,

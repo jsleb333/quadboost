@@ -38,7 +38,7 @@ class BreakOnPlateauCallback(BreakCallback, BestRoundTrackerCallback):
     def on_step_end(self):
         if self.patience is not None:
             super().on_step_end() # Updates self.best_round
-            if self.manager.step.step_number - self.best_round > self.patience:
+            if self.manager.step.step_number - self.best_round.step_number - 1 > self.patience:
                 logging.info('Terminating iteration due to maximum round number without improvement reached.')
                 raise StopIteration
 

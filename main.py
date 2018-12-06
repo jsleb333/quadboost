@@ -180,9 +180,9 @@ def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, 
                       X_val=X_val, Y_val=Y_val,
                       max_round_number=max_round,
                       **kwargs)
-
-    print(f'Test accuracy on best model (round {qb.best_round}): {qb.evaluate(Xts, Yts):.3%}')
-    print(f'Test accuracy on last model (round {len(qb.weak_predictors)}): {qb.evaluate(Xts, Yts, mode="last"):.3%}')
+    print(f'Best round recap:\nBoosting round {qb.best_round.step_number+1:03d} | Train acc: {qb.best_round.train_acc:.3%} | Valid acc: {qb.best_round.valid_acc:.3%} | Risk: {qb.best_round.risk:.3f}')
+    print(f'Test accuracy on best model: {qb.evaluate(Xts, Yts):.3%}')
+    print(f'Test accuracy on last model: {qb.evaluate(Xts, Yts, mode="last"):.3%}')
 
 
 if __name__ == '__main__':

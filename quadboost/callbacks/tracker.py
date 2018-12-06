@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 
 try:
     from quadboost.callbacks import Callback
@@ -21,19 +22,24 @@ class BestRoundTrackerCallback(Callback):
         self.quantity = quantity
         self.monitor = monitor
         self.verbose = verbose
-        self.best_round = 0
-        self.best_value = float('-inf') if self.monitor == 'max' else float('inf')
+        self.best_round = None
+
+    @property
+    def best_value(self):
+        if self.best_round is None:
+            return float('-inf') if self.monitor == 'max' else float('inf')
+        else:
+            return getattr(self.best_round, self.quantity)
 
     def on_step_end(self):
-        value = getattr(self.manager.step, self.quantity)
-        if self._value_is_better_than_current(value):
-            self.best_value = value
-            self.manager.caller.best_round = self.best_round = self.manager.step.step_number + 1
+        if self._new_round_is_better_than_current():
+            self.manager.caller.best_round = self.best_round = deepcopy(self.manager.step)
             if self.verbose:
                 logging.info('New best model found.')
 
-    def _value_is_better_than_current(self, value):
+    def _new_round_is_better_than_current(self):
+        new_value = getattr(self.manager.step, self.quantity)
         if self.monitor == 'max':
-            return value >= self.best_value
+            return new_value >= self.best_value
         elif self.monitor == 'min':
-            return value <= self.best_value
+            return new_value <= self.best_value
