@@ -24,9 +24,7 @@ from quadboost.utils import timed
 
 
 def extend_mnist(Xtr, Ytr, N=1000, degrees=15, scale=(.85,1.11), shear=15):
-    print(Xtr.dtype)
     Xtr_torch = torch.from_numpy(Xtr).reshape((-1,1,28,28))
-    print(Xtr_torch.dtype)
     AffineTransform = RandomAffine(degrees=degrees, scale=scale, shear=shear)
 
     ex_Xtr = np.zeros((N, 28, 28), dtype=np.int32)
