@@ -29,9 +29,8 @@ def extend_mnist(Xtr, Ytr, N=1000, degrees=15, scale=(.85,1.11), shear=15):
 
     ex_Xtr = np.zeros((N, 28, 28))
     ex_Ytr = np.zeros(N)
-    indices = np.arange(N)
-    np.random.shuffle(indices)
-    for idx, i in enumerate(indices):
+    for i in range(N):
+        idx = np.random.randint(Xtr.shape[0])
         X = Xtr_torch[idx]
         X_pil = tf.pad(tf.to_pil_image(X),3)
         params, X_transform = AffineTransform(X_pil)
