@@ -375,16 +375,18 @@ def main():
 
 
 def plot_images(images, titles=None, block=True):
+    import matplotlib.pyplot as plt
+    from quadboost.utils import make_fig_axes
 
     fig, axes = make_fig_axes(len(images))
 
-    # vmax = min(np.max(np.abs(im)) for im in images)
-    vmax = 1
+    vmax = min(np.max(np.abs(im)) for im in images)
+    # vmax = 1
     if not titles:
         titles = (f'{n}: {vmax}' for n in range(len(images)))
     for im, title, ax in zip(images, titles, axes):
-        # ax.imshow(im, cmap='gray_r')
-        cax = ax.imshow(im, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
+        ax.imshow(im, cmap='gray_r')
+        # cax = ax.imshow(im, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
         ax.set_title(title)
 
     # fig.colorbar(cax)
@@ -393,12 +395,10 @@ def plot_images(images, titles=None, block=True):
 
 
 if __name__ == '__main__':
-    import matplotlib.pyplot as plt
 
     from quadboost.datasets import MNISTDataset, CIFAR10Dataset
     from quadboost.label_encoder import OneHotEncoder
     from quadboost.weak_learner import MulticlassDecisionStump
-    from quadboost.utils import make_fig_axes
 
     seed = 42
     torch.manual_seed(seed)
