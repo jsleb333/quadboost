@@ -31,6 +31,7 @@ def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, 
     X_val, Y_val = mnist.transform_data(X_val.reshape(X_val.shape[0],-1), Y_val)
     Xts, Yts = mnist.transform_data(Xts.reshape(Xts.shape[0],-1), Yts)
     # plot_images([Xtr[0], Xtr[1], X_val[0], X_val[1], Xts[0], Xts[1]], ['tr', 'tr', 'val', 'val', 'ts', 'ts'])
+    print(Xtr.dtype, Xts.dtype, X_val.dtype)
 
     logging.info(f'Loaded dataset: {dataset} (center: {center}, reduce: {reduce})')
     logging.info(f'Number of examples - train: {len(Xtr)}, valid: {len(X_val)}, test: {len(Xts)}')

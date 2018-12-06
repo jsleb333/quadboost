@@ -231,6 +231,9 @@ class WeightFromBankGenerator:
         max_x = torch.max(x)
         x_transformed /= max_x
 
+        print(min_x, max_x)
+        print(x_transformed.dtype)
+
         fillcolor = int(-min_x/max_x * 255) # Value to use to fill so that when reconverted to tensor, fill value is 0.
         self.affine_transform.fillcolor = fillcolor
 
@@ -356,7 +359,7 @@ def main():
                                          n_transforms=10,
                                          )
     filters = LocalFilters(n_filters=5,
-                      maxpool_shape=(-1,5,5),
+                      maxpool_shape=(-1,7,7),
                       activation=torch.sigmoid,
                       weights_generator=filter_gen,
                       locality=3,
