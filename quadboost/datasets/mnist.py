@@ -49,7 +49,7 @@ def load_raw_data(filename, N):
         images = struct.unpack(
                         '>' + nber_pixels*data_type_images*N,
                         file.read(data_bytes_images*nber_pixels*N))
-        images = np.array(images).reshape((N, 784))
+        images = np.array(images, dtype=np.uint8).reshape((N, 784))
         return header, images
 
 
@@ -59,7 +59,7 @@ def load_raw_labels(filename, N):
 		header_format = '>' + 2 * data_type_header
 		header = struct.unpack(header_format, labels.read(header_size))
 		labels = struct.unpack('>'+data_bytes_labels*data_type_labels*N,labels.read(data_bytes_labels*N))
-		return header, np.array(labels)
+		return header, np.array(labels, dtype=np.uint8)
 
 
 def load_mnist(Ntr=60000, Nts=10000, path=mnist_raw):
