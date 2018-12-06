@@ -385,11 +385,11 @@ def plot_images(images, titles=None, block=True):
     if not titles:
         titles = (f'{n}: {vmax}' for n in range(len(images)))
     for im, title, ax in zip(images, titles, axes):
-        ax.imshow(im, cmap='gray_r')
-        # cax = ax.imshow(im, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
+        # ax.imshow(im, cmap='gray_r')
+        cax = ax.imshow(im, cmap='RdBu_r', vmin=-vmax, vmax=vmax)
         ax.set_title(title)
 
-    # fig.colorbar(cax)
+    fig.colorbar(cax)
     # plt.get_current_fig_manager().window.showMaximized()
     plt.show(block=block)
 

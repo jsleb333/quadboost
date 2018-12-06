@@ -7,27 +7,33 @@ from quadboost.weak_learner import *
 from quadboost.callbacks import *
 from quadboost.datasets import MNISTDataset
 from quadboost.utils import parse, timed
+from quadboost.data_preprocessing.data_augmentation import extend_mnist
+from quadboost.weak_learner.random_convolution import plot_images
 
 
 @timed
 @parse
-def main(m=60_000, val=10_000, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, fs=11, fsh=0, locality=4, init_filters='from_bank', bank_ratio=.05, fn='c', seed=42, nl='maxpool', maxpool=3, device='cpu', degrees=.0, scale=.0, shear=.0, margin=2, nt=1):
+def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, fs=11, fsh=0, locality=4, init_filters='from_bank', bank_ratio=.05, fn='c', seed=42, nl='maxpool', maxpool=3, device='cpu', degrees=.0, scale=.0, shear=.0, margin=2, nt=1):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
 
     ### Data loading
     mnist = MNISTDataset.load(dataset+'.pkl')
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=center, reduce=reduce)
-    idx = np.arange(m)
-    if seed:
-        np.random.shuffle(idx)
-        val_idx = idx[:val]
-        tr_idx = idx[val:]
-    X_val, Y_val = Xtr[val_idx], Ytr[val_idx]
-    Xtr, Ytr = Xtr[tr_idx], Ytr[tr_idx]
+    (Xtr, Ytr), (X_val, Y_val), (Xts, Yts) = mnist.get_train_valid_test(valid=val, center=False, reduce=False, shuffle=seed)
+    Xtr, Ytr = Xtr[:m], Ytr[:m]
+    if da:
+        logging.info(f'Adding {da} examples with data augmentation.')
+        Xtr, Ytr = extend_mnist(Xtr, Ytr, N=da, degrees=degrees, scale=(1-scale, 1/(1-scale)), shear=shear)
+
+    mnist.fit_scaler(Xtr, center=center, reduce=reduce)
+    Xtr, Ytr = mnist.transform_data(Xtr.reshape(Xtr.shape[0],-1), Ytr)
+    X_val, Y_val = mnist.transform_data(X_val.reshape(X_val.shape[0],-1), Y_val)
+    Xts, Yts = mnist.transform_data(Xts.reshape(Xts.shape[0],-1), Yts)
+    # plot_images([Xtr[0], Xtr[1], X_val[0], X_val[1], Xts[0], Xts[1]], ['tr', 'tr', 'val', 'val', 'ts', 'ts'])
+
     logging.info(f'Loaded dataset: {dataset} (center: {center}, reduce: {reduce})')
-    logging.info(f'Number of examples - train: {len(tr_idx)}, valid: {len(val_idx)}, test: {len(Xts)}')
+    logging.info(f'Number of examples - train: {len(Xtr)}, valid: {len(X_val)}, test: {len(Xts)}')
 
     ### Choice of encoder
     if encodings == 'onehot':
