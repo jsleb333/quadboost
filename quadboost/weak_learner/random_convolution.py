@@ -231,9 +231,6 @@ class WeightFromBankGenerator:
         max_x = torch.max(x)
         x_transformed /= max_x
 
-        print(min_x, max_x)
-        print(x_transformed.dtype)
-
         fillcolor = int(-min_x/max_x * 255) # Value to use to fill so that when reconverted to tensor, fill value is 0.
         self.affine_transform.fillcolor = fillcolor
 
