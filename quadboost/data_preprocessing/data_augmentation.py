@@ -24,11 +24,13 @@ from quadboost.utils import timed
 
 
 def extend_mnist(Xtr, Ytr, N=1000, degrees=15, scale=(.85,1.11), shear=15):
+    print(Xtr.dtype)
     Xtr_torch = torch.from_numpy(Xtr).reshape((-1,1,28,28))
+    print(Xtr_torch.dtype)
     AffineTransform = RandomAffine(degrees=degrees, scale=scale, shear=shear)
 
-    ex_Xtr = np.zeros((N, 28, 28))
-    ex_Ytr = np.zeros(N)
+    ex_Xtr = np.zeros((N, 28, 28), dtype=np.int32)
+    ex_Ytr = np.zeros((N,), dtype=np.int32)
     for i in range(N):
         idx = np.random.randint(Xtr.shape[0])
         X = Xtr_torch[idx]
@@ -47,5 +49,5 @@ if __name__ == '__main__':
     mnist = MNISTDataset.load()
     Xtr, Ytr = mnist.get_train(center=False, reduce=False)
     Xtr, Ytr = timed(extend_mnist)(Xtr, Ytr, N=10)
-    print(Xtr.shape)
-    plot_images([X.reshape(28,28) for X in Xtr[:10]], [y for y in Ytr[:10]])
+    print(Xtr.dtype)
+    # plot_images([X.reshape(28,28) for X in Xtr[:10]], [y for y in Ytr[:10]])
