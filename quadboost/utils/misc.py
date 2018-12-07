@@ -19,11 +19,23 @@ def parse(func):
         # Parse kwargs
         parser = argparse.ArgumentParser()
         for key, value in signature_kwargs.items():
-            parser.add_argument(f'--{key}', dest=key, default=value, type=type(value))
+            value_type = type(value)
+            if isinstance(value, bool):
+                value_type = bool_parse
+            parser.add_argument(f'--{key}', dest=key, default=value, type=value_type)
         kwargs = vars(parser.parse_args())
         # Returns the original func with new kwargs
         return func(**kwargs)
     return wrapper
+
+
+def bool_parse(arg):
+    if arg.lower() in ('true', 't', 'yes', 'y', '1'):
+        return True
+    elif arg.lower() in ('false', 'f', 'no', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def identity_func(arg):
