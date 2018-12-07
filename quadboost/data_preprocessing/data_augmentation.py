@@ -14,9 +14,10 @@ import torch
 #     ret = self.get_params(self.degrees, self.translate, self.scale, self.shear, img.size)
 #     return ret, tf.affine(img, *ret, resample=self.resample, fillcolor=self.fillcolor)
 # RandomAffine.__call__ = my_call
-
-
 from PIL.Image import BICUBIC
+
+import sys, os
+sys.path.append(os.getcwd())
 
 from quadboost.datasets import MNISTDataset
 from quadboost.weak_learner.random_convolution import plot_images
@@ -27,8 +28,8 @@ def extend_mnist(Xtr, Ytr, N=1000, degrees=15, scale=(.85,1.11), shear=15):
     Xtr_torch = torch.from_numpy(Xtr).reshape((-1,1,28,28))
     AffineTransform = RandomAffine(degrees=degrees, scale=scale, shear=shear)
 
-    ex_Xtr = np.zeros((N, 28, 28), dtype=np.int32)
-    ex_Ytr = np.zeros((N,), dtype=np.int32)
+    ex_Xtr = np.zeros((N, 28, 28), dtype=Xtr.dtype)
+    ex_Ytr = np.zeros((N,), dtype=Ytr.dtype)
     for i in range(N):
         idx = np.random.randint(Xtr.shape[0])
         X = Xtr_torch[idx]
@@ -36,8 +37,11 @@ def extend_mnist(Xtr, Ytr, N=1000, degrees=15, scale=(.85,1.11), shear=15):
         # params, X_transform = AffineTransform(X_pil)
         X_transform = AffineTransform(X_pil)
         X_transform = tf.to_tensor(tf.crop(X_transform, 3, 3, 28, 28)).numpy().reshape(28,28)
+        if Xtr.dtype == np.uint8:
+            X_transform *= 255
         # trans_title = f'trans-d={params[0]:.2f}-scale={params[2]:.2f}-shear={params[3]:.2f}'
-        # plot_images([Xtr[_].reshape(28,28), X_transform], ['orig', trans_title])
+        # trans_title = f'trans'
+        # plot_images([Xtr[i].reshape(28,28), X_transform], ['orig', trans_title])
         ex_Xtr[i] = X_transform
         ex_Ytr[i] = Ytr[idx]
 
@@ -47,6 +51,7 @@ def extend_mnist(Xtr, Ytr, N=1000, degrees=15, scale=(.85,1.11), shear=15):
 if __name__ == '__main__':
     mnist = MNISTDataset.load()
     Xtr, Ytr = mnist.get_train(center=False, reduce=False)
-    Xtr, Ytr = timed(extend_mnist)(Xtr, Ytr, N=10)
+    print(Xtr.dtype)
+    Xtr, Ytr = timed(extend_mnist)(Xtr, Ytr, N=1)
     print(Xtr.dtype)
     # plot_images([X.reshape(28,28) for X in Xtr[:10]], [y for y in Ytr[:10]])
