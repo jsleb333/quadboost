@@ -6,7 +6,30 @@ import sys, os
 sys.path.append(os.getcwd())
 
 import pickle as pkl
+from sklearn.utils.validation import check_is_fitted
+from sklearn.utils import check_array
 from sklearn.preprocessing import StandardScaler
+def transform(self, X, copy=None): # Monkey patch the dtype of
+    """Perform standardization by centering and scaling
+
+    Args:
+        X : array-like, shape [n_samples, n_features]
+            The data used to scale along the features axis.
+        copy : bool, optional (default: None)
+            Copy the input X or not.
+    """
+    check_is_fitted(self, 'scale_')
+
+    copy = copy or self.copy
+    X = check_array(X, accept_sparse='csr', copy=copy, estimator=self, dtype=np.float32)
+
+    if self.with_mean:
+        X -= self.mean_
+    if self.with_std:
+        X /= self.scale_
+    return X
+StandardScaler.transform = transform
+
 import warnings
 try:
     from quadboost.utils import identity_func
@@ -206,10 +229,13 @@ def _generate_cifar10_dataset():
 
 if __name__ == '__main__':
     from mnist import load_mnist
-    _generate_mnist_dataset()
+    # _generate_mnist_dataset()
     mnist = MNISTDataset.load('mnist.pkl', 'quadboost/data/mnist/preprocessed/')
     print(mnist.Xtr.dtype)
     print(np.max(mnist.Xtr))
+    X, Y = mnist.get_train(False, True)
+    print(X.dtype)
+
 
     from cifar10 import load_cifar10
     # _generate_cifar10_dataset()
@@ -224,4 +250,3 @@ if __name__ == '__main__':
     # print(dataset.n_examples_test)
     # print(dataset._n_examples_test)
     # dataset.save()
-
