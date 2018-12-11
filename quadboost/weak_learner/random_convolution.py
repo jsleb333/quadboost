@@ -204,8 +204,7 @@ class WeightFromBankGenerator:
         # (i, j) is the top left corner where the filter position was taken
         i, j = (np.random.randint(self.margin, i_max-self.margin),
                 np.random.randint(self.margin, j_max-self.margin))
-
-        x = torch.tensor(self.filter_bank[np.random.randint(self.n_examples)], requires_grad=False).cpu()
+        x = self.filter_bank[np.random.randint(self.n_examples)].clone().detach().cpu()
 
         weight = []
         for _ in range(self.n_transforms):
@@ -215,7 +214,7 @@ class WeightFromBankGenerator:
             else:
                 x_transformed = x
 
-            w = torch.tensor(x_transformed[:, i:i+height, j:j+width], requires_grad=False)
+            w = x_transformed[:, i:i+height, j:j+width].clone().detach()
             for process in self.filter_processing:
                 w = process(w)
             w = torch.unsqueeze(w, dim=0)
