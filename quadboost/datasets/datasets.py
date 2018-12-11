@@ -229,16 +229,10 @@ def _generate_cifar10_dataset():
 
 if __name__ == '__main__':
     from mnist import load_mnist
-    # _generate_mnist_dataset()
-    mnist = MNISTDataset.load('mnist.pkl', 'quadboost/data/mnist/preprocessed/')
-    print(mnist.Xtr.dtype)
-    print(np.max(mnist.Xtr))
-    X, Y = mnist.get_train(False, True)
-    print(X.dtype)
-
+    _generate_mnist_dataset()
 
     from cifar10 import load_cifar10
-    # _generate_cifar10_dataset()
+    _generate_cifar10_dataset()
 
 
     ### Update old dataset
