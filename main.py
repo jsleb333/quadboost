@@ -28,8 +28,11 @@ def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, 
 
     mnist.fit_scaler(Xtr, center=center, reduce=reduce)
     Xtr, Ytr = mnist.transform_data(Xtr.reshape(Xtr.shape[0],-1), Ytr)
-    X_val, Y_val = mnist.transform_data(X_val.reshape(X_val.shape[0],-1), Y_val)
     Xts, Yts = mnist.transform_data(Xts.reshape(Xts.shape[0],-1), Yts)
+    if val:
+        X_val, Y_val = mnist.transform_data(X_val.reshape(X_val.shape[0],-1), Y_val)
+    else:
+        X_val, Y_val = Xts, Yts
 
     logging.info(f'Loaded dataset: {dataset} (center: {center}, reduce: {reduce})')
     logging.info(f'Number of examples - train: {len(Xtr)}, valid: {len(X_val)}, test: {len(Xts)}')
@@ -180,8 +183,9 @@ def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, 
                       max_round_number=max_round,
                       **kwargs)
     print(f'Best round recap:\nBoosting round {qb.best_round.step_number+1:03d} | Train acc: {qb.best_round.train_acc:.3%} | Valid acc: {qb.best_round.valid_acc:.3%} | Risk: {qb.best_round.risk:.3f}')
-    print(f'Test accuracy on best model: {qb.evaluate(Xts, Yts):.3%}')
-    print(f'Test accuracy on last model: {qb.evaluate(Xts, Yts, mode="last"):.3%}')
+    if val:
+        print(f'Test accuracy on best model: {qb.evaluate(Xts, Yts):.3%}')
+        print(f'Test accuracy on last model: {qb.evaluate(Xts, Yts, mode="last"):.3%}')
 
 
 if __name__ == '__main__':
