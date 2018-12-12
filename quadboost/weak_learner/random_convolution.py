@@ -97,8 +97,9 @@ class Filters(_Cloner):
                 output.append(output_.reshape((n_examples, -1)))
             output = torch.cat(output, dim=1)
 
-        self.activation(output)
-        return output.reshape((n_examples, -1))
+        random_feat = self.activation(output)
+        random_feat = random_feat.cpu().reshape((n_examples, -1))
+        return random_feat
 
     def _compute_maxpool_shape(self, output):
         return tuple(ms if ms != -1 else output.shape[i+2] for i, ms in enumerate(self.maxpool_shape))  # Finding actual shape if -1 was used.
@@ -147,9 +148,11 @@ class LocalFilters(Filters):
             random_feat.append(output.reshape(n_examples, -1))
 
         random_feat = torch.cat(random_feat, dim=1)
-        self.activation(output)
-
+        random_feat = self.activation(random_feat)
+        random_feat = self.activation(random_feat)
+        random_feat = random_feat.cpu().reshape((n_examples, -1))
         return random_feat
+
 
 
 class WeightFromBankGenerator:
