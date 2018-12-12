@@ -328,7 +328,7 @@ def reduce_weight(weight):
 @timed
 def main():
     mnist = MNISTDataset.load()
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_valid_test(valid=3000, center=True, reduce=True)
     # cifar = CIFAR10Dataset.load()
     # (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=True, reduce=True)
     # Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
@@ -336,28 +336,28 @@ def main():
 
     encoder = OneHotEncoder(Ytr)
 
-    m = 1_000
-    bank = 1_000
+    # m = 60_000
+    # bank = 1_000
 
     # print('CPU')
     # print('CUDA')
     # Xtr = Xtr[:m+bank].to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
     scale = (0.9, 1.1)
-    shear = 10
-    filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
+    shear = 15
+    filter_gen = WeightFromBankGenerator(filter_bank=Xtr,#[m:m+bank],
                                          filters_shape=(5,5),
                                          filters_shape_high=(16,16),
                                          margin=2,
                                          filter_processing=[center_weight],
-                                         degrees=20,
+                                         degrees=15,
                                          scale=scale if scale != 1 else None,
                                          shear=shear if shear != 0 else None,
-                                         n_transforms=10,
+                                         n_transforms=40,
                                          )
     filters = LocalFilters(n_filters=5,
-                      maxpool_shape=(-1,7,7),
-                      activation=torch.sigmoid,
+                      maxpool_shape=(-1,-1,-1),
+                    #   activation=torch.sigmoid,
                       weights_generator=filter_gen,
                       locality=3,
                       )
@@ -369,9 +369,12 @@ def main():
                            weak_learner=weak_learner,
                            encoder=encoder,
                            )
-    wl.fit(Xtr[:m], Ytr[:m])
-    print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
-    print('Test acc', wl.evaluate(Xts[:m], Yts[:m]))
+    wl.fit(Xtr, Ytr)
+    print('Train acc', wl.evaluate(Xtr, Ytr))
+    print('Test acc', wl.evaluate(Xts, Yts))
+    # wl.fit(Xtr[:m], Ytr[:m])
+    # print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
+    # print('Test acc', wl.evaluate(Xts[:m], Yts[:m]))
 
 
 def plot_images(images, titles=None, block=True):
