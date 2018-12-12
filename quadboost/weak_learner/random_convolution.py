@@ -97,8 +97,9 @@ class Filters(_Cloner):
                 output.append(output_.reshape((n_examples, -1)))
             output = torch.cat(output, dim=1)
 
-        self.activation(output)
-        return output.reshape((n_examples, -1))
+        random_feat = self.activation(output)
+        random_feat = random_feat.cpu().reshape((n_examples, -1))
+        return random_feat
 
     def _compute_maxpool_shape(self, output):
         return tuple(ms if ms != -1 else output.shape[i+2] for i, ms in enumerate(self.maxpool_shape))  # Finding actual shape if -1 was used.
@@ -147,9 +148,11 @@ class LocalFilters(Filters):
             random_feat.append(output.reshape(n_examples, -1))
 
         random_feat = torch.cat(random_feat, dim=1)
-        self.activation(output)
-
+        random_feat = self.activation(random_feat)
+        random_feat = self.activation(random_feat)
+        random_feat = random_feat.cpu().reshape((n_examples, -1))
         return random_feat
+
 
 
 class WeightFromBankGenerator:
@@ -204,8 +207,7 @@ class WeightFromBankGenerator:
         # (i, j) is the top left corner where the filter position was taken
         i, j = (np.random.randint(self.margin, i_max-self.margin),
                 np.random.randint(self.margin, j_max-self.margin))
-
-        x = torch.tensor(self.filter_bank[np.random.randint(self.n_examples)], requires_grad=False).cpu()
+        x = self.filter_bank[np.random.randint(self.n_examples)].clone().detach().cpu()
 
         weight = []
         for _ in range(self.n_transforms):
@@ -215,7 +217,7 @@ class WeightFromBankGenerator:
             else:
                 x_transformed = x
 
-            w = torch.tensor(x_transformed[:, i:i+height, j:j+width], requires_grad=False)
+            w = x_transformed[:, i:i+height, j:j+width].clone().detach()
             for process in self.filter_processing:
                 w = process(w)
             w = torch.unsqueeze(w, dim=0)

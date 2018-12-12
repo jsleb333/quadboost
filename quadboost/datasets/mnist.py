@@ -65,7 +65,7 @@ def load_raw_labels(filename, N):
 def load_mnist(Ntr=60000, Nts=10000, path=mnist_raw):
     t = time()
     mnist_path = path
-    if filename_images_train not in os.listdir(mnist_path):
+    if not os.path.exists(os.path.join(mnist_path, filename_images_train)):
         print('Downloading mnist...')
         download_mnist()
         print('Download finished.')

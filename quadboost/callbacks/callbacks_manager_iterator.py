@@ -69,9 +69,15 @@ class CallbacksManagerIterator:
             raise RuntimeError('Callbacks should include at least one BreakCallback, else it would result in an infinite loop.')
 
         while True:
-            self.callbacks.on_step_begin()
+            try:
+                self.callbacks.on_step_begin()
+            except StopIteration:
+                return
             yield next(self.step)
-            self.callbacks.on_step_end()
+            try:
+                self.callbacks.on_step_end()
+            except StopIteration:
+                return
 
 
 if __name__ == '__main__':
