@@ -330,7 +330,7 @@ def reduce_weight(weight):
 @timed
 def main():
     mnist = MNISTDataset.load()
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_valid_test(valid=3000, center=True, reduce=True)
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
     # cifar = CIFAR10Dataset.load()
     # (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=True, reduce=True)
     # Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
@@ -357,7 +357,7 @@ def main():
                                          shear=shear if shear != 0 else None,
                                          n_transforms=40,
                                          )
-    filters = LocalFilters(n_filters=5,
+    filters = LocalFilters(n_filters=150,
                       maxpool_shape=(-1,-1,-1),
                     #   activation=torch.sigmoid,
                       weights_generator=filter_gen,
