@@ -9,7 +9,7 @@ import pickle as pkl
 from sklearn.utils.validation import check_is_fitted
 from sklearn.utils import check_array
 from sklearn.preprocessing import StandardScaler
-def transform(self, X, copy=None): # Monkey patch the dtype of
+def transform(self, X, copy=None): # Monkey patch the dtype of scikit-learn to np.float32 instead of np.float64 (fix for conflict with torchvision transformations)
     """Perform standardization by centering and scaling
 
     Args:
@@ -229,10 +229,16 @@ def _generate_cifar10_dataset():
 
 if __name__ == '__main__':
     from mnist import load_mnist
-    _generate_mnist_dataset()
+    # _generate_mnist_dataset()
+    mnist = MNISTDataset.load('mnist.pkl', 'quadboost/data/mnist/preprocessed/')
+    print(mnist.Xtr.dtype)
+    print(np.max(mnist.Xtr))
+    X, Y = mnist.get_train(False, True)
+    print(X.dtype)
+
 
     from cifar10 import load_cifar10
-    _generate_cifar10_dataset()
+    # _generate_cifar10_dataset()
 
 
     ### Update old dataset
