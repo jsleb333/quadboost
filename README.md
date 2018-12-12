@@ -4,14 +4,13 @@ This project aims to implement a performant boosting algorithm to classify image
 Its inherent multiclass nature makes it a good alternative to classical boosting algorithms with simple class reductions.
 The project is written in `Python` and tries to follow the philosophy of the `scikit-learn` project.
 
-This package not only provides the QuadBoost.MH algorithm, but also a complete framework to boost any multiclass weak learners.
-Therefore, it provides callbacks to customize the training, it comes with a variety of weak learners and uses outputs encoding.
-
-The current development of the project focuses on the MNIST Dataset.
+This package not only provides two versions of the QuadBoost algorithm, but also a complete framework to boost any multiclass weak learners.
+Therefore, callbacks to customize the training are provided, as well as a variety of weak learners and outputs encoding.
 
 ## Getting started
 
-To make the minimal working examples of the program work, you have to download the [MNIST dataset](http://yann.lecun.com/exdb/mnist/) or the [CIFAR-10 dataset](https://www.cs.toronto.edu/~kriz/cifar.html).
+To be able to run the minimal working examples of the program, you need a dataset.
+The package has an integrated support for the [MNIST dataset](http://yann.lecun.com/exdb/mnist/) and the [CIFAR-10 dataset](https://www.cs.toronto.edu/~kriz/cifar.html).
 The module `datasets` provides resources to easily handle datasets.
 In the file `./quadboost/datasets/datasets.py`, you will find the functions `_generate_mnist_dataset` and `_generate_cifar10_dataset`.
 These will automatically download the datasets, create a MNISTDataset or CIFAR10Dataset object and save it to the specified directory (which is `./quadboost/data/` by default).
@@ -35,10 +34,11 @@ This project relies on the following `Python` libraries:
 - scikit-learn
 - numpy
 - matplotlib
-- pytorch (used in `weak_learner/random_convolution.py`)
-- scikit-image (optional, used in `mnist_ideals/ideal_preprocessing.py`)
-- tblib (optional, used in `utils/multiprocessing_utils.py`)
-- colorama (optional, used in `utils/timed.py`)
+- pytorch (used in `./quadboost/weak_learner/random_convolution.py`)
+- torchvision (used in `./quadboost/weak_learner/random_convolution.py`)
+- scikit-image (optional, used in `./quadboost/mnist_ideals/ideal_preprocessing.py`)
+- tblib (optional, used in `./quadboost/utils/multiprocessing_utils.py`)
+- colorama (optional, used in `./quadboost/utils/timed.py`)
 
 ## Implementation description
 
