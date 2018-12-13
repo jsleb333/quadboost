@@ -229,21 +229,52 @@ class Stump(ComparableMixin, cmp_attr='risk'):
         return self.stump
 
 
-cdef int n_classes
-cdef int n_partitions = 2
-cdef int n_features
-cdef int n_examples
+import numpy as np
+cimport numpy as np
+cimport cython
 
-cdef struct Stump:
-    float risk
-    float risks[n_partitions * n_classes]
-    int feature
-    int stump_idx
-    float moment_0[n_partitions * n_classes]
-    float moment_1[n_partitions * n_classes]
-    float confidence_rates[n_partitions * n_classes]
+DTYPE = np.int
+ctypedef np.int_t DTYPE_t
 
-cdef void update_stump(Stump* stump):
+cdef:
+    unsigned int n_classes = 10
+    unsigned int n_partitions = 2
+    unsigned int n_examples = 60_000
+    unsigned int n_moments = 3
+    unsigned int n_features = 784
+
+class Stump:
+    def __init__(self):
+        cdef float risk
+        cdef np.ndarray[DTYPE_t, ndim=2] risks = np.zeros((n_partitions, n_features), dtype=DTYPE)
+        cdef int feature
+        cdef int stump_idx
+        cdef np.ndarray[DTYPE_t, ndim=2] moment_0 = np.zeros((n_partitions, n_features), dtype=DTYPE)
+        cdef np.ndarray[DTYPE_t, ndim=2] moment_1 = np.zeros((n_partitions, n_features), dtype=DTYPE)
+        cdef np.ndarray[DTYPE_t, ndim=2] confidence_rates = np.zeros((n_partitions, n_features), dtype=DTYPE)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef Stump find_stump(np.ndarray[DTYPE_t, ndim=2] X,
+                     np.ndarray[DTYPE_t, ndim=2] X_idx,
+                     np.ndarray[DTYPE_t, ndim=2] Y,
+                     np.ndarray[DTYPE_t, ndim=2] W):
+    cdef np.ndarray[DTYPE_t, ndim=2] zeroth_moments = W
+    cdef np.ndarray[DTYPE_t, ndim=2] first_moments = zeroth_moments * Y
+    cdef np.ndarray[DTYPE_t, ndim=2] second_moments = first_moments * Y
+
+    cdef np.ndarray[DTYPE_t, ndim=4] moments = np.zeros((n_moments, n_partitions, n_features, n_classes), dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim=2] risks = np.zeros((n_partitions, n_features), dtype=DTYPE)
+
+    moments[0,1] = np.sum(zeroth_moments[X_idx[:,0]], axis=0)
+    moments[1,1] = np.sum(first_moments[X_idx[:,0]], axis=0)
+    moments[2,1] = np.sum(second_moments[X_idx[:,0]], axis=0)
+
+    risks = compute_risks(moments) # Shape (n_partitions, n_features)
+    best_stump = Stump(risks, moments)
+
+
+def compute_risks(moments):
     pass
-
 
