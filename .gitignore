@@ -1,5 +1,7 @@
 .vscode/
 .vs/
+quadboost.code-workspace
+
 __pycache__/
 data/
 quadboost/data/
