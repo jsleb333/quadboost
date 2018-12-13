@@ -227,3 +227,23 @@ class Stump(ComparableMixin, cmp_attr='risk'):
         else:
             self.stump = feat_val(self.stump_idx) - 1
         return self.stump
+
+
+cdef int n_classes
+cdef int n_partitions = 2
+cdef int n_features
+cdef int n_examples
+
+cdef struct Stump:
+    float risk
+    float risks[n_partitions * n_classes]
+    int feature
+    int stump_idx
+    float moment_0[n_partitions * n_classes]
+    float moment_1[n_partitions * n_classes]
+    float confidence_rates[n_partitions * n_classes]
+
+cdef void update_stump(Stump* stump):
+    pass
+
+
