@@ -10,7 +10,6 @@ sys.path.append(os.getcwd())
 try:
     from weak_learner import *
     from label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
-    from datasets import MNISTDataset
     from callbacks import CallbacksManagerIterator, Step
     from callbacks import ModelCheckpoint, CSVLogger, Progression, BestRoundTrackerCallback
     from callbacks import (BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback,
@@ -19,7 +18,6 @@ try:
 except ModuleNotFoundError:
     from .weak_learner import *
     from .label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
-    from .datasets import MNISTDataset
     from .callbacks import CallbacksManagerIterator, Step
     from .callbacks import ModelCheckpoint, CSVLogger, Progression, BestRoundTrackerCallback
     from .callbacks import (BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback,
@@ -332,13 +330,15 @@ def main():
     np.random.seed(seed)
 
     ### Data loading
-    # mnist = MNISTDataset.load('haar_mnist.pkl')
-    # mnist = MNISTDataset.load('filtered_mnist.pkl')
-    mnist = MNISTDataset.load()
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    m = 1_0
+    # data = MNISTDataset.load('haar_mnist.pkl')
+    # data = MNISTDataset.load('filtered_mnist.pkl')
+    # data = MNISTDataset.load()
+    data = CIFAR10Dataset.load()
+    (Xtr, Ytr), (Xts, Yts) = data.get_train_test(center=True, reduce=True)
+    m = 2000
     X, Y = Xtr[:m], Ytr[:m]
-    X_val, Y_val = Xtr[-10_000:], Ytr[-10_000:]
+    m_val = 100
+    X_val, Y_val = Xtr[m:m+m_val], Ytr[m:m+m_val]
 
     ### Choice of encoder
     # encoder = LabelEncoder.load_encodings('js_without_0', convert_to_int=True)
@@ -353,10 +353,10 @@ def main():
     f_gen = WeightFromBankGenerator(filter_bank=Xtr[-3000:],
                                     filters_shape=(11,11),
                                     filter_processing=center_weight)
-    filters = Filters(n_filters=3,
+    filters = LocalFilters(n_filters=10,
                       weights_generator=f_gen,
-                    #   locality=3,
-                      maxpool_shape=(3,3))
+                      locality=4,
+                      maxpool_shape=(-1,-1,-1))
     # Xtr, X_val, Xts = RandomConvolution.format_data(Xtr), RandomConvolution.format_data(X_val),RandomConvolution.format_data(Xts)
     # Xtr, X_val, Xts = Xtr.to('cuda'), X_val.to('cuda'), Xts.to('cuda')
     weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
@@ -380,7 +380,7 @@ def main():
 
     ### Fitting the model
     qb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=1)
-    qb.fit(X, Y, max_round_number=2, patience=10,
+    qb.fit(X, Y, max_round_number=10, patience=10,
             X_val=X_val, Y_val=Y_val,
             callbacks=callbacks,
             # n_jobs=1, sorted_X=sorted_X, sorted_X_idx=sorted_X_idx,
@@ -398,4 +398,6 @@ def main():
 if __name__ == '__main__':
     import logging
     logging.basicConfig(level=logging.INFO, style='{', format='[{levelname}] {message}')
+
+    from datasets import MNISTDataset, CIFAR10Dataset
     main()
