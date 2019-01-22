@@ -5,7 +5,7 @@ from quadboost import QuadBoostMHCR
 from quadboost.label_encoder import LabelEncoder, OneHotEncoder, AllPairsEncoder
 from quadboost.weak_learner import *
 from quadboost.callbacks import *
-from quadboost.datasets import MNISTDataset
+from quadboost.datasets import MNISTDataset, CIFAR10Dataset
 from quadboost.utils import parse, timed
 from quadboost.data_preprocessing.data_augmentation import extend_mnist
 from quadboost.weak_learner.random_convolution import plot_images
@@ -19,18 +19,22 @@ def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, 
         np.random.seed(seed)
 
     ### Data loading
-    mnist = MNISTDataset.load(dataset+'.pkl')
-    (Xtr, Ytr), (X_val, Y_val), (Xts, Yts) = mnist.get_train_valid_test(valid=val, center=False, reduce=False, shuffle=seed)
+    if 'mnist' in dataset:
+        data = MNISTDataset.load(dataset+'.pkl')
+    elif 'cifar' in dataset:
+        data = CIFAR10Dataset.load(dataset+'.pkl')
+
+    (Xtr, Ytr), (X_val, Y_val), (Xts, Yts) = data.get_train_valid_test(valid=val, center=False, reduce=False, shuffle=seed)
     Xtr, Ytr = Xtr[:m], Ytr[:m]
     if da:
         logging.info(f'Adding {da} examples with data augmentation.')
         Xtr, Ytr = extend_mnist(Xtr, Ytr, N=da, degrees=degrees, scale=(1-scale, 1/(1-scale)), shear=shear)
 
-    mnist.fit_scaler(Xtr, center=center, reduce=reduce)
-    Xtr, Ytr = mnist.transform_data(Xtr.reshape(Xtr.shape[0],-1), Ytr)
-    Xts, Yts = mnist.transform_data(Xts.reshape(Xts.shape[0],-1), Yts)
+    data.fit_scaler(Xtr, center=center, reduce=reduce)
+    Xtr, Ytr = data.transform_data(Xtr.reshape(Xtr.shape[0],-1), Ytr)
+    Xts, Yts = data.transform_data(Xts.reshape(Xts.shape[0],-1), Yts)
     if val:
-        X_val, Y_val = mnist.transform_data(X_val.reshape(X_val.shape[0],-1), Y_val)
+        X_val, Y_val = data.transform_data(X_val.reshape(X_val.shape[0],-1), Y_val)
     else:
         X_val, Y_val = Xts, Yts
 
