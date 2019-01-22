@@ -28,7 +28,9 @@ def download_cifar10(filepath=cifar10_raw):
         filepath = os.path.join(os.path.expanduser('~'), 'data', 'cifar10')
 
     # Create path if it doesn't exist
+    print(filepath)
     os.makedirs(filepath, exist_ok=True)
+    print(os.listdir(filepath))
 
     # Download tarfile if missing
     if tar_filename not in os.listdir(filepath):
