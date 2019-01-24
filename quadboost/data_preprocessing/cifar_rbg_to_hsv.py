@@ -33,14 +33,19 @@ from quadboost.utils import make_fig_axes
 cifar_hsv = CIFAR10Dataset.load('cifar10hsv.pkl')
 (Xtr, Ytr), (Xts, Yts) = cifar_hsv.get_train_test(shuffle=False)
 
-cifar_grey = CIFAR10Dataset(Xtr[:,2], Ytr, Xts[:,2], Yts, shape=(32,32))
-print(cifar_grey.Xtr.shape)
-cifar_grey.save('cifar10grey.pkl')
+# cifar_grey = CIFAR10Dataset(Xtr[:,2], Ytr, Xts[:,2], Yts, shape=(32,32))
+# print(cifar_grey.Xtr.shape)
+# cifar_grey.save('cifar10grey.pkl')
 
-cifar_sv = CIFAR10Dataset(Xtr[:,1:], Ytr, Xts[:,1:], Yts, shape=(2,32,32))
-print(cifar_sv.Xtr.shape)
-cifar_sv.save('cifar10sv.pkl')
+# cifar_sv = CIFAR10Dataset(Xtr[:,1:], Ytr, Xts[:,1:], Yts, shape=(2,32,32))
+# print(cifar_sv.Xtr.shape)
+# cifar_sv.save('cifar10sv.pkl')
 
+Xtr_hue = Xtr[:,0]
+print(np.max(Xtr_hue))
+print(np.min(Xtr_hue))
+Xtr_cs = np.concatenate((Xtr[:,1:], np.cos(Xtr_hue*2*np.pi), np.sin(Xtr_hue*2*np.pi)), axis=1)
+Xts_hue = Xts[:,0]
 
 
 ### To plot CIFAR10
