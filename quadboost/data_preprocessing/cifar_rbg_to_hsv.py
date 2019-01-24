@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 import numpy as np
 
+import sys, os
+sys.path.append(os.getcwd())
 from quadboost.datasets import MNISTDataset, CIFAR10Dataset
 from quadboost.utils import make_fig_axes
 
