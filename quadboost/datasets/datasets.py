@@ -176,7 +176,7 @@ class ImageDataset:
         return train, valid, test
 
     def get_train_test(self, center=False, reduce=False, shuffle=True):
-        train, valid, test = self.get_train_valid_test(0, center=center, reduce=reduce, shuffle)
+        train, valid, test = self.get_train_valid_test(0, center=center, reduce=reduce, shuffle=shuffle)
         return train, test
 
     @staticmethod
