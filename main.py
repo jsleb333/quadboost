@@ -132,7 +132,7 @@ def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, 
                                         filters_shape_high=(fsh, fsh) if fsh else None,
                                         filter_processing=f_proc,
                                         margin=margin,
-                                        degrees=degrees,
+                                        rotation=degrees,
                                         scale=scale,
                                         shear=shear,
                                         )
