@@ -38,6 +38,16 @@ class AffineTransform:
     def __repr__(self):
         return repr(self.affine_matrix)
 
+    def __bool__(self):
+        no_rotation = self.rotation == 0
+        no_scale = self.scale[0] == 1 and self.scale[1] == 1
+        no_shear = self.shear[0] == 0 and self.shear[1] == 0
+        no_translation = self.translation[0] == 0 and self.translation[1] == 0
+        if no_rotation and no_scale and no_shear and no_translation:
+            return False
+        else:
+            return True
+
     def __call__(self, input_matrix, **kwargs):
         """
         Applies the affine transformation on the input matrix, using its indices as coordinates.
@@ -53,6 +63,9 @@ class AffineTransform:
                 cval=0.0
                 prefilter=True
         """
+        if not self: # Is identity transformation
+            return input_matrix
+
         if len(input_matrix.shape) == 3:
             transformed = np.array(
                 [affine_transform(ch, self.affine_matrix, **kwargs) for ch in input_matrix])
