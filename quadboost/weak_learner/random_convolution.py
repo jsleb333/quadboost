@@ -210,13 +210,9 @@ class WeightFromBankGenerator:
         weight = []
         fig, axes = make_fig_axes(self.n_transforms)
         for _ in range(self.n_transforms):
-            if self.degrees or self.scale or self.shear:
-                center = (i+(height-1)/2, j+(width-1)/2)
-                affine_transform = self.random_affine_sampler.sample_transformation(center=center)
-                x_transformed = torch.from_numpy(affine_transform(x, cval=0))
-
-            else:
-                x_transformed = x
+            center = (i+(height-1)/2, j+(width-1)/2)
+            affine_transform = self.random_affine_sampler.sample_transformation(center=center)
+            x_transformed = torch.from_numpy(affine_transform(x, cval=0))
 
             w = x_transformed[:, i:i+height, j:j+width].clone().detach()
             for process in self.filter_processing:
