@@ -108,9 +108,55 @@ def random_affine(rotation=0, scale_x=0, scale_y=0, shear_x=0, shear_y=0, transl
     return AffineTransform(random_rot, random_scale, random_shear, random_translation, center)
 
 
-def random_affine_generator(rotation=0, scale_x=0, scale_y=0, shear_x=0, shear_y=0, translation_x=0, translation_y=0, center=(0,0), angle_unit='radians'):
-    while True:
-        yield random_affine(rotation, scale_x, scale_y, shear_x, shear_y, translation_x, translation_y, center, angle_unit)
+class RandomAffine:
+    """
+    Samples random affine transformations given the parameters ranges.
+    """
+    def __init__(self, rotation=0, scale_x=0, scale_y=0, shear_x=0, shear_y=0, translation_x=0, translation_y=0, angle_unit='radians'):
+        """
+        Generates a random affine transform given the parameters ranges.
+
+        Args:
+            rotation (float or tuple of floats): If a single number, a random angle will be picked between (-rotation, rotation) uniformly. Else, a random angle will be picked between the two specified numbers.
+
+            scale_x (float or tuple of floats): Relative scaling factor. If a single number, a random scale factor will be picked between (1-scale_x, 1/(1-scale_x)) uniformly. Else, a random scale factor will be picked between the two specified numbers.
+
+            scale_y (float or tuple of floats): Relative scaling factor. Same a scale_x but for y direction.
+
+            shear_x (float or tuple of floats): Shear angle in x direction. If a single number, a random angle will be picked between (-shear_x, shear_x) uniformly. Else, a random angle will be picked between the two specified numbers.
+
+            shear_y (float or tuple of floats): Same as shear_x but for y direction.
+
+            translation_x (float or tuple of floats): Number of pixels translation in x direction. If a single number, a random number will be picked between (-translation_x, translation_x) uniformly. Else, a random number will be picked between the two specified numbers.
+            translation_y (float or tuple of floats): Same as translation_x but for y direction.
+
+            center (tuple of floats): Position to apply the AffineTransform. It is not picked at random.
+
+            angle_unit ('radians' or 'degrees'): Specifies the angles of the rotation and shear passed to the function. If in degrees, the will be converted to radians.
+        """
+        if angle_unit == 'degrees':
+            rotation = np.deg2rad(rotation)
+            shear_x = np.deg2rad(shear_x)
+            shear_y = np.deg2rad(shear_y)
+
+        self.rotation = (-rotation, rotation) if isinstance(rotation, (int, float)) else rotation
+
+        self.scale_x = (1-scale_x, 1/(1-scale_x)) if isinstance(scale_x, (int, float)) else scale_x
+        self.scale_y = (1-scale_y, 1/(1-scale_y)) if isinstance(scale_y, (int, float)) else scale_y
+
+        self.shear_x = (-shear_x, shear_x) if isinstance(shear_x, (int, float)) else shear_x
+        self.shear_y = (-shear_y, shear_y) if isinstance(shear_y, (int, float)) else shear_y
+
+        self.translation_x = (-translation_x, translation_x) if isinstance(translation_x, (int, float)) else translation_x
+        self.translation_y = (-translation_y, translation_y) if isinstance(translation_y, (int, float)) else translation_y
+
+    def sample_transformation(self, center=(0,0)):
+        random_rot = np.random.uniform(*self.rotation)
+        random_scale = (np.random.uniform(*self.scale_x), np.random.uniform(*self.scale_y))
+        random_shear = (np.random.uniform(*self.shear_x), np.random.uniform(*self.shear_y))
+        random_translation = (np.random.uniform(*self.translation_x), np.random.uniform(*self.translation_y))
+
+        return AffineTransform(random_rot, random_scale, random_shear, random_translation, center)
 
 
 if __name__ == '__main__':
