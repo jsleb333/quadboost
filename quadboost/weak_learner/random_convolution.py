@@ -4,20 +4,20 @@ import inspect
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torchvision.transforms import RandomAffine
-import torchvision.transforms.functional as tf
-from PIL.Image import BICUBIC
 import warnings
+import matplotlib.pyplot as plt
 
 import sys, os
 sys.path.append(os.getcwd())
 
 try:
     from quadboost.weak_learner import _WeakLearnerBase, _Cloner
-    from quadboost.utils import timed, identity_func
+    from quadboost.utils import timed, identity_func, RandomAffine
+    from quadboost.utils import make_fig_axes
 except ModuleNotFoundError:
     from weak_learner import _WeakLearnerBase, _Cloner
-    from utils import timed, identity_func
+    from utils import timed, identity_func, RandomAffine
+    from utils import make_fig_axes
 
 
 class Filters(_Cloner):
@@ -154,12 +154,11 @@ class LocalFilters(Filters):
         return random_feat
 
 
-
 class WeightFromBankGenerator:
     """
     Infinite generator of weights.
     """
-    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None, degrees=0, scale=None, shear=None, padding=2, n_transforms=1):
+    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None, rotation=0, scale=None, shear=None, padding=2, n_transforms=1):
         """
         Args:
             filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn.
@@ -167,7 +166,7 @@ class WeightFromBankGenerator:
             filters_shape_high (sequence of 2 integers or None, optional): If not None, the shape of the filters will be randomly drawn from a uniform distribution between filters_shape (inclusive) and filters_shape_high (exclusive).
             margin (int, optional): Number of pixels from the sides that are excluded from the pool of possible filters.
             filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callables that execute (sequentially) some process on one weight and returns the result.
-            degrees (int or tuple of int, optional): Maximum number of degrees the image drawn will be rotated before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
+            rotation (int or tuple of int, optional): Maximum number of rotation the image drawn will be rotated before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
             scale (tuple of float or None, optional): Scale factor the image drawn will be rescaled before a filter in drawn. The actual factor is drawn from random. See torchvision.transforms.RandomAffine for more info.
             shear (float or None, optional): Shear degree the image drawn will be sheared before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
             n_transforms (int, optional): Number of filters made from the same image (at the same position) but with a different random transformation applied each time.
@@ -183,9 +182,8 @@ class WeightFromBankGenerator:
         self.i_max = self.bank_height - filters_shape[0]
         self.j_max = self.bank_width - filters_shape[1]
 
-        self.degrees, self.scale, self.shear = degrees, scale, shear
-        self.affine_transform = RandomAffine(degrees=degrees, scale=scale, shear=shear,
-                                             resample=BICUBIC)
+        self.rotation, self.scale, self.shear = rotation, scale, shear
+        self.random_affine_sampler = RandomAffine(rotation=rotation, scale_x=scale, scale_y=scale,                                           shear_x=shear, shear_y=shear, angle_unit='degrees')
         self.padding = padding
         self.n_transforms = n_transforms
 
@@ -210,10 +208,13 @@ class WeightFromBankGenerator:
         x = self.filter_bank[np.random.randint(self.n_examples)].clone().detach().cpu()
 
         weight = []
+        fig, axes = make_fig_axes(self.n_transforms)
         for _ in range(self.n_transforms):
             if self.degrees or self.scale or self.shear:
-                x_transformed = self._transform_image(x)
-                # plot_images([x_transformed.numpy().reshape(28,28)])
+                center = (i+(height-1)/2, j+(width-1)/2)
+                affine_transform = self.random_affine_sampler.sample_transformation(center=center)
+                x_transformed = torch.from_numpy(affine_transform(x, cval=0))
+
             else:
                 x_transformed = x
 
@@ -223,27 +224,13 @@ class WeightFromBankGenerator:
             w = torch.unsqueeze(w, dim=0)
             weight.append(w)
 
+        # for i, w in enumerate(weight):
+        #     im = np.concatenate([ch[:,:,np.newaxis] for ch in w.numpy().reshape(3, height, width)], axis=2)
+        #     axes[i].imshow(im.astype(int))
+        # plt.show()
+
         weight = torch.cat(weight, dim=0)
         return weight, (i, j)
-
-    def _transform_image(self, x):
-        # PIL images must be in format float 0-1 gray scale:
-        min_x = torch.min(x)
-        x_transformed = x - min_x
-        max_x = torch.max(x)
-        x_transformed /= max_x
-
-        fillcolor = int(-min_x/max_x * 255) # Value to use to fill so that when reconverted to tensor, fill value is 0.
-        self.affine_transform.fillcolor = fillcolor
-
-        x_pil = tf.to_pil_image(x_transformed) # Conversion to PIl image looses quality because it is converted to 0-255 gray scale.
-        x_pil = tf.crop(self.affine_transform(tf.pad(x_pil, self.padding, fill=fillcolor)),
-                        self.padding, self.padding, self.bank_height, self.bank_width)
-        x_transformed = tf.to_tensor(x_pil)
-        x_transformed *= max_x
-        x_transformed += min_x
-
-        return x_transformed
 
 
 class RandomConvolution(_WeakLearnerBase):
@@ -329,35 +316,35 @@ def reduce_weight(weight):
 
 @timed
 def main():
-    mnist = MNISTDataset.load()
-    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    # cifar = CIFAR10Dataset.load()
-    # (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=True, reduce=True)
+
+    m = 1_000
+    bank = 1_000
+
+    # mnist = MNISTDataset.load()
+    # (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
     # Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
     # Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
-
+    cifar = CIFAR10Dataset.load()
+    (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=False, reduce=False)
     encoder = OneHotEncoder(Ytr)
-
-    # m = 60_000
-    # bank = 1_000
 
     # print('CPU')
     # print('CUDA')
-    # Xtr = Xtr[:m+bank].to(device='cuda:0')
+    # Xtr = Xtr.to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
     scale = (0.9, 1.1)
-    shear = 15
-    filter_gen = WeightFromBankGenerator(filter_bank=Xtr,#[m:m+bank],
+    shear = 10
+    filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filters_shape=(5,5),
                                          filters_shape_high=(16,16),
                                          margin=2,
                                          filter_processing=[center_weight],
-                                         degrees=15,
-                                         scale=scale if scale != 1 else None,
-                                         shear=shear if shear != 0 else None,
-                                         n_transforms=40,
+                                         rotation=10,
+                                         scale=scale,
+                                         shear=shear,
+                                         n_transforms=20,
                                          )
-    filters = LocalFilters(n_filters=150,
+    filters = LocalFilters(n_filters=2,
                       maxpool_shape=(-1,-1,-1),
                     #   activation=torch.sigmoid,
                       weights_generator=filter_gen,
@@ -371,12 +358,12 @@ def main():
                            weak_learner=weak_learner,
                            encoder=encoder,
                            )
-    wl.fit(Xtr, Ytr)
-    print('Train acc', wl.evaluate(Xtr, Ytr))
-    print('Test acc', wl.evaluate(Xts, Yts))
-    # wl.fit(Xtr[:m], Ytr[:m])
-    # print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
+    wl.fit(Xtr[:m], Ytr[:m])
+    print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
     # print('Test acc', wl.evaluate(Xts[:m], Yts[:m]))
+    # wl.fit(Xtr, Ytr)
+    # print('Train acc', wl.evaluate(Xtr, Ytr))
+    print('Test acc', wl.evaluate(Xts, Yts))
 
 
 def plot_images(images, titles=None, block=True):
@@ -405,7 +392,7 @@ if __name__ == '__main__':
     from quadboost.label_encoder import OneHotEncoder
     from quadboost.weak_learner import MulticlassDecisionStump
 
-    seed = 42
+    seed = 97
     torch.manual_seed(seed)
     np.random.seed(seed)
 
