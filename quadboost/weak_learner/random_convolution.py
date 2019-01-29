@@ -208,7 +208,7 @@ class WeightFromBankGenerator:
         x = self.filter_bank[np.random.randint(self.n_examples)].clone().detach().cpu()
 
         weight = []
-        fig, axes = make_fig_axes(self.n_transforms)
+        # fig, axes = make_fig_axes(self.n_transforms)
         for _ in range(self.n_transforms):
             center = (i+(height-1)/2, j+(width-1)/2)
             affine_transform = self.random_affine_sampler.sample_transformation(center=center)
