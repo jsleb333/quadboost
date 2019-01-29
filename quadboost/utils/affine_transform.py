@@ -108,6 +108,11 @@ def random_affine(rotation=0, scale_x=0, scale_y=0, shear_x=0, shear_y=0, transl
     return AffineTransform(random_rot, random_scale, random_shear, random_translation, center)
 
 
+def random_affine_generator(rotation=0, scale_x=0, scale_y=0, shear_x=0, shear_y=0, translation_x=0, translation_y=0, center=(0,0), angle_unit='radians'):
+    while True:
+        yield random_affine(rotation, scale_x, scale_y, shear_x, shear_y, translation_x, translation_y, center, angle_unit)
+
+
 if __name__ == '__main__':
     print(random_affine(rotation=15, scale_x=.1, shear_x=10, scale_y=.1, shear_y=10,
                         center=(14,14), angle_unit='degrees'))
