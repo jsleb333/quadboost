@@ -48,15 +48,17 @@ class Filters(_Cloner):
 
     def _generate_filters(self, weights_generator, n_filters):
         for _, (weight, position) in zip(range(n_filters), weights_generator):
-            self.weights.append(torch.unsqueeze(weight, dim=1))
+            # weight.shape -> (n_transforms, n_channels, height, width)
+            self.weights.append(torch.unsqueeze(weight, dim=0))
 
         if weights_generator.filters_shape_high is None:
             self.n_transforms_first = True
-            self.weights = torch.cat(self.weights, dim=1)
-            # self.weights.shape -> (n_transforms, n_filters, n_channels, height, width)
+            self.weights = torch.cat(self.weights, dim=0)
+            print(self.weights.shape)
+            # self.weights.shape -> (n_filters, n_transforms, n_channels, height, width)
         else:
             self.n_transforms_first = False
-            self.weights = [torch.squeeze(w, dim=1) for w in self.weights]
+            self.weights = [torch.squeeze(w, dim=0) for w in self.weights]
             # len(self.weights) -> n_filters
             # weight.shape -> (n_transforms, n_channels, height, width)
 
@@ -72,19 +74,44 @@ class Filters(_Cloner):
 
         output = []
 
-        if self.n_transforms_first: # This is more efficient, but can't be done if filters are of different filter_shape (i.e. filters_shape_high is not None)
-            for weights in self.weights:
-                # weights.shape -> (n_filters, n_channels, height, width)
-                output.append(torch.unsqueeze(F.conv2d(X, weights), dim=2))
-                # output[0].shape -> (n_examples, n_filters, conv_height, conv_width)
-            output = torch.cat(output, dim=2)
+        if self.n_transforms_first: # This is more efficient when there is more filters than transforms, but can't be done if filters are of different filter_shape (i.e. filters_shape_high is not None)
+            print('self.weights.shape', self.weights.shape)
+            # self.weights.shape -> (n_filters, n_transforms, n_channels, height, width)
+            n_transforms = self.weights.shape[1]
+            weights = torch.cat(tuple(w for w in self.weights), dim=0)
+            # self.weights.shape -> (n_filters*n_transforms, n_channels, height, width)
+            print('self.weights.shape after cat', weights.shape)
 
-            # output.shape -> (n_examples, n_filters, n_transforms, conv_height, conv_width)
+            output = F.conv2d(X, weights)
+            print('conv output shape', output.shape)
+
+            # output.shape -> (n_examples, n_filters*n_transforms, conv_height, conv_width)
             if self.maxpool_shape:
-                maxpool_shape = self._compute_maxpool_shape(output)
+                maxpool_shape = list(self.maxpool_shape)
+                if len(maxpool_shape) == 2:
+                    maxpool_shape = [n_transforms,] + maxpool_shape
+                else:
+                    maxpool_shape[0] = n_transforms
+                if maxpool_shape[1] == -1:
+                    maxpool_shape[1] = output.shape[2]
+                if maxpool_shape[2] == -1:
+                    maxpool_shape[2] = output.shape[3]
+                print('maxpool shape', maxpool_shape)
                 output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
 
-        else:
+        # if self.n_transforms_first: # This is more efficient when there is more filters than transforms, but can't be done if filters are of different filter_shape (i.e. filters_shape_high is not None)
+        #     for weights in self.weights:
+        #         # weights.shape -> (n_filters, n_channels, height, width)
+        #         output.append(torch.unsqueeze(F.conv2d(X, weights), dim=2))
+        #         # output[0].shape -> (n_examples, n_filters, conv_height, conv_width)
+        #     output = torch.cat(output, dim=2)
+
+        #     # output.shape -> (n_examples, n_filters, n_transforms, conv_height, conv_width)
+        #     if self.maxpool_shape:
+        #         maxpool_shape = self._compute_maxpool_shape(output)
+        #         output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
+
+        else: # This is more efficient when there is more transforms than filters.
             for weights in self.weights:
                 # weights.shape -> (n_transforms, n_channels, height, width)
                 output_ = torch.unsqueeze(F.conv2d(X, weights), dim=1)
@@ -330,21 +357,25 @@ def main():
     # Xts = Xts.to(device='cuda:0')
     scale = (0.9, 1.1)
     shear = 10
+    nt = 20
+    nf = 2
+    print(f'n filters = {nf}, n transform = {nt}')
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
+                                        #  filters_shape=(10,10),
                                          filters_shape=(5,5),
                                          filters_shape_high=(16,16),
                                          margin=2,
-                                         filter_processing=[center_weight],
+                                        #  filter_processing=[center_weight],
                                          rotation=10,
                                          scale=scale,
                                          shear=shear,
-                                         n_transforms=20,
+                                         n_transforms=nt,
                                          )
-    filters = LocalFilters(n_filters=2,
+    filters = Filters(n_filters=nf,
                       maxpool_shape=(-1,-1,-1),
                     #   activation=torch.sigmoid,
                       weights_generator=filter_gen,
-                      locality=3,
+                    #   locality=3,
                       )
     weak_learner = Ridge
     # weak_learner = MulticlassDecisionStump
@@ -359,7 +390,7 @@ def main():
     # print('Test acc', wl.evaluate(Xts[:m], Yts[:m]))
     # wl.fit(Xtr, Ytr)
     # print('Train acc', wl.evaluate(Xtr, Ytr))
-    print('Test acc', wl.evaluate(Xts, Yts))
+    # print('Test acc', wl.evaluate(Xts, Yts))
 
 
 def plot_images(images, titles=None, block=True):
