@@ -349,21 +349,24 @@ def main():
     # Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
     cifar = CIFAR10Dataset.load()
     (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=False, reduce=False)
+    Xtr = torch.from_numpy(Xtr)
+    Xts = torch.from_numpy(Xts)
+
     encoder = OneHotEncoder(Ytr)
 
     # print('CPU')
-    # print('CUDA')
-    # Xtr = Xtr.to(device='cuda:0')
-    # Xts = Xts.to(device='cuda:0')
+    print('CUDA')
+    Xtr = Xtr.to(device='cuda:0')
+    Xts = Xts.to(device='cuda:0')
     scale = (0.9, 1.1)
     shear = 10
     nt = 20
     nf = 2
     print(f'n filters = {nf}, n transform = {nt}')
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
-                                        #  filters_shape=(10,10),
-                                         filters_shape=(5,5),
-                                         filters_shape_high=(16,16),
+                                         filters_shape=(10,10),
+                                        #  filters_shape=(5,5),
+                                        #  filters_shape_high=(16,16),
                                          margin=2,
                                         #  filter_processing=[center_weight],
                                          rotation=10,
