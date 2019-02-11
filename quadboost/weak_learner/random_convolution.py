@@ -54,7 +54,6 @@ class Filters(_Cloner):
         if weights_generator.filters_shape_high is None:
             self.n_transforms_first = True
             self.weights = torch.cat(self.weights, dim=0)
-            print(self.weights.shape)
             # self.weights.shape -> (n_filters, n_transforms, n_channels, height, width)
         else:
             self.n_transforms_first = False
@@ -75,15 +74,15 @@ class Filters(_Cloner):
         output = []
 
         if self.n_transforms_first: # This is more efficient when there is more filters than transforms, but can't be done if filters are of different filter_shape (i.e. filters_shape_high is not None)
-            print('self.weights.shape', self.weights.shape)
+            # print('self.weights.shape', self.weights.shape)
             # self.weights.shape -> (n_filters, n_transforms, n_channels, height, width)
             n_transforms = self.weights.shape[1]
             weights = torch.cat(tuple(w for w in self.weights), dim=0)
             # self.weights.shape -> (n_filters*n_transforms, n_channels, height, width)
-            print('self.weights.shape after cat', weights.shape)
+            # print('self.weights.shape after cat', weights.shape)
 
             output = F.conv2d(X, weights)
-            print('conv output shape', output.shape)
+            # print('conv output shape', output.shape)
 
             # output.shape -> (n_examples, n_filters*n_transforms, conv_height, conv_width)
             if self.maxpool_shape:
@@ -96,7 +95,7 @@ class Filters(_Cloner):
                     maxpool_shape[1] = output.shape[2]
                 if maxpool_shape[2] == -1:
                     maxpool_shape[2] = output.shape[3]
-                print('maxpool shape', maxpool_shape)
+                # print('maxpool shape', maxpool_shape)
                 output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
 
         # if self.n_transforms_first: # This is more efficient when there is more filters than transforms, but can't be done if filters are of different filter_shape (i.e. filters_shape_high is not None)
@@ -247,7 +246,11 @@ class WeightFromBankGenerator:
         for _ in range(self.n_transforms):
             center = (i+(height-1)/2, j+(width-1)/2)
             affine_transform = self.random_affine_sampler.sample_transformation(center=center)
-            x_transformed = torch.from_numpy(affine_transform(x, cval=0))
+            x_transformed = affine_transform(x, cval=0)
+            try:
+                x_transformed = torch.from_numpy(x_transformed)
+            except TypeError:
+                pass
 
             w = x_transformed[:, i:i+height, j:j+width].clone().detach()
             for process in self.filter_processing:
