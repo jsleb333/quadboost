@@ -13,7 +13,7 @@ from quadboost.weak_learner.random_convolution import plot_images
 
 @timed
 @parse
-def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, fs=11, fsh=0, locality=4, init_filters='from_bank', bank_ratio=.05, fn='c', seed=42, nl='maxpool', maxpool=3, device='cpu', degrees=0, scale=.0, shear=0, margin=2, nt=1):
+def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, encodings='onehot', wl='rccridge', max_round=1000, patience=1000, resume=0, n_jobs=1, max_n_leaves=4, n_filters=10, fs=11, fsh=0, locality=4, init_filters='from_bank', bank_ratio=.05, fn='c', seed=42, nl='maxpool', maxpool=3, device='cpu', degrees=0, scale=.0, shear=0, margin=2, nt=1, top_k=5):
     if seed:
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -144,7 +144,10 @@ def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, 
                                    maxpool_shape=(nt, maxpool, maxpool))
             if nt > 1:
                 filename += f'-nt={nt}'
-        if wl.endswith('ridge'):
+
+        if wl.endswith('sparseridge'):
+            weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
+        elif wl.endswith('ridge'):
             weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
         if wl.endswith('ds'):
             weak_learner = RandomConvolution(filters=filters, weak_learner=MulticlassDecisionStump)
