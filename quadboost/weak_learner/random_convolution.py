@@ -349,8 +349,8 @@ def main():
     # Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
     cifar = CIFAR10Dataset.load()
     (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=False, reduce=False)
-    Xtr = torch.from_numpy(Xtr)
-    Xts = torch.from_numpy(Xts)
+    Xtr = torch.from_numpy(Xtr/255)
+    Xts = torch.from_numpy(Xts/255)
 
     encoder = OneHotEncoder(Ytr)
 
