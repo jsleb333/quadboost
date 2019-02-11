@@ -185,17 +185,25 @@ class WeightFromBankGenerator:
     """
     Infinite generator of weights.
     """
-    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None, rotation=0, scale=None, shear=None, padding=2, n_transforms=1):
+    def __init__(self, filter_bank, filters_shape=(5,5), filters_shape_high=None, margin=0, filter_processing=None, rotation=0, scale=0, shear=0, padding=2, n_transforms=1):
         """
         Args:
             filter_bank (tensor or array of shape (n_examples, n_channels, height, width)): Bank of images for filters to be drawn.
+
             filters_shape (sequence of 2 integers, optional): Shape of the filters.
+
             filters_shape_high (sequence of 2 integers or None, optional): If not None, the shape of the filters will be randomly drawn from a uniform distribution between filters_shape (inclusive) and filters_shape_high (exclusive).
+
             margin (int, optional): Number of pixels from the sides that are excluded from the pool of possible filters.
+
             filter_processing (callable or iterable of callables or None, optional): Callable or iterable of callables that execute (sequentially) some process on one weight and returns the result.
-            rotation (int or tuple of int, optional): Maximum number of rotation the image drawn will be rotated before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
-            scale (tuple of float or None, optional): Scale factor the image drawn will be rescaled before a filter in drawn. The actual factor is drawn from random. See torchvision.transforms.RandomAffine for more info.
-            shear (float or None, optional): Shear degree the image drawn will be sheared before a filter in drawn. The actual degree is drawn from random. See torchvision.transforms.RandomAffine for more info.
+
+            rotation (float or tuple of floats): If a single number, a random angle will be picked between (-rotation, rotation) uniformly. Else, a random angle will be picked between the two specified numbers.
+
+            scale (float or tuple of floats): Relative scaling factor. If a single number, a random scale factor will be picked between (1-scale, 1/(1-scale)) uniformly. Else, a random scale factor will be picked between the two specified numbers. Scale factors of x and y axes will be drawn independently from the same range of numbers.
+
+            shear (float or tuple of floats): Shear angle in a direction. If a single number, a random angle will be picked between (-shear, shear) uniformly. Else, a random angle will be picked between the two specified numbers. Shear degrees of x and y axes will be drawn independently from the same range of numbers.
+
             n_transforms (int, optional): Number of filters made from the same image (at the same position) but with a different random transformation applied each time.
         """
         self.filter_bank = RandomConvolution.format_data(filter_bank)
@@ -355,13 +363,13 @@ def main():
     encoder = OneHotEncoder(Ytr)
 
     # print('CPU')
-    print('CUDA')
-    Xtr = Xtr.to(device='cuda:0')
-    Xts = Xts.to(device='cuda:0')
+    # print('CUDA')
+    # Xtr = Xtr.to(device='cuda:0')
+    # Xts = Xts.to(device='cuda:0')
     scale = (0.9, 1.1)
     shear = 10
-    nt = 20
-    nf = 2
+    nt = 40
+    nf = 100
     print(f'n filters = {nf}, n transform = {nt}')
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filters_shape=(10,10),
