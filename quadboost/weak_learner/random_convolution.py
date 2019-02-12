@@ -340,7 +340,7 @@ class RandomConvolution(_WeakLearnerBase):
 
 class SparseRidgeRC(RandomConvolution):
     """
-
+    Applies a Ridge regressor on the random features resulting from the convolution of random filters. Makes it sparse by selecting the top k filters with weights with highest euclidean norm, then retrain using only these filters.
     """
     def __init__(self, filters, top_k_filters=5, encoder=None):
         """
