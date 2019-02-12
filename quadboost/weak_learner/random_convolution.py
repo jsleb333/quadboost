@@ -338,7 +338,7 @@ class SparseRidgeRC(RandomConvolution):
             X = self.format_data(X)
 
             random_features = self.filters.apply(X)
-
+        print(random_features.shape)
         self._fit(random_features, Y, W, **weak_learner_kwargs)
 
         n_classes = self.weak_learner.coef_.shape[0]
@@ -397,7 +397,7 @@ def main():
     scale = (0.9, 1.1)
     shear = 10
     nt = 1
-    nf = 10
+    nf = 100
     print(f'n filters = {nf}, n transform = {nt}')
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filters_shape=(11,11),
@@ -420,14 +420,14 @@ def main():
     # weak_learner = MulticlassDecisionStump
 
     print('Starting fit')
-    # wl = SparseRidgeRC(filters=filters,
-    #                    top_k_filters=5,
-    #                    encoder=encoder,
-    #                    )
-    wl = RandomConvolution(filters=filters,
-                           weak_learner=weak_learner,
-                           encoder=encoder,
-                           )
+    wl = SparseRidgeRC(filters=filters,
+                       top_k_filters=1,
+                       encoder=encoder,
+                       )
+    # wl = RandomConvolution(filters=filters,
+    #                        weak_learner=weak_learner,
+    #                        encoder=encoder,
+    #                        )
     wl.fit(Xtr[:m], Ytr[:m])
     print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
     # print('Test acc', wl.evaluate(Xts[:m], Yts[:m]))
