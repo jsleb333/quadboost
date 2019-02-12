@@ -31,7 +31,7 @@ class Filters(_Cloner):
         Args:
             n_filters (int): Number of filters.
             weights_generator (iterable, optional): Iterable that yields filters weight.
-            maxpool_shape (tuple of 2 or 3 integers or None, optional): Shape of the maxpool kernel layer. If None, no maxpool is done. If one of the dim is set to -1, the maxpool is done over all components of this dim.
+            maxpool_shape (tuple of 2 or 3 integers or None, optional): Shape of the maxpool kernel layer. If None, no maxpool is done. If one of the dim is set to -1, the maxpool is done over all components of this dim. If there are 3 components, the first is used for the transformations.
             activation (Callable or None, optional): Activation function to apply which returns transformed data.
         """
         self.n_filters = n_filters
@@ -364,13 +364,18 @@ class SparseRidgeRC(RandomConvolution):
 
         self._fit(random_features, Y, W, **weak_learner_kwargs)
 
-        print(self.weak_learner.coef_.shape)
-        norms = np.linalg.norm(self.weak_learner.coef_, axis=0)
-        print(norms.shape)
+        n_classes = self.weak_learner.coef_.shape[0]
+        n_filters = self.filters.n_filters
+
+        coef = self.weak_learner.coef_.reshape(n_classes, n_filters, -1) # Unflatten
+        norms = np.linalg.norm(coef, axis=(0,2), ord='fro')
         partionned_norms = np.argpartition(norms, -self.top_k_filters)[-self.top_k_filters:]
-        print(partionned_norms)
+
         self.filters.weights = self.filters.weights[partionned_norms]
-        random_features = random_features[:,partionned_norms]
+
+        random_features = random_features.reshape(-1, n_filters, coef.shape[2]) # Unflatten
+        random_features = random_features[:,partionned_norms] # Select top k filters/features
+        random_features = random_features.reshape(-1, self.top_k_filters * coef.shape[2]) # Reflatten
 
         self._fit(random_features, Y, W, **weak_learner_kwargs)
 
@@ -409,8 +414,8 @@ def main():
     encoder = OneHotEncoder(Ytr)
 
     # print('CPU')
-    print('CUDA')
-    Xtr = Xtr[:m+bank].to(device='cuda:0')
+    # print('CUDA')
+    # Xtr = Xtr[:m+bank].to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
     scale = (0.9, 1.1)
     shear = 10
@@ -429,7 +434,7 @@ def main():
                                          n_transforms=nt,
                                          )
     filters = Filters(n_filters=nf,
-                      maxpool_shape=(-1,-1,-1),
+                      maxpool_shape=(-1,6,6),
                     #   activation=torch.sigmoid,
                       weights_generator=filter_gen,
                     #   locality=3,
@@ -451,7 +456,7 @@ def main():
     # print('Test acc', wl.evaluate(Xts[:m], Yts[:m]))
     # wl.fit(Xtr, Ytr)
     # print('Train acc', wl.evaluate(Xtr, Ytr))
-    # print('Test acc', wl.evaluate(Xts, Yts))
+    print('Test acc', wl.evaluate(Xts, Yts))
 
 
 def plot_images(images, titles=None, block=True):
@@ -480,7 +485,7 @@ if __name__ == '__main__':
     from quadboost.label_encoder import OneHotEncoder
     from quadboost.weak_learner import MulticlassDecisionStump
 
-    seed = 97
+    seed = 101
     torch.manual_seed(seed)
     np.random.seed(seed)
 
