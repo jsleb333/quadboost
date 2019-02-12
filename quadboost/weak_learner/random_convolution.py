@@ -35,11 +35,10 @@ class Filters(_Cloner):
             activation (Callable or None, optional): Activation function to apply which returns transformed data.
         """
         self.n_filters = n_filters
+        self.maxpool_shape = maxpool_shape
         if maxpool_shape:
             # Expanding maxpool_shape to account for n_transforms if needed
-            self.maxpool_shape = (1, *maxpool_shape) if len(maxpool_shape) == 2 else maxpool_shape
-        else:
-            self.maxpool_shape = maxpool_shape
+            self.maxpool_shape = [1, *maxpool_shape] if len(maxpool_shape) == 2 else list(maxpool_shape)
 
         self.activation = activation or identity_func
 
@@ -49,17 +48,16 @@ class Filters(_Cloner):
     def _generate_filters(self, weights_generator, n_filters):
         for _, (weight, position) in zip(range(n_filters), weights_generator):
             # weight.shape -> (n_transforms, n_channels, height, width)
-            self.weights.append(torch.unsqueeze(weight, dim=0))
+            self.weights.append(weight)
+        self.filters_of_constant_shape = False
+        # len(self.weights) -> n_filters
+        # weight.shape -> (n_transforms, n_channels, height, width)
+        self.n_transforms = weight.shape[0]
 
         if weights_generator.filters_shape_high is None:
-            self.n_transforms_first = True
+            self.filters_of_constant_shape = True
             self.weights = torch.cat(self.weights, dim=0)
-            # self.weights.shape -> (n_filters, n_transforms, n_channels, height, width)
-        else:
-            self.n_transforms_first = False
-            self.weights = [torch.squeeze(w, dim=0) for w in self.weights]
-            # len(self.weights) -> n_filters
-            # weight.shape -> (n_transforms, n_channels, height, width)
+            # self.weights.shape -> (n_filters*n_transforms, n_channels, height, width)
 
     def _send_weights_to_device(self, X):
         if isinstance(self.weights, torch.Tensor):
@@ -73,52 +71,24 @@ class Filters(_Cloner):
 
         output = []
 
-        if self.n_transforms_first: # This is more efficient when there is more filters than transforms, but can't be done if filters are of different filter_shape (i.e. filters_shape_high is not None)
-            # print('self.weights.shape', self.weights.shape)
-            # self.weights.shape -> (n_filters, n_transforms, n_channels, height, width)
-            n_transforms = self.weights.shape[1]
-            weights = torch.cat(tuple(w for w in self.weights), dim=0)
-            # self.weights.shape -> (n_filters*n_transforms, n_channels, height, width)
-            # print('self.weights.shape after cat', weights.shape)
+        if self.filters_of_constant_shape: # This is more efficient, but can't be done if filters are of different filter_shape
 
-            output = F.conv2d(X, weights)
-            # print('conv output shape', output.shape)
-
+            output = F.conv2d(X, self.weights)
             # output.shape -> (n_examples, n_filters*n_transforms, conv_height, conv_width)
+
             if self.maxpool_shape:
-                maxpool_shape = list(self.maxpool_shape)
-                if len(maxpool_shape) == 2:
-                    maxpool_shape = [n_transforms,] + maxpool_shape
-                else:
-                    maxpool_shape[0] = n_transforms
-                if maxpool_shape[1] == -1:
-                    maxpool_shape[1] = output.shape[2]
-                if maxpool_shape[2] == -1:
-                    maxpool_shape[2] = output.shape[3]
-                # print('maxpool shape', maxpool_shape)
-                output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
+                self._compute_maxpool_shape(output)
+                output = F.max_pool3d(output, self.maxpool_shape, ceil_mode=True)
 
-        # if self.n_transforms_first: # This is more efficient when there is more filters than transforms, but can't be done if filters are of different filter_shape (i.e. filters_shape_high is not None)
-        #     for weights in self.weights:
-        #         # weights.shape -> (n_filters, n_channels, height, width)
-        #         output.append(torch.unsqueeze(F.conv2d(X, weights), dim=2))
-        #         # output[0].shape -> (n_examples, n_filters, conv_height, conv_width)
-        #     output = torch.cat(output, dim=2)
-
-        #     # output.shape -> (n_examples, n_filters, n_transforms, conv_height, conv_width)
-        #     if self.maxpool_shape:
-        #         maxpool_shape = self._compute_maxpool_shape(output)
-        #         output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
-
-        else: # This is more efficient when there is more transforms than filters.
+        else:
             for weights in self.weights:
                 # weights.shape -> (n_transforms, n_channels, height, width)
                 output_ = torch.unsqueeze(F.conv2d(X, weights), dim=1)
                 # output_.shape -> (n_examples, 1, n_transforms, conv_height, conv_width)
 
                 if self.maxpool_shape:
-                    maxpool_shape = self._compute_maxpool_shape(output_)
-                    output_ = F.max_pool3d(output_, maxpool_shape, ceil_mode=True)
+                    self._compute_maxpool_shape(output_)
+                    output_ = F.max_pool3d(output_, self.maxpool_shape, ceil_mode=True)
 
                 output.append(output_.reshape((n_examples, -1)))
             output = torch.cat(output, dim=1)
@@ -128,7 +98,12 @@ class Filters(_Cloner):
         return random_features
 
     def _compute_maxpool_shape(self, output):
-        return tuple(ms if ms != -1 else output.shape[i+2] for i, ms in enumerate(self.maxpool_shape))  # Finding actual shape if -1 was used.
+        if self.maxpool_shape[0] == -1:
+            self.maxpool_shape[0] = self.n_transforms
+        if self.maxpool_shape[1] == -1:
+            self.maxpool_shape[1] = output.shape[-2]
+        if self.maxpool_shape[2] == -1:
+            self.maxpool_shape[2] = output.shape[-1]
 
 
 class LocalFilters(Filters):
@@ -341,6 +316,8 @@ class RandomConvolution(_WeakLearnerBase):
 class SparseRidgeRC(RandomConvolution):
     """
     Applies a Ridge regressor on the random features resulting from the convolution of random filters. Makes it sparse by selecting the top k filters with weights with highest euclidean norm, then retrain using only these filters.
+
+    Only works with filters with all the same shape.
     """
     def __init__(self, filters, top_k_filters=5, encoder=None):
         """
@@ -420,7 +397,7 @@ def main():
     scale = (0.9, 1.1)
     shear = 10
     nt = 1
-    nf = 20
+    nf = 10
     print(f'n filters = {nf}, n transform = {nt}')
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
                                          filters_shape=(11,11),
@@ -443,20 +420,20 @@ def main():
     # weak_learner = MulticlassDecisionStump
 
     print('Starting fit')
-    wl = SparseRidgeRC(filters=filters,
-                       top_k_filters=5,
-                       encoder=encoder,
-                       )
-    # wl = RandomConvolution(filters=filters,
-    #                        weak_learner=weak_learner,
-    #                        encoder=encoder,
-    #                        )
+    # wl = SparseRidgeRC(filters=filters,
+    #                    top_k_filters=5,
+    #                    encoder=encoder,
+    #                    )
+    wl = RandomConvolution(filters=filters,
+                           weak_learner=weak_learner,
+                           encoder=encoder,
+                           )
     wl.fit(Xtr[:m], Ytr[:m])
     print('Train acc', wl.evaluate(Xtr[:m], Ytr[:m]))
     # print('Test acc', wl.evaluate(Xts[:m], Yts[:m]))
     # wl.fit(Xtr, Ytr)
     # print('Train acc', wl.evaluate(Xtr, Ytr))
-    print('Test acc', wl.evaluate(Xts, Yts))
+    # print('Test acc', wl.evaluate(Xts, Yts))
 
 
 def plot_images(images, titles=None, block=True):
