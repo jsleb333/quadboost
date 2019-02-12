@@ -123,9 +123,9 @@ class Filters(_Cloner):
                 output.append(output_.reshape((n_examples, -1)))
             output = torch.cat(output, dim=1)
 
-        random_feat = self.activation(output)
-        random_feat = random_feat.cpu().reshape((n_examples, -1))
-        return random_feat
+        random_features = self.activation(output)
+        random_features = random_features.cpu().reshape((n_examples, -1))
+        return random_features
 
     def _compute_maxpool_shape(self, output):
         return tuple(ms if ms != -1 else output.shape[i+2] for i, ms in enumerate(self.maxpool_shape))  # Finding actual shape if -1 was used.
@@ -156,7 +156,7 @@ class LocalFilters(Filters):
         self._send_weights_to_device(X)
 
         n_examples, n_channels, height, width = X.shape
-        random_feat = []
+        random_features = []
         for (i, j), weight in zip(self.positions, self.weights):
             i_min = max(i - self.locality, 0)
             j_min = max(j - self.locality, 0)
@@ -171,13 +171,13 @@ class LocalFilters(Filters):
                 maxpool_shape = self._compute_maxpool_shape(output)
                 output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
 
-            random_feat.append(output.reshape(n_examples, -1))
+            random_features.append(output.reshape(n_examples, -1))
 
-        random_feat = torch.cat(random_feat, dim=1)
-        random_feat = self.activation(random_feat)
-        random_feat = self.activation(random_feat)
-        random_feat = random_feat.cpu().reshape((n_examples, -1))
-        return random_feat
+        random_features = torch.cat(random_features, dim=1)
+        random_features = self.activation(random_features)
+        random_features = self.activation(random_features)
+        random_features = random_features.cpu().reshape((n_examples, -1))
+        return random_features
 
 
 class WeightFromBankGenerator:
@@ -297,17 +297,21 @@ class RandomConvolution(_WeakLearnerBase):
                 Y, W = self.encoder.encode_labels(Y)
             X = self.format_data(X)
 
-            random_feat = self.filters.apply(X)
+            random_features = self.filters.apply(X)
 
+        self._fit(random_features, Y, W, **weak_learner_kwargs)
+
+        return self
+
+    def _fit(self, random_features, Y, W, **weak_learner_kwargs):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore') # Ignore ill-defined matrices
             fit_sig = inspect.signature(self.weak_learner.fit)
             if 'W' in fit_sig.parameters:
-                self.weak_learner.fit(random_feat, Y=Y, W=W, **weak_learner_kwargs)
+                self.weak_learner.fit(random_features, Y=Y, W=W, **weak_learner_kwargs)
             else:
-                self.weak_learner.fit(random_feat, Y, **weak_learner_kwargs)
+                self.weak_learner.fit(random_features, Y, **weak_learner_kwargs)
 
-        return self
 
     @staticmethod
     def format_data(data):
@@ -329,26 +333,26 @@ class RandomConvolution(_WeakLearnerBase):
         """
         with torch.no_grad():
             X = self.format_data(X)
-            random_feat = self.filters.apply(X)
+            random_features = self.filters.apply(X)
 
-        return self.weak_learner.predict(random_feat)
+        return self.weak_learner.predict(random_features)
 
 
 class SparseRidgeRC(RandomConvolution):
     """
 
     """
-    def __init__(self, filters, best_n_filters=5, encoder=None):
+    def __init__(self, filters, top_k_filters=5, encoder=None):
         """
         Args:
             filters (callable): Callable that creates and returns a Filters object. A Filters object should define an 'apply' method that receives the examples (torch array of shape (n_examples, n_channels, width, height)) and outputs extracted features (torch array of shape (n_examples, n_features)).
 
-            best_n_filters (int, optional): Number of filters to keep after trying all the filters from 'filters'.
+            top_k_filters (int, optional): Number of filters to keep after trying all the filters from 'filters'.
 
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
         """
         super().__init__(filters=filters, encoder=encoder, weak_learner=Ridge)
-        self.best_n_filters = best_n_filters
+        self.top_k_filters = top_k_filters
 
     def fit(self, X, Y, W=None, **weak_learner_kwargs):
         with torch.no_grad():
@@ -356,29 +360,19 @@ class SparseRidgeRC(RandomConvolution):
                 Y, W = self.encoder.encode_labels(Y)
             X = self.format_data(X)
 
-            random_feat = self.filters.apply(X)
+            random_features = self.filters.apply(X)
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore') # Ignore ill-defined matrices
-            fit_sig = inspect.signature(self.weak_learner.fit)
-            if 'W' in fit_sig.parameters:
-                self.weak_learner.fit(random_feat, Y=Y, W=W, **weak_learner_kwargs)
-            else:
-                self.weak_learner.fit(random_feat, Y, **weak_learner_kwargs)
+        self._fit(random_features, Y, W, **weak_learner_kwargs)
 
         norms = np.linalg.norm(self.weak_learner.coef_, axis=0)
-        partionned_norms = np.argpartition(norms, -self.best_n_filters)[-self.best_n_filters:]
+        partionned_norms = np.argpartition(norms, -self.top_k_filters)[-self.top_k_filters:]
         self.filters.weights = self.filters.weights[partionned_norms]
-        random_feat = random_feat[:,partionned_norms]
+        random_features = random_features[:,partionned_norms]
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore') # Ignore ill-defined matrices
-            fit_sig = inspect.signature(self.weak_learner.fit)
-            if 'W' in fit_sig.parameters:
-                self.weak_learner.fit(random_feat, Y=Y, W=W, **weak_learner_kwargs)
-            else:
-                self.weak_learner.fit(random_feat, Y, **weak_learner_kwargs)
+        self._fit(random_features, Y, W, **weak_learner_kwargs)
 
+        return self
+    fit.__doc__ = RandomConvolution.fit.__doc__
 
 def center_weight(weight):
     mean = torch.mean(weight)
@@ -400,20 +394,20 @@ def main():
     m = 1_000
     bank = 1_000
 
-    # mnist = MNISTDataset.load()
-    # (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
-    # Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
-    # Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
-    cifar = CIFAR10Dataset.load()
-    (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=False, reduce=False)
-    Xtr = torch.from_numpy(Xtr/255)
-    Xts = torch.from_numpy(Xts/255)
+    mnist = MNISTDataset.load()
+    (Xtr, Ytr), (Xts, Yts) = mnist.get_train_test(center=True, reduce=True)
+    Xtr = torch.unsqueeze(torch.from_numpy(Xtr), dim=1)
+    Xts = torch.unsqueeze(torch.from_numpy(Xts), dim=1)
+    # cifar = CIFAR10Dataset.load()
+    # (Xtr, Ytr), (Xts, Yts) = cifar.get_train_test(center=False, reduce=False)
+    # Xtr = torch.from_numpy(Xtr/255)
+    # Xts = torch.from_numpy(Xts/255)
 
     encoder = OneHotEncoder(Ytr)
 
     # print('CPU')
-    # print('CUDA')
-    # Xtr = Xtr.to(device='cuda:0')
+    print('CUDA')
+    Xtr = Xtr[:m+bank].to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
     scale = (0.9, 1.1)
     shear = 10
@@ -442,7 +436,7 @@ def main():
 
     print('Starting fit')
     wl = SparseRidgeRC(filters=filters,
-                       best_n_filters=5,
+                       top_k_filters=5,
                        encoder=encoder,
                        )
     # wl = RandomConvolution(filters=filters,

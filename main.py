@@ -146,7 +146,7 @@ def main(m=60_000, val=10_000, da=0, dataset='mnist', center=True, reduce=True, 
                 filename += f'-nt={nt}'
 
         if wl.endswith('sparseridge'):
-            weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
+            weak_learner = SparseRidgeRC(filters=filters, top_k_filters=top_k)
         elif wl.endswith('ridge'):
             weak_learner = RandomConvolution(filters=filters, weak_learner=Ridge)
         if wl.endswith('ds'):
