@@ -364,8 +364,11 @@ class SparseRidgeRC(RandomConvolution):
 
         self._fit(random_features, Y, W, **weak_learner_kwargs)
 
+        print(self.weak_learner.coef_.shape)
         norms = np.linalg.norm(self.weak_learner.coef_, axis=0)
+        print(norms.shape)
         partionned_norms = np.argpartition(norms, -self.top_k_filters)[-self.top_k_filters:]
+        print(partionned_norms)
         self.filters.weights = self.filters.weights[partionned_norms]
         random_features = random_features[:,partionned_norms]
 
@@ -411,11 +414,11 @@ def main():
     # Xts = Xts.to(device='cuda:0')
     scale = (0.9, 1.1)
     shear = 10
-    nt = 4
+    nt = 1
     nf = 20
     print(f'n filters = {nf}, n transform = {nt}')
     filter_gen = WeightFromBankGenerator(filter_bank=Xtr[m:m+bank],
-                                         filters_shape=(10,10),
+                                         filters_shape=(11,11),
                                         #  filters_shape=(5,5),
                                         #  filters_shape_high=(16,16),
                                          margin=2,
