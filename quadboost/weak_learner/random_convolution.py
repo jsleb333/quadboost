@@ -35,6 +35,7 @@ class Filters(_Cloner):
             activation (Callable or None, optional): Activation function to apply which returns transformed data.
         """
         self.n_filters = n_filters
+        self.weights_generator = weights_generator
         self.maxpool_shape = maxpool_shape
         if maxpool_shape:
             # Expanding maxpool_shape to account for n_transforms if needed
@@ -180,21 +181,25 @@ class WeightFromBankGenerator:
 
             n_transforms (int, optional): Number of filters made from the same image (at the same position) but with a different random transformation applied each time.
         """
-        self.filter_bank = RandomConvolution.format_data(filter_bank)
         self.filters_shape = filters_shape
         self.filters_shape_high = filters_shape_high
+        self.filter_bank = filter_bank
         self.margin = margin
         if callable(filter_processing): filter_processing = [filter_processing]
         self.filter_processing = filter_processing or []
-
-        self.n_examples, n_channels, self.bank_height, self.bank_width = self.filter_bank.shape
-        self.i_max = self.bank_height - filters_shape[0]
-        self.j_max = self.bank_width - filters_shape[1]
 
         self.rotation, self.scale, self.shear = rotation, scale, shear
         self.random_affine_sampler = RandomAffine(rotation=rotation, scale_x=scale, scale_y=scale,                                           shear_x=shear, shear_y=shear, angle_unit='degrees')
         self.padding = padding
         self.n_transforms = n_transforms
+
+    @property
+    def filter_bank(self):
+        return self._filter_bank
+    @filter_bank.setter
+    def filter_bank(self, filter_bank):
+        self._filter_bank = RandomConvolution.format_data(filter_bank)
+        self.n_examples, n_channels, self.bank_height, self.bank_width = self._filter_bank.shape
 
     def _draw_filter_shape(self):
         if not self.filters_shape_high:
@@ -328,7 +333,9 @@ class SparseRidgeRC(RandomConvolution):
 
             encoder (LabelEncoder object, optional): Encoder to encode labels. If None, no encoding will be made before fitting.
         """
-        super().__init__(filters=filters, encoder=encoder, weak_learner=Ridge)
+        self.filters = filters()
+        self.encoder = encoder
+        self.weak_learner = Ridge()
         self.top_k_filters = top_k_filters
 
     def fit(self, X, Y, W=None, **weak_learner_kwargs):
@@ -338,7 +345,6 @@ class SparseRidgeRC(RandomConvolution):
             X = self.format_data(X)
 
             random_features = self.filters.apply(X)
-        print(random_features.shape)
         self._fit(random_features, Y, W, **weak_learner_kwargs)
 
         n_classes = self.weak_learner.coef_.shape[0]
@@ -358,6 +364,11 @@ class SparseRidgeRC(RandomConvolution):
 
         return self
     fit.__doc__ = RandomConvolution.fit.__doc__
+
+    def select_filters(self):
+        print('inside sparse ridge, weights shape:', self.filters.weights.shape)
+        return self.filters.weights
+
 
 def center_weight(weight):
     mean = torch.mean(weight)
