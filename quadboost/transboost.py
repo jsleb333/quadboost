@@ -136,6 +136,22 @@ class TransBoost(QuadBoostMHCR):
             X_val = self._advance_to_next_layer(X_val, filters_of_the_layer)
             bank = self._advance_to_next_layer(bank, filters_of_the_layer)
 
+            x_size = X.element_size() * X.nelement() / 1e9
+            x_val_size = X_val.element_size() * X_val.nelement() / 1e9
+            bank_size = bank.element_size() * bank.nelement() / 1e9
+            # Y_size = Y.element_size() * Y.nelement() / 1e9
+            # Y_val_size = Y_val.element_size() * Y_val.nelement() / 1e9
+            # print(Y_val_size)
+            # weights_size = weights.element_size() * weights.nelement() / 1e9
+            # print(weights_size)
+            # residue_size = residue.element_size() * residue.nelement() / 1e9
+            # print(residue_size)
+            # print(Y_size)
+            print(x_size)
+            print(x_val_size)
+            print(bank_size)
+            print(bank_size+x_val_size+x_size)
+
             self.weak_learner.filters.weights_generator.filter_bank = bank
             qb_algo = self.algorithm(boost_manager, self.encoder, self.weak_learner,
                                     X, Y, residue, weights, encoded_Y_pred,
