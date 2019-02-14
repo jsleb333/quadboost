@@ -22,6 +22,12 @@ def parse(func):
             value_type = type(value)
             if isinstance(value, bool):
                 value_type = bool_parse
+            if isinstance(value, list):
+                if len(value) > 0:
+                    list_type = type(value[0])
+                else:
+                    list_type = str
+                value_type = list_parse(list_type)
             parser.add_argument(f'--{key}', dest=key, default=value, type=value_type)
         kwargs = vars(parser.parse_args())
         # Returns the original func with new kwargs
@@ -36,6 +42,15 @@ def bool_parse(arg):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+def list_parse(list_type):
+    print(list_type)
+    def _list_parse(arg):
+        arg = arg.replace('[', '').replace(']','')
+        arg = arg.split(',')
+        return [list_type(value) for value in arg]
+    return _list_parse
 
 
 def identity_func(arg):
