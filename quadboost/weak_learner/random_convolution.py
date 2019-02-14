@@ -366,7 +366,6 @@ class SparseRidgeRC(RandomConvolution):
     fit.__doc__ = RandomConvolution.fit.__doc__
 
     def select_filters(self):
-        print('inside sparse ridge, weights shape:', self.filters.weights.shape)
         return self.filters.weights
 
 

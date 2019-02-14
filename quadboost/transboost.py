@@ -16,6 +16,7 @@ try:
     from callbacks import (BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback,
                         BreakOnPlateauCallback, BreakOnZeroRiskCallback)
     from utils import *
+    from quadboost import BoostingRound
 
 except ModuleNotFoundError:
     from .weak_learner import *
@@ -25,8 +26,9 @@ except ModuleNotFoundError:
     from .callbacks import (BreakOnMaxStepCallback, BreakOnPerfectTrainAccuracyCallback,
                         BreakOnPlateauCallback, BreakOnZeroRiskCallback)
     from .utils import *
+    from .quadboost import BoostingRound
 
-from quadboost import QuadBoostMH, QuadBoostMHCR, BoostingRound
+from quadboost import QuadBoostMH, QuadBoostMHCR
 
 
 class TransBoost(QuadBoostMHCR):
@@ -40,7 +42,7 @@ class TransBoost(QuadBoostMHCR):
 
     def fit(self, X, Y, f0=None,
             patience=None, break_on_perfect_train_acc=False,
-            n_filters_per_layer=10, n_layers=3,
+            n_filters_per_layer=100, n_layers=3,
             X_val=None, Y_val=None,
             callbacks=None,
             **weak_learner_fit_kwargs):
@@ -126,27 +128,33 @@ class TransBoost(QuadBoostMHCR):
         boost_manager = CallbacksManagerIterator(self, self.callbacks, starting_round)
 
         self.filters = []
+        bank = self.weak_learner.filters.weights_generator.filter_bank
+        filters_of_the_layer = None
         for n_filters in self.n_filters_per_layer:
             print('X shape:', X.shape)
-            self.weak_learner.filters.weights_generator.filter_bank = X
+            X = self._advance_to_next_layer(X, filters_of_the_layer)
+            X_val = self._advance_to_next_layer(X_val, filters_of_the_layer)
+            bank = self._advance_to_next_layer(bank, filters_of_the_layer)
+
+            self.weak_learner.filters.weights_generator.filter_bank = bank
             qb_algo = self.algorithm(boost_manager, self.encoder, self.weak_learner,
                                     X, Y, residue, weights, encoded_Y_pred,
                                     X_val, Y_val, encoded_Y_val_pred)
             filters_of_the_layer = qb_algo.fit(self.weak_predictors, self.weak_predictors_weights, n_filters, **weak_learner_fit_kwargs)
             print('Going to next layer...')
             filters_of_the_layer = torch.cat(filters_of_the_layer, dim=0)
-            print(filters_of_the_layer.shape)
+
             self.filters.append(filters_of_the_layer)
-            X = self._advance_to_next_layer(X, filters_of_the_layer)
-            X_val = self._advance_to_next_layer(X_val, filters_of_the_layer)
 
     def _advance_to_next_layer(self, X, filters_weights):
-        output = F.conv2d(X, filters_weights)
-        # output.shape -> (n_examples, n_filters, conv_height, conv_width)
-        # output = F.max_pool2d(output, (2,2), ceil_mode=True)
-        F.relu(output, inplace=True)
-        return output
-
+        if filters_weights is not None:
+            output = F.conv2d(X, filters_weights)
+            # output.shape -> (n_examples, n_filters, conv_height, conv_width)
+            # output = F.max_pool2d(output, (2,2), ceil_mode=True)
+            F.relu(output, inplace=True)
+            return output
+        else:
+            return X
 
 class TransBoostAlgorithm:
     """
@@ -199,7 +207,7 @@ class TransBoostAlgorithm:
                 self._evaluate_round(boosting_round, weighted_weak_prediction, weak_predictor, weak_predictor_weight)
 
                 filters.append(weak_predictor.select_filters())
-                if len(filters) >= n_filters:
+                if np.sum([f.shape[0] for f in filters]) >= n_filters:
                     self.boost_manager.callbacks.on_step_end()
                     break
         return filters
