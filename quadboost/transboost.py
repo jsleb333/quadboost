@@ -148,10 +148,13 @@ class TransBoost(QuadBoostMHCR):
 
     def _advance_to_next_layer(self, X, filters_weights):
         if filters_weights is not None:
-            output = F.conv2d(X, filters_weights)
+            nf, ch, width, height = filters_weights.shape
+            padding = ((width-1)//2, (height-1)//2)
+            output = F.conv2d(X, filters_weights, padding=padding)
             # output.shape -> (n_examples, n_filters, conv_height, conv_width)
             # output = F.max_pool2d(output, (2,2), ceil_mode=True)
-            F.relu(output, inplace=True)
+            # F.relu(output, inplace=True)
+            output = torch.tanh(output)#, inplace=True)
             return output
         else:
             return X
