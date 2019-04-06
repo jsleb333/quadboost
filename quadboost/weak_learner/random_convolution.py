@@ -123,6 +123,7 @@ class LocalFilters(Filters):
             # self.weights.append(torch.unsqueeze(weight, dim=0))
             self.weights.append(weight)
             self.positions.append(position)
+            self.n_transforms = weights_generator.n_transforms
 
     def _send_weights_to_device(self, X):
         self.weights = [weight.to(device=X.device) for weight in self.weights]
