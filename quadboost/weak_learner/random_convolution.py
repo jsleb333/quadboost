@@ -144,8 +144,8 @@ class LocalFilters(Filters):
             if self.maxpool_shape:
                 output = torch.unsqueeze(output, dim=1)
                 # output.shape -> (n_examples, 1, n_transforms, height, array)
-                maxpool_shape = self._compute_maxpool_shape(output)
-                output = F.max_pool3d(output, maxpool_shape, ceil_mode=True)
+                self._compute_maxpool_shape(output)
+                output = F.max_pool3d(output, self.maxpool_shape, ceil_mode=True)
 
             random_features.append(output.reshape(n_examples, -1))
 
