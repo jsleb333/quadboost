@@ -83,7 +83,7 @@ if __name__ == '__main__':
     doc = Document(doc_name)
     plot = doc.new(Plot(plot_name=doc_name))
 
-    nfs = list(np.linspace(10,90,9)) + list(np.linspace(100,700,7)) + [784,800,900,1000]
+    nfs = list(np.linspace(10,90,9,dtype=int)) + list(np.linspace(100,700,7,dtype=int)) + [784,800,900,1000]
     # nfs = [10,20,30]
     tr_accs, ts_accs = [], []
     for nf in nfs:
