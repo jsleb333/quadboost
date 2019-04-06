@@ -26,3 +26,9 @@ quadboost/CMakeFiles/
 quadboost/cmake_install.cmake
 quadboost/CMakeCache.txt
 quadboost/Makefile
+
+*.pdf
+*.log
+*.aux
+*.tex
+*.csv
