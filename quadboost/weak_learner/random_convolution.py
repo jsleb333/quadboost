@@ -405,7 +405,7 @@ def main():
     # print('CUDA')
     # Xtr = Xtr[:m+bank].to(device='cuda:0')
     # Xts = Xts.to(device='cuda:0')
-    scale = (0.9, 1.1)
+    scale = .1
     shear = 10
     nt = 1
     nf = 100
