@@ -41,7 +41,7 @@ def n_features_plot(nf,
                                         # filters_shape=(5,5),
                                         # filters_shape_high=(16,16),
                                         margin=2,
-                                        filter_processing=[center_weight],
+                                        # filter_processing=[center_weight],
                                         rotation=rotation,
                                         scale=scale,
                                         shear=shear,
@@ -79,14 +79,14 @@ if __name__ == '__main__':
     shear = 10
     rotation = 15
 
-    doc_name = f'n_features_plot_n_transforms={nt}'
+    doc_name = f'n_features_plot_n_transforms={nt}_without_center_weights'
     doc = Document(doc_name)
     plot = doc.new(Plot(plot_name=doc_name))
 
     nfs = list(np.linspace(10,90,9,dtype=int)) + list(np.linspace(100,700,7,dtype=int)) + [784,800,900,1000]
     # nfs = [10,20,30]
     tr_accs, ts_accs = [], []
-    for nf in nfs:
+    for nf in [784]:
         tr_acc, ts_acc = n_features_plot(nf, m=57000, nt=nt, rotation=rotation, scale=scale, shear=shear)
         tr_accs.append(tr_acc)
         ts_accs.append(ts_acc)
