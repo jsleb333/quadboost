@@ -1,9 +1,5 @@
-import unittest as ut
+import pytest
 
 
-class TestQuadBoost(ut.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
+class TestQuadBoost:
+    pass
