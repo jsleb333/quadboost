@@ -3,6 +3,8 @@
 quadboost.code-workspace
 
 __pycache__/
+.pytest_cache/
+
 data/
 quadboost/data/
 quadboost/datasets/datasets_path.py

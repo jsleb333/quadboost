@@ -1,7 +1,7 @@
-import unittest as ut
+import pytest
 
 
-class TestFilters(ut.TestCase):
+class TestFilters:
     def setUp(self):
         pass
 
@@ -9,25 +9,13 @@ class TestFilters(ut.TestCase):
         pass
 
 
-class TestLocalFilters(ut.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
+class TestLocalFilters:
+    pass
 
 
-class TestWeightFromBankGenerator(ut.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
+class TestWeightFromBankGenerator:
+    pass
 
 
-class TestRandomConvolution(ut.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
+class TestRandomConvolution:
+    pass
