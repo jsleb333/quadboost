@@ -164,6 +164,8 @@ class TransBoost(QuadBoostMHCR):
 
     def _advance_to_next_layer(self, X, filters_weights):
         if filters_weights is not None:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             nf, ch, width, height = filters_weights.shape
             padding = ((width-1)//2, (height-1)//2)
             output = F.conv2d(X, filters_weights, padding=padding)
@@ -261,6 +263,7 @@ def main():
     m_val = 100
 
     X_val, Y_val = Xtr[m:m+m_val], Ytr[m:m+m_val]
+    bank = Xtr[m+m_val:2*m+m_val]
     Xtr, X_val, Xts = SparseRidgeRC.format_data(Xtr), SparseRidgeRC.format_data(X_val),SparseRidgeRC.format_data(Xts)
     X, Y = Xtr[:m], Ytr[:m]
 
@@ -268,10 +271,10 @@ def main():
     encoder = OneHotEncoder(Ytr)
 
     ### Choice of weak learner
-    f_gen = WeightFromBankGenerator(filter_bank=X,
-                                    filters_shape=(8,8),
+    f_gen = WeightFromBankGenerator(filter_bank=bank,
+                                    filters_shape=(5,5),
                                     filter_processing=center_weight)
-    filters = Filters(n_filters=20,
+    filters = Filters(n_filters=10,
                       weights_generator=f_gen,
                       maxpool_shape=(-1,7,7))
     # Xtr, X_val, Xts = Xtr.to('cuda'), X_val.to('cuda'), Xts.to('cuda')
@@ -285,7 +288,8 @@ def main():
     tb = TransBoost(weak_learner, encoder=encoder, dampening=1)
     # tb = QuadBoostMHCR(weak_learner, encoder=encoder, dampening=1)
     tb.fit(X, Y, patience=10,
-            n_filters_per_layer=(10,10,10,0),
+            # n_filters_per_layer=(30,),
+            n_filters_per_layer=(10,10,10),
             # max_round_number=9,
             X_val=X_val, Y_val=Y_val,
             callbacks=callbacks,
